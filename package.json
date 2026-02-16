@@ -6,7 +6,12 @@
   "scripts": {
     "start": "node server.js",
     "bot": "node fill-form.js",
-    "test": "node test-form-fill.js"
+    "test": "node test-form-fill.js",
+    "handshake": "node handshake-apply.js",
+    "test:handshake": "node test-handshake.js",
+    "handshake:login": "node handshake-login.js",
+    "handshake:login:record": "node handshake-login-record.js",
+    "handshake:apply": "node handshake-apply-real.js"
   },
   "devDependencies": {
     "playwright": "^1.49.0"
