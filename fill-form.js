@@ -27,6 +27,7 @@ export async function fillJobApplicationForm(options = {}) {
     linkedin = 'https://linkedin.com/in/janedoe',
     stopBeforeSubmit = true,
     headless = true,
+    keepOpen = false,
     screenshotDir = join(__dirname, 'screenshots'),
     runId = null,
   } = options;
@@ -34,7 +35,7 @@ export async function fillJobApplicationForm(options = {}) {
   const prefix = runId !== undefined && runId !== null ? `run-${runId}-` : '';
   ensureDir(screenshotDir);
 
-  const browser = await chromium.launch({ headless: false });
+  const browser = await chromium.launch({ headless });
   const context = await browser.newContext();
   const page = await context.newPage();
 
@@ -97,13 +98,12 @@ export async function fillJobApplicationForm(options = {}) {
     await page.locator('#submit-btn').click();
     return { success: true, message: 'Form submitted.' };
   } finally {
-    // await browser.close();
-    console.log('Browser closed');
+    if (!keepOpen) await browser.close();
   }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  fillJobApplicationForm({ stopBeforeSubmit: true })
+  fillJobApplicationForm({ stopBeforeSubmit: true, keepOpen: true })
     .then((r) => console.log(r.message))
     .catch((err) => {
       console.error('Error:', err.message);

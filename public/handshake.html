@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Handshake – Job Listing</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; }
+    .job-card { border: 1px solid #ddd; padding: 1rem; margin-bottom: 1rem; }
+    .apply-btn { padding: 0.5rem 1rem; cursor: pointer; background: #0a66c2; color: #fff; border: 0; border-radius: 4px; }
+    .apply-btn:hover { background: #004182; }
+    [role="dialog"] { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
+    [role="dialog"][aria-hidden="false"] { display: flex; }
+    .dialog-inner { background: #fff; border-radius: 8px; max-width: 480px; width: 90%; max-height: 90vh; overflow-y: auto; padding: 1.5rem; }
+    .dialog-inner h3 { margin-top: 0; }
+    fieldset { border: 0; margin: 1rem 0; padding: 0; }
+    legend h5 { margin: 0 0 0.5rem 0; font-size: 1rem; }
+    .upload-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .upload-row span { color: #666; }
+    .upload-row input[type="file"] { font-size: 0.875rem; }
+    .submit-btn { margin-top: 1rem; padding: 0.5rem 1rem; background: #0a66c2; color: #fff; border: 0; border-radius: 4px; cursor: pointer; }
+    .submit-btn:hover { background: #004182; }
+    .close-btn { float: right; background: none; border: none; cursor: pointer; font-size: 1.25rem; line-height: 1; color: #666; }
+  </style>
+</head>
+<body>
+  <h1>Handshake</h1>
+  <div class="job-card">
+    <h2>Software Engineer Intern</h2>
+    <p>Company: Acme Corp</p>
+    <button type="button" class="apply-btn" id="apply-btn" data-hook="apply-button">Apply</button>
+  </div>
+
+  <div id="apply-dialog" role="dialog" aria-label="Apply to Software Engineer Intern" aria-hidden="true">
+    <div class="dialog-inner">
+      <button type="button" class="close-btn" aria-label="Close" id="dialog-close">&times;</button>
+      <h3>Apply to Software Engineer Intern</h3>
+      <p>Attach your documents below. Transcript, resume, and cover letter are optional for this role.</p>
+
+      <form id="apply-form" data-hook="apply-modal-content">
+        <fieldset>
+          <legend><h5>Attach your transcript</h5></legend>
+          <div class="upload-row">
+            <span>or</span>
+            <div>
+              <label for="file-transcript">Upload new</label>
+              <input type="file" id="file-transcript" name="file-Transcript" accept=".pdf,.doc,.docx,image/png,image/jpeg">
+            </div>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend><h5>Attach your resume</h5></legend>
+          <div class="upload-row">
+            <span>or</span>
+            <div>
+              <label for="file-resume">Upload new</label>
+              <input type="file" id="file-resume" name="file-Resume" accept=".pdf,.doc,.docx,image/png,image/jpeg">
+            </div>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend><h5>Attach your Cover letter</h5></legend>
+          <div class="upload-row">
+            <span>or</span>
+            <div>
+              <label for="file-cover">Upload new</label>
+              <input type="file" id="file-cover" name="file-CoverLetter" accept=".pdf,.doc,.docx,image/png,image/jpeg">
+            </div>
+          </div>
+        </fieldset>
+        <button type="submit" class="submit-btn" id="submit-application">Submit Application</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var dialog = document.getElementById('apply-dialog');
+      var applyBtn = document.getElementById('apply-btn');
+      var closeBtn = document.getElementById('dialog-close');
+      var form = document.getElementById('apply-form');
+
+      applyBtn.addEventListener('click', function () {
+        dialog.setAttribute('aria-hidden', 'false');
+      });
+
+      closeBtn.addEventListener('click', function () {
+        dialog.setAttribute('aria-hidden', 'true');
+      });
+
+      dialog.addEventListener('click', function (e) {
+        if (e.target === dialog) dialog.setAttribute('aria-hidden', 'true');
+      });
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var transcript = document.getElementById('file-transcript').files[0];
+        var resume = document.getElementById('file-resume').files[0];
+        var cover = document.getElementById('file-cover').files[0];
+        var payload = {
+          transcript: transcript ? transcript.name : null,
+          resume: resume ? resume.name : null,
+          coverLetter: cover ? cover.name : null
+        };
+        console.log('Handshake apply submitted', payload);
+        dialog.setAttribute('aria-hidden', 'true');
+      });
+    })();
+  </script>
+</body>
+</html>
