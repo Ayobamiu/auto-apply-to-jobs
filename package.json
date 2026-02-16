@@ -1,0 +1,14 @@
+{
+  "name": "playwright-form-demo",
+  "version": "1.0.0",
+  "description": "Demo project to test a Playwright form-filling bot",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "bot": "node fill-form.js",
+    "test": "node test-form-fill.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}

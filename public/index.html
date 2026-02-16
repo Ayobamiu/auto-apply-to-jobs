@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Application</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; max-width: 480px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.25rem; margin-bottom: 1.5rem; }
+    .step { display: none; }
+    .step.active { display: block; }
+    label { display: block; margin-top: 0.75rem; font-weight: 500; }
+    input[type="text"], input[type="email"], select { width: 100%; padding: 0.5rem; margin-top: 0.25rem; }
+    input[type="checkbox"] { margin-right: 0.5rem; }
+    .actions { margin-top: 1.5rem; display: flex; gap: 0.5rem; }
+    button { padding: 0.5rem 1rem; cursor: pointer; }
+    .error { color: #c00; font-size: 0.875rem; margin-top: 0.25rem; }
+  </style>
+</head>
+<body>
+  <h1>Job Application</h1>
+  <form id="application-form">
+    <div class="step active" id="step1" data-step="1">
+      <label for="first-name">First name</label>
+      <input type="text" id="first-name" name="firstName" required>
+
+      <label for="last-name">Last name</label>
+      <input type="text" id="last-name" name="lastName" required>
+
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required>
+
+      <label for="work-auth">Work authorization</label>
+      <select id="work-auth" name="workAuth" required>
+        <option value="">Select...</option>
+        <option value="citizen">US Citizen</option>
+        <option value="green-card">Permanent Resident (Green Card)</option>
+        <option value="visa">Work Visa</option>
+        <option value="other">Other</option>
+      </select>
+
+      <div class="actions">
+        <button type="button" id="next-btn">Next</button>
+      </div>
+    </div>
+
+    <div class="step" id="step2" data-step="2">
+      <label for="resume">Resume (PDF)</label>
+      <input type="file" id="resume" name="resume" accept=".pdf" required>
+
+      <label style="display: flex; align-items: center; margin-top: 1rem;">
+        <input type="checkbox" id="agree-terms" name="agreeTerms" required>
+        I agree to the terms and conditions
+      </label>
+
+      <div class="actions">
+        <button type="button" id="back-btn">Back</button>
+        <button type="submit" id="submit-btn">Submit</button>
+      </div>
+    </div>
+  </form>
+
+  <script>
+    const form = document.getElementById('application-form');
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
+    const nextBtn = document.getElementById('next-btn');
+    const backBtn = document.getElementById('back-btn');
+
+    nextBtn.addEventListener('click', function () {
+      // Only validate step 1 fields so we can move to step 2
+      const step1Fields = step1.querySelectorAll('input, select');
+      let valid = true;
+      step1Fields.forEach(function (el) {
+        if (!el.checkValidity || !el.checkValidity()) valid = false;
+      });
+      if (!valid) {
+        form.reportValidity();
+        return;
+      }
+      step1.classList.remove('active');
+      step2.classList.add('active');
+    });
+
+    backBtn.addEventListener('click', function () {
+      step2.classList.remove('active');
+      step1.classList.add('active');
+    });
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      alert('Application submitted! (Demo only)');
+    });
+  </script>
+</body>
+</html>
