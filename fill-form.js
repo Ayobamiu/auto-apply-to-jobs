@@ -1,14 +1,21 @@
 /**
  * Playwright form-filling bot for the job application demo.
- * Fills all fields, uploads a sample PDF, goes through steps, stops before final submit.
+ * Handles iframe, dynamic fields, validation retries, and screenshots.
  */
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'url';
 import { join, dirname } from 'path';
+import { mkdirSync } from 'fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BASE_URL = process.env.BASE_URL || 'http://localhost:8765';
 const SAMPLE_PDF = join(__dirname, 'fixtures', 'sample-resume.pdf');
+
+function ensureDir(dir) {
+  try {
+    mkdirSync(dir, { recursive: true });
+  } catch (_) { }
+}
 
 export async function fillJobApplicationForm(options = {}) {
   const {
@@ -16,10 +23,17 @@ export async function fillJobApplicationForm(options = {}) {
     lastName = 'Doe',
     email = 'jane.doe@example.com',
     workAuth = 'citizen',
+    phone = '555-123-4567',
+    linkedin = 'https://linkedin.com/in/janedoe',
     stopBeforeSubmit = true,
+    headless = true,
+    screenshotDir = join(__dirname, 'screenshots'),
+    runId = null,
   } = options;
 
-  // const browser = await chromium.launch({ headless: options.headless !== false });
+  const prefix = runId !== undefined && runId !== null ? `run-${runId}-` : '';
+  ensureDir(screenshotDir);
+
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext();
   const page = await context.newPage();
@@ -28,27 +42,59 @@ export async function fillJobApplicationForm(options = {}) {
     await page.goto(BASE_URL, { waitUntil: 'load' });
     await page.waitForSelector('#first-name', { state: 'visible' });
 
-    // --- Step 1: Personal info ---
+    // --- Step 1: Main page fields (order is random; we fill by id) ---
     await page.fill('#first-name', firstName);
     await page.fill('#last-name', lastName);
     await page.fill('#email', email);
     await page.selectOption('#work-auth', { value: workAuth });
 
-    await page.locator('#next-btn').scrollIntoViewIfNeeded();
-    await page.locator('#next-btn').click();
-    // Step 2: wait for step2 to be visible (resume is inside it)
-    await page.waitForSelector('#step2.active', { state: 'visible', timeout: 10000 });
+    // Dynamic field: appears when work-auth is "visa" or "other"
+    if (workAuth === 'visa') {
+      await page.waitForSelector('#visa-type', { state: 'visible', timeout: 3000 });
+      await page.fill('#visa-type', 'H1B');
+    } else if (workAuth === 'other') {
+      await page.waitForSelector('#other-specify', { state: 'visible', timeout: 3000 });
+      await page.fill('#other-specify', 'Other work authorization');
+    }
+
+    // Iframe fields
+    await page.waitForSelector('#application-iframe', { state: 'attached' });
+    const frame = page.frameLocator('#application-iframe');
+    await frame.locator('#iframe-phone').waitFor({ state: 'visible', timeout: 5000 });
+    await frame.locator('#iframe-phone').fill(phone);
+    await frame.locator('#iframe-linkedin').fill(linkedin);
+
+    await page.screenshot({ path: join(screenshotDir, `${prefix}step-1-filled.png`) });
+
+    // Click Next; retry if validation errors keep us on step 1
+    const maxRetries = 5;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      await page.locator('#next-btn').scrollIntoViewIfNeeded();
+      await page.locator('#next-btn').click();
+
+      const step2Visible = await page.locator('#step2.active').isVisible().catch(() => false);
+      if (step2Visible) break;
+
+      await new Promise((r) => setTimeout(r, 300));
+      const hasErrors = await page.locator('.error').filter({ hasText: /required|Required/ }).first().isVisible().catch(() => false);
+      if (!hasErrors && attempt > 0) break;
+      if (attempt === maxRetries - 1) throw new Error('Step 2 did not appear after retries (validation errors)');
+    }
+
+    await page.waitForSelector('#step2.active', { state: 'visible', timeout: 5000 });
+    await page.screenshot({ path: join(screenshotDir, `${prefix}step-2-visible.png`) });
 
     // --- Step 2: Resume + terms ---
     await page.setInputFiles('#resume', SAMPLE_PDF);
     await page.check('#agree-terms');
 
+    await page.screenshot({ path: join(screenshotDir, `${prefix}step-2-filled.png`) });
+
     if (stopBeforeSubmit) {
-      // Bot stops here; do not click Submit
       return { success: true, message: 'Form filled; stopped before submit.' };
     }
 
-    await page.click('#submit-btn');
+    await page.locator('#submit-btn').click();
     return { success: true, message: 'Form submitted.' };
   } finally {
     // await browser.close();
@@ -56,7 +102,6 @@ export async function fillJobApplicationForm(options = {}) {
   }
 }
 
-// Run when executed directly
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   fillJobApplicationForm({ stopBeforeSubmit: true })
     .then((r) => console.log(r.message))

@@ -6,54 +6,76 @@
   <title>Job Application</title>
   <style>
     * { box-sizing: border-box; }
-    body { font-family: system-ui, sans-serif; max-width: 480px; margin: 2rem auto; padding: 0 1rem; }
-    h1 { font-size: 1.25rem; margin-bottom: 1.5rem; }
+    body { font-family: system-ui, sans-serif; max-width: 520px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.25rem; margin-bottom: 1rem; }
     .step { display: none; }
     .step.active { display: block; }
-    label { display: block; margin-top: 0.75rem; font-weight: 500; }
-    input[type="text"], input[type="email"], select { width: 100%; padding: 0.5rem; margin-top: 0.25rem; }
+    .step1-fields { display: flex; flex-direction: column; }
+    .field-wrap { margin-bottom: 0.75rem; }
+    .field-wrap label.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+    input[type="text"], input[type="email"], input[type="tel"], input[type="url"], select { width: 100%; padding: 0.5rem; margin-top: 0.25rem; }
     input[type="checkbox"] { margin-right: 0.5rem; }
-    .actions { margin-top: 1.5rem; display: flex; gap: 0.5rem; }
+    .actions { margin-top: 1rem; display: flex; gap: 0.5rem; }
     button { padding: 0.5rem 1rem; cursor: pointer; }
     .error { color: #c00; font-size: 0.875rem; margin-top: 0.25rem; }
+    .iframe-wrap { margin: 0.75rem 0; border: 1px solid #ccc; padding: 0.5rem; min-height: 120px; }
+    .iframe-wrap iframe { width: 100%; height: 120px; border: 0; }
+    .dynamic { margin-top: 0.5rem; }
   </style>
 </head>
 <body>
   <h1>Job Application</h1>
   <form id="application-form">
     <div class="step active" id="step1" data-step="1">
-      <label for="first-name">First name</label>
-      <input type="text" id="first-name" name="firstName" required>
-
-      <label for="last-name">Last name</label>
-      <input type="text" id="last-name" name="lastName" required>
-
-      <label for="email">Email</label>
-      <input type="email" id="email" name="email" required>
-
-      <label for="work-auth">Work authorization</label>
-      <select id="work-auth" name="workAuth" required>
-        <option value="">Select...</option>
-        <option value="citizen">US Citizen</option>
-        <option value="green-card">Permanent Resident (Green Card)</option>
-        <option value="visa">Work Visa</option>
-        <option value="other">Other</option>
-      </select>
-
+      <div class="step1-fields" id="step1-fields">
+        <div class="field-wrap" data-field="first-name">
+          <label class="sr-only" for="first-name">First name</label>
+          <input type="text" id="first-name" name="firstName" placeholder="First name" required>
+          <span class="error" id="first-name-error" aria-live="polite"></span>
+        </div>
+        <div class="field-wrap" data-field="last-name">
+          <label class="sr-only" for="last-name">Last name</label>
+          <input type="text" id="last-name" name="lastName" placeholder="Last name" required>
+          <span class="error" id="last-name-error" aria-live="polite"></span>
+        </div>
+        <div class="field-wrap" data-field="email">
+          <label class="sr-only" for="email">Email</label>
+          <input type="email" id="email" name="email" placeholder="Email" required>
+          <span class="error" id="email-error" aria-live="polite"></span>
+        </div>
+        <div class="field-wrap" data-field="work-auth">
+          <label for="work-auth">Work authorization</label>
+          <select id="work-auth" name="workAuth" required>
+            <option value="">Select...</option>
+            <option value="citizen">US Citizen</option>
+            <option value="green-card">Permanent Resident (Green Card)</option>
+            <option value="visa">Work Visa</option>
+            <option value="other">Other</option>
+          </select>
+          <span class="error" id="work-auth-error" aria-live="polite"></span>
+        </div>
+        <div class="field-wrap dynamic" id="dynamic-wrap" style="display: none;">
+          <input type="text" id="dynamic-field" name="dynamicField" placeholder="" required>
+          <span class="error" id="dynamic-error" aria-live="polite"></span>
+        </div>
+        <div class="field-wrap iframe-wrap" data-field="iframe">
+          <iframe id="application-iframe" title="Contact details" src="iframe-form.html"></iframe>
+        </div>
+      </div>
       <div class="actions">
         <button type="button" id="next-btn">Next</button>
       </div>
     </div>
 
     <div class="step" id="step2" data-step="2">
-      <label for="resume">Resume (PDF)</label>
-      <input type="file" id="resume" name="resume" accept=".pdf" required>
-
+      <label for="resume" class="sr-only">Resume</label>
+      <input type="file" id="resume" name="resume" accept=".pdf" required placeholder="Resume (PDF)">
+      <span class="error" id="resume-error" aria-live="polite"></span>
       <label style="display: flex; align-items: center; margin-top: 1rem;">
         <input type="checkbox" id="agree-terms" name="agreeTerms" required>
         I agree to the terms and conditions
       </label>
-
+      <span class="error" id="agree-terms-error" aria-live="polite"></span>
       <div class="actions">
         <button type="button" id="back-btn">Back</button>
         <button type="submit" id="submit-btn">Submit</button>
@@ -62,36 +84,108 @@
   </form>
 
   <script>
-    const form = document.getElementById('application-form');
-    const step1 = document.getElementById('step1');
-    const step2 = document.getElementById('step2');
-    const nextBtn = document.getElementById('next-btn');
-    const backBtn = document.getElementById('back-btn');
+    (function () {
+      var form = document.getElementById('application-form');
+      var step1 = document.getElementById('step1');
+      var step2 = document.getElementById('step2');
+      var nextBtn = document.getElementById('next-btn');
+      var backBtn = document.getElementById('back-btn');
+      var workAuth = document.getElementById('work-auth');
+      var dynamicWrap = document.getElementById('dynamic-wrap');
+      var dynamicField = document.getElementById('dynamic-field');
+      var dynamicError = document.getElementById('dynamic-error');
+      var iframe = document.getElementById('application-iframe');
 
-    nextBtn.addEventListener('click', function () {
-      // Only validate step 1 fields so we can move to step 2
-      const step1Fields = step1.querySelectorAll('input, select');
-      let valid = true;
-      step1Fields.forEach(function (el) {
-        if (!el.checkValidity || !el.checkValidity()) valid = false;
+      // Random field order each page load
+      var container = document.getElementById('step1-fields');
+      var wraps = [].slice.call(container.querySelectorAll('.field-wrap'));
+      wraps.forEach(function (el) {
+        el.style.order = Math.floor(Math.random() * 1000);
       });
-      if (!valid) {
-        form.reportValidity();
-        return;
+
+      // Dynamic fields based on work authorization
+      workAuth.addEventListener('change', function () {
+        var v = workAuth.value;
+        dynamicWrap.style.display = 'none';
+        dynamicField.removeAttribute('required');
+        dynamicField.placeholder = '';
+        dynamicError.textContent = '';
+        if (v === 'visa') {
+          dynamicWrap.style.display = 'block';
+          dynamicField.placeholder = 'Visa type (e.g. H1B, L1)';
+          dynamicField.setAttribute('required', '');
+          dynamicField.id = 'visa-type';
+          dynamicField.name = 'visaType';
+        } else if (v === 'other') {
+          dynamicWrap.style.display = 'block';
+          dynamicField.placeholder = 'Please specify';
+          dynamicField.setAttribute('required', '');
+          dynamicField.id = 'other-specify';
+          dynamicField.name = 'otherSpecify';
+        }
+      });
+
+      function clearStep1Errors() {
+        step1.querySelectorAll('.error').forEach(function (el) { el.textContent = ''; });
       }
-      step1.classList.remove('active');
-      step2.classList.add('active');
-    });
 
-    backBtn.addEventListener('click', function () {
-      step2.classList.remove('active');
-      step1.classList.add('active');
-    });
+      function showStep1Errors() {
+        step1.querySelectorAll('input, select').forEach(function (el) {
+          var err = document.getElementById(el.id + '-error');
+          if (err) err.textContent = el.validity.valueMissing ? 'This field is required' : '';
+        });
+        if (dynamicWrap.style.display !== 'none') {
+          var err = document.getElementById('dynamic-error');
+          if (err) err.textContent = dynamicField.validity.valueMissing ? 'This field is required' : '';
+        }
+      }
 
-    form.addEventListener('submit', function (e) {
-      e.preventDefault();
-      alert('Application submitted! (Demo only)');
-    });
+      function iframeValid() {
+        try {
+          return iframe.contentWindow && iframe.contentWindow.reportIframeValidity && iframe.contentWindow.reportIframeValidity();
+        } catch (e) {
+          return false;
+        }
+      }
+
+      nextBtn.addEventListener('click', function () {
+        clearStep1Errors();
+        var step1Fields = step1.querySelectorAll('input, select');
+        var valid = true;
+        step1Fields.forEach(function (el) {
+          if (dynamicWrap.style.display === 'none' && dynamicWrap.contains(el)) return;
+          if (!el.checkValidity || !el.checkValidity()) valid = false;
+        });
+        if (!valid) {
+          showStep1Errors();
+          form.reportValidity();
+          return;
+        }
+        if (!iframeValid()) {
+          showStep1Errors();
+          return;
+        }
+        step1.classList.remove('active');
+        step2.classList.add('active');
+      });
+
+      backBtn.addEventListener('click', function () {
+        step2.classList.remove('active');
+        step1.classList.add('active');
+      });
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var resumeErr = document.getElementById('resume-error');
+        var agreeErr = document.getElementById('agree-terms-error');
+        resumeErr.textContent = '';
+        agreeErr.textContent = '';
+        if (!document.getElementById('resume').value) resumeErr.textContent = 'Resume is required';
+        if (!document.getElementById('agree-terms').checked) agreeErr.textContent = 'You must agree to the terms';
+        if (resumeErr.textContent || agreeErr.textContent) return;
+        alert('Application submitted! (Demo only)');
+      });
+    })();
   </script>
 </body>
 </html>

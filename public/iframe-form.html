@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Contact details</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 0.5rem 0;
+    }
+
+    input {
+      width: 100%;
+      padding: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .error {
+      color: #c00;
+      font-size: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+  </style>
+</head>
+
+<body>
+  <form id="iframe-form">
+    <input type="tel" id="iframe-phone" name="phone" placeholder="Phone number" required>
+    <span class="error" id="iframe-phone-error" aria-live="polite"></span>
+    <input type="url" id="iframe-linkedin" name="linkedin" placeholder="LinkedIn profile URL" required>
+    <span class="error" id="iframe-linkedin-error" aria-live="polite"></span>
+  </form>
+  <script>
+    (function () {
+      var form = document.getElementById('iframe-form');
+      var phone = document.getElementById('iframe-phone');
+      var linkedin = document.getElementById('iframe-linkedin');
+      var phoneErr = document.getElementById('iframe-phone-error');
+      var linkedinErr = document.getElementById('iframe-linkedin-error');
+
+      function showErrors() {
+        phoneErr.textContent = phone.validity.valueMissing ? 'Required' : '';
+        linkedinErr.textContent = linkedin.validity.valueMissing ? 'Required' : '';
+      }
+
+      [phone, linkedin].forEach(function (el) {
+        el.addEventListener('blur', showErrors);
+        el.addEventListener('input', function () { showErrors(); });
+      });
+
+      window.reportIframeValidity = function () {
+        showErrors();
+        return form.checkValidity();
+      };
+    })();
+  </script>
+</body>
+
+</html>

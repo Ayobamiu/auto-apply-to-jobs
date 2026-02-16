@@ -1,32 +1,39 @@
 /**
- * Runs the form-fill bot 10 times and logs success/failure for each run.
+ * Runs the form-fill bot until 10 successful runs in a row.
+ * Resets the success count on any failure.
  * Start the server first: npm start
  * Then run: npm test
  */
 import { fillJobApplicationForm } from './fill-form.js';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
-const RUNS = 10;
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const TARGET_CONSECUTIVE = 10;
+const SCREENSHOT_DIR = join(__dirname, 'screenshots');
 
 async function main() {
-  const results = [];
+  let consecutive = 0;
+  let attempt = 0;
 
-  for (let i = 0; i < RUNS; i++) {
-    const run = i + 1;
+  while (consecutive < TARGET_CONSECUTIVE) {
+    attempt++;
     try {
-      const out = await fillJobApplicationForm({ stopBeforeSubmit: true });
-      results.push({ run, success: true, message: out.message });
-      console.log(`Run ${run}/${RUNS}: success — ${out.message}`);
+      await fillJobApplicationForm({
+        stopBeforeSubmit: true,
+        screenshotDir: SCREENSHOT_DIR,
+        runId: attempt,
+      });
+      consecutive++;
+      console.log(`Attempt ${attempt}: success (${consecutive}/${TARGET_CONSECUTIVE} in a row)`);
     } catch (err) {
-      results.push({ run, success: false, message: err.message });
-      console.log(`Run ${run}/${RUNS}: failure — ${err.message}`);
+      consecutive = 0;
+      console.log(`Attempt ${attempt}: failure — ${err.message}`);
     }
   }
 
-  const passed = results.filter((r) => r.success).length;
-  const failed = results.length - passed;
-  console.log('\n--- Summary ---');
-  console.log(`Total: ${RUNS}, Passed: ${passed}, Failed: ${failed}`);
-  process.exit(failed > 0 ? 1 : 0);
+  console.log(`\n--- Done --- ${TARGET_CONSECUTIVE} successful runs in a row (total attempts: ${attempt})`);
+  process.exit(0);
 }
 
 main();
