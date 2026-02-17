@@ -58,14 +58,47 @@ async function main() {
       return page.getByText('Attach your transcript').first().waitFor({ state: 'visible', timeout: 5000 });
     });
 
+    // Remove any pre-populated transcript/resume/cover so we can upload new ones.
+    // Handshake shows uploaded files as [data-status="positive"] with a Close button.
+    const removePrePopulated = applyModal.locator('[data-status="positive"]').getByRole('button', { name: 'Close' });
+    let closeCount = await removePrePopulated.count();
+    while (closeCount > 0) {
+      await removePrePopulated.first().click();
+      await new Promise((r) => setTimeout(r, 400));
+      closeCount = await removePrePopulated.count();
+    }
+
     // Attach files: real Handshake uses name="file-Transcript", "file-Resume", and optionally cover
     const transcriptInput = page.locator('input[name="file-Transcript"]');
     const resumeInput = page.locator('input[name="file-Resume"]');
     const coverInput = page.locator('input[name="file-CoverLetter"]');
 
-    if (await transcriptInput.count() > 0) await transcriptInput.setInputFiles(FIXTURES.transcript);
-    if (await resumeInput.count() > 0) await resumeInput.setInputFiles(FIXTURES.resume);
-    if (await coverInput.count() > 0) await coverInput.setInputFiles(FIXTURES.coverLetter);
+    let filesToUpload = 0;
+    if (await transcriptInput.count() > 0) {
+      await transcriptInput.setInputFiles(FIXTURES.transcript);
+      filesToUpload++;
+    }
+    if (await resumeInput.count() > 0) {
+      await resumeInput.setInputFiles(FIXTURES.resume);
+      filesToUpload++;
+    }
+    if (await coverInput.count() > 0) {
+      await coverInput.setInputFiles(FIXTURES.coverLetter);
+      filesToUpload++;
+    }
+
+    // Wait until Handshake shows our uploads as ready: [data-status="positive"] chips appear for each file
+    if (filesToUpload > 0) {
+      await page.waitForFunction(
+        (expected) => {
+          const chips = document.querySelectorAll('[data-hook="apply-modal-content"] [data-status="positive"]');
+          return chips.length >= expected;
+        },
+        filesToUpload,
+        { timeout: 30000 }
+      );
+      console.log('Uploads ready for submission.');
+    }
 
     console.log('Stopped before submit. Close browser when done.');
     // Keep browser open; do not click Submit
