@@ -16,6 +16,9 @@
     "pipeline": "node orchestration/run-pipeline.js"
   },
   "devDependencies": {
-    "playwright": "^1.49.0"
+    "jsonresume-theme-even": "^0.26.1",
+    "playwright": "^1.49.0",
+    "puppeteer": "^24.37.3",
+    "resumed": "^6.1.0"
   }
 }

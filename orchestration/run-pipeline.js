@@ -39,7 +39,7 @@ async function main() {
     {
       cwd: ROOT,
       stdio: 'inherit',
-      env: { ...process.env /* RESUME_PATH can be set when we output PDF */ },
+      env: { ...process.env, RESUME_PATH: resumePath },
     }
   );
   child.on('exit', (code) => process.exit(code ?? 0));
