@@ -9,9 +9,11 @@
     "test": "node test-form-fill.js",
     "handshake": "node handshake-apply.js",
     "test:handshake": "node test-handshake.js",
-    "handshake:login": "node handshake-login.js",
-    "handshake:login:record": "node handshake-login-record.js",
-    "handshake:apply": "node handshake-apply-real.js"
+    "handshake:login": "node agents/auto_apply_agent/handshake-login.js",
+    "handshake:login:record": "node agents/auto_apply_agent/handshake-login-record.js",
+    "handshake:apply": "node agents/auto_apply_agent/handshake-apply-real.js",
+    "resume:generate": "node agents/resume_generator_agent/index.js",
+    "pipeline": "node orchestration/run-pipeline.js"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

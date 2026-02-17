@@ -71,19 +71,28 @@ If you haven’t run `handshake:login` yet, `handshake:apply` will tell you to d
 
 **Recording the login flow:** To fix or tune the "logged in" detection, run `npm run handshake:login:record`, then log in in the browser and close the window when you are fully in. Every main-frame navigation is written to `.auth/navigation-log.json` (URL and timestamp). Use that log to see the exact sequence from login page to post-login and update the login script accordingly.
 
+## Agents and pipeline
+
+The repo is structured for multiple agents (each with a clear input/output):
+
+- **Resume generator** — `shared/profile.json` + `shared/job.json` → tailored resume (Markdown) in `output/`.  
+  - `npm run resume:generate` — writes `output/resume-<job-slug>.md`.
+
+- **Auto-apply (Handshake)** — session + job URL + PDFs → apply flow (stops before submit).  
+  - `npm run handshake:login` | `handshake:login:record` | `handshake:apply` (see Real Handshake above).  
+  - Optional env: `RESUME_PATH`, `TRANSCRIPT_PATH`, `COVER_PATH` to override fixture PDFs.
+
+- **Pipeline** — generate resume, then run apply when `JOB_URL` is set.  
+  - `npm run pipeline` — generate from profile + job; if `JOB_URL` or first arg is set, runs Handshake apply.  
+  - `npm run pipeline -- 'https://...'` — generate then apply to that URL.
+
 ## Project layout
 
-- `public/index.html` – Multi-step job form (iframe, dynamic fields, random order, validation errors)
-- `public/iframe-form.html` – Iframe content (phone, LinkedIn; placeholder-only)
-- `public/handshake.html` – Fake Handshake job page with apply modal (Stage 3)
-- `server.js` – Static file server
-- `fill-form.js` – Playwright bot (iframe, retry, screenshots, dynamic fields)
-- `test-form-fill.js` – Test runner (10 consecutive successes)
-- `handshake-apply.js` – Handshake apply bot (fake modal; upload 3 PDFs, submit, check console)
-- `test-handshake.js` – Handshake 10× test runner
-- `handshake-login.js` – Real Handshake: open login, wait for you to log in, save session to `.auth/`
-- `handshake-login-record.js` – Record all navigations during login to `.auth/navigation-log.json` for tuning "logged in" detection
-- `handshake-apply-real.js` – Real Handshake: load session, go to job URL, open apply modal, attach PDFs, stop before submit
-- `fixtures/sample-resume.pdf`, `sample-transcript.pdf`, `sample-cover-letter.pdf` – Dummy PDFs
-- `screenshots/` – Screenshots per step (gitignored)
-- `.auth/` – Saved Handshake session (gitignored; do not commit)
+- `shared/` – Profile and job loaders (`profile.js`, `job.js`, `config.js`), sample `profile.json`, `job.json`
+- `agents/auto_apply_agent/` – Handshake login, login record, apply-real (session, modal, uploads)
+- `agents/resume_generator_agent/` – Resume from profile + job → `output/resume-*.md`
+- `orchestration/run-pipeline.js` – Runs resume gen then (optionally) apply
+- `public/` – Demo form, iframe form, fake Handshake page
+- `fill-form.js`, `handshake-apply.js`, `test-handshake.js` – Demo / fake Handshake (local tests)
+- `fixtures/` – Sample PDFs; `output/` – Generated resumes (gitignored)
+- `.auth/` – Saved Handshake session (gitignored)

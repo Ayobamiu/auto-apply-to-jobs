@@ -1,32 +1,31 @@
 /**
  * Record all main-frame navigations during Handshake login.
  * Run this, log in manually in the browser, then close the browser window.
- * URLs are written to .auth/navigation-log.json so we can see the exact
- * login flow and build a correct "logged in" check.
+ * URLs are written to .auth/navigation-log.json.
  */
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'url';
-import { join, dirname } from 'path';
+import { dirname } from 'path';
 import { mkdirSync, writeFileSync } from 'fs';
+import { PATHS } from '../../shared/config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LOGIN_URL = 'https://app.joinhandshake.com/login';
-const LOG_PATH = join(__dirname, '.auth', 'navigation-log.json');
 
 function ensureAuthDir() {
   try {
-    mkdirSync(join(__dirname, '.auth'), { recursive: true });
-  } catch (_) {}
+    mkdirSync(PATHS.auth, { recursive: true });
+  } catch (_) { }
 }
 
 function writeLogToFile(entries) {
   ensureAuthDir();
-  writeFileSync(LOG_PATH, JSON.stringify(entries, null, 2), 'utf8');
+  writeFileSync(PATHS.navigationLog, JSON.stringify(entries, null, 2), 'utf8');
 }
 
 function writeLog(entries) {
   writeLogToFile(entries);
-  console.log('Wrote', entries.length, 'entries to', LOG_PATH);
+  console.log('Wrote', entries.length, 'entries to', PATHS.navigationLog);
 }
 
 async function main() {
@@ -44,12 +43,10 @@ async function main() {
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  // Record every main-frame navigation
   page.on('framenavigated', (frame) => {
     if (frame === page.mainFrame()) record(frame.url(), 'framenavigated');
   });
 
-  // Also record on load (catches client-side route changes)
   page.on('load', () => {
     const url = page.url();
     if (entries.length === 0 || entries[entries.length - 1].url !== url) {
@@ -74,8 +71,7 @@ async function main() {
   await page.goto(LOGIN_URL, { waitUntil: 'load' });
   record(page.url(), 'initial');
 
-  // Keep running until browser is closed or Ctrl+C
-  await new Promise(() => {});
+  await new Promise(() => { });
 }
 
 main().catch((err) => {

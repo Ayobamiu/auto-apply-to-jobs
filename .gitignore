@@ -8,4 +8,5 @@ playwright-report/
 playwright/.cache/
 screenshots/
 .auth/
+output/
 *.tgz
