@@ -44,6 +44,21 @@ async function main() {
     await page.goto(jobUrl, { waitUntil: 'load' });
     await new Promise((r) => setTimeout(r, 2000));
 
+    // If session expired, Handshake redirects to login — detect and exit with a clear message
+    const url = page.url();
+    const path = new URL(url).pathname.toLowerCase();
+    const host = new URL(url).hostname.toLowerCase();
+    const isLoginPage =
+      path.includes('login') ||
+      path.includes('configure_auth') ||
+      path.includes('sign_in') ||
+      host.includes('webauth.') ||
+      host.includes('idp.');
+    if (isLoginPage) {
+      console.error('Session expired or not logged in. Run: npm run handshake:login');
+      process.exit(1);
+    }
+
     // Click Apply: resilient selector for real Handshake
     const applyBtn = page.getByRole('button', { name: /apply/i }).first();
     await applyBtn.click({ timeout: 15000 }).catch(() => {
