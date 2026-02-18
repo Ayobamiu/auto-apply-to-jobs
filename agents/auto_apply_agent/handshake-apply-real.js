@@ -67,6 +67,17 @@ async function main() {
       process.exit(1);
     }
 
+    // Detect "Apply externally" — not supported; we only handle in-Handshake apply.
+    const applyButton = page.getByRole('button', { name: /apply/i }).first();
+    const applyLink = page.getByRole('link', { name: /apply/i }).first();
+    const buttonText = (await applyButton.textContent().catch(() => null))?.trim() ?? '';
+    const linkText = (await applyLink.textContent().catch(() => null))?.trim() ?? '';
+    const isExternalApply = /apply\s+externally|apply\s+external/i.test(buttonText) || /apply\s+externally|apply\s+external/i.test(linkText);
+    if (isExternalApply) {
+      console.error('This job uses "Apply externally" and is not supported yet. Only in-Handshake apply is supported.');
+      process.exit(1);
+    }
+
     const applyBtn = page.getByRole('button', { name: /apply/i }).first();
     await applyBtn.click({ timeout: 15000 }).catch(() => {
       const link = page.getByRole('link', { name: /apply/i }).first();
