@@ -75,24 +75,29 @@ If you haven’t run `handshake:login` yet, `handshake:apply` will tell you to d
 
 The repo is structured for multiple agents (each with a clear input/output):
 
-- **Resume generator** — `shared/profile.json` + `shared/job.json` → tailored resume (Markdown) in `output/`.  
-  - `npm run resume:generate` — writes `output/resume-<job-slug>.md`.
+- **Resume generator** — `shared/profile.json` + job (file or from URL) → JSON Resume → PDF in `output/`.  
+  - `npm run resume:generate` — uses `shared/job.json`; writes `output/resume-<job-slug>.json` and `output/resume-<job-slug>.pdf` (via [resumed](https://github.com/rbardini/resumed) + theme).
+
+- **Job from URL** — Handshake job URL → scrape title, company, description; cache by URL in `output/job-cache/` (24h). Used automatically by the pipeline when `JOB_URL` is set.
+
+- **Apply state** — Per-job state in `output/apply-state.json` (keyed by job URL). Records when a job has been uploaded (resume path, timestamp). If you run apply again for the same job, uploads are skipped and the modal opens in "ready to submit" mode.
 
 - **Auto-apply (Handshake)** — session + job URL + PDFs → apply flow (stops before submit).  
   - `npm run handshake:login` | `handshake:login:record` | `handshake:apply` (see Real Handshake above).  
-  - Optional env: `RESUME_PATH`, `TRANSCRIPT_PATH`, `COVER_PATH` to override fixture PDFs.
+  - Optional env: `RESUME_PATH`, `TRANSCRIPT_PATH`, `COVER_PATH` to override fixture PDFs.  
+  - First time for a job URL: clears pre-populated files, uploads transcript + resume + cover, then saves state. Next time for same URL: opens modal only (no upload).
 
-- **Pipeline** — generate resume, then run apply when `JOB_URL` is set.  
-  - `npm run pipeline` — generate from profile + job; if `JOB_URL` or first arg is set, runs Handshake apply.  
-  - `npm run pipeline -- 'https://...'` — generate then apply to that URL.
+- **Pipeline** — get job (from URL scrape/cache or `shared/job.json`), generate resume PDF, then run Handshake apply when `JOB_URL` is set.  
+  - `npm run pipeline` — job from file; generates resume only (no apply).  
+  - `npm run pipeline -- 'https://...'` — scrapes/caches job from URL, generates resume from it, then runs apply with that PDF.
 
 ## Project layout
 
-- `shared/` – Profile and job loaders (`profile.js`, `job.js`, `config.js`), sample `profile.json`, `job.json`
-- `agents/auto_apply_agent/` – Handshake login, login record, apply-real (session, modal, uploads)
-- `agents/resume_generator_agent/` – Resume from profile + job → `output/resume-*.md`
-- `orchestration/run-pipeline.js` – Runs resume gen then (optionally) apply
+- `shared/` – Profile and job loaders (`profile.js`, `job.js`, `config.js`), `job-from-url.js` (scrape + cache), `apply-state.js` (per-job state), `json-resume.js` (profile → JSON Resume), sample `profile.json`, `job.json`
+- `agents/auto_apply_agent/` – Handshake login, login record, apply-real (session, modal, uploads, state)
+- `agents/resume_generator_agent/` – Resume from profile + job → JSON + PDF
+- `orchestration/run-pipeline.js` – Job from URL or file → resume gen → (optionally) apply
 - `public/` – Demo form, iframe form, fake Handshake page
 - `fill-form.js`, `handshake-apply.js`, `test-handshake.js` – Demo / fake Handshake (local tests)
-- `fixtures/` – Sample PDFs; `output/` – Generated resumes (gitignored)
+- `fixtures/` – Sample PDFs; `output/` – Generated resumes, job cache, apply state (gitignored)
 - `.auth/` – Saved Handshake session (gitignored)

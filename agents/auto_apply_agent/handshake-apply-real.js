@@ -1,7 +1,8 @@
 /**
- * Real Handshake: load saved session, go to job URL, open apply modal, attach transcript/resume/cover letter.
- * Stops before submit and keeps browser open for inspection.
- * Job URL from JOB_URL env or first CLI arg.
+ * Real Handshake: load saved session, go to job URL, open apply modal.
+ * If state says already uploaded for this job URL: skip upload, show "ready to submit".
+ * Else: attach transcript/resume/cover letter, then save state (uploaded, resume path, timestamp).
+ * Stops before submit. Job URL from JOB_URL env or first CLI arg.
  * Optional: RESUME_PATH, TRANSCRIPT_PATH, COVER_PATH override fixture paths.
  */
 import { chromium } from 'playwright';
@@ -9,14 +10,17 @@ import { fileURLToPath } from 'url';
 import { join, dirname } from 'path';
 import { existsSync } from 'fs';
 import { PATHS } from '../../shared/config.js';
+import { isJobUploaded, setJobUploaded } from '../../shared/apply-state.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const FIXTURES = {
-  transcript: process.env.TRANSCRIPT_PATH || join(PATHS.fixtures, 'sample-transcript.pdf'),
-  resume: process.env.RESUME_PATH || join(PATHS.fixtures, 'sample-resume.pdf'),
-  coverLetter: process.env.COVER_PATH || join(PATHS.fixtures, 'sample-cover-letter.pdf'),
-};
+function getFixtures() {
+  return {
+    transcript: process.env.TRANSCRIPT_PATH || join(PATHS.fixtures, 'sample-transcript.pdf'),
+    resume: process.env.RESUME_PATH || join(PATHS.fixtures, 'sample-resume.pdf'),
+    coverLetter: process.env.COVER_PATH || join(PATHS.fixtures, 'sample-cover-letter.pdf'),
+  };
+}
 
 function getJobUrl() {
   const env = process.env.JOB_URL;
@@ -38,11 +42,12 @@ async function main() {
     process.exit(1);
   }
 
+  const alreadyUploaded = isJobUploaded(jobUrl);
+  const files = getFixtures();
+
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext({ storageState: PATHS.authState });
   const page = await context.newPage();
-
-  const files = FIXTURES;
 
   try {
     await page.goto(jobUrl, { waitUntil: 'load' });
@@ -73,6 +78,12 @@ async function main() {
     await applyModal.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {
       return page.getByText('Attach your transcript').first().waitFor({ state: 'visible', timeout: 5000 });
     });
+
+    if (alreadyUploaded) {
+      console.log('Already uploaded for this job. Modal open; ready to submit when you are.');
+      console.log('Stopped before submit. Close browser when done.');
+      return;
+    }
 
     const removePrePopulated = applyModal.locator('[data-status="positive"]').getByRole('button', { name: 'Close' });
     let closeCount = await removePrePopulated.count();
@@ -109,7 +120,8 @@ async function main() {
         filesToUpload,
         { timeout: 30000 }
       );
-      console.log('Uploads ready for submission.');
+      setJobUploaded(jobUrl, { resumePath: files.resume });
+      console.log('Uploads ready for submission. State saved (this job marked uploaded).');
     }
 
     console.log('Stopped before submit. Close browser when done.');

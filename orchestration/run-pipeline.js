@@ -1,10 +1,11 @@
 /**
- * Pipeline: generate resume from profile + job, then run Handshake apply (when JOB_URL provided).
+ * Pipeline: get job (from URL scrape/cache or file), generate resume, then run Handshake apply when JOB_URL provided.
  * Usage: node orchestration/run-pipeline.js [job-url]
- * If job-url is omitted, only resume is generated. Env JOB_URL can be used instead.
+ * If job-url is omitted, only resume is generated from shared/job.json. Env JOB_URL can be used instead.
  */
 import { runResumeGenerator } from '../agents/resume_generator_agent/index.js';
 import { loadJob } from '../shared/job.js';
+import { getJobFromUrl } from '../shared/job-from-url.js';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { join, dirname } from 'path';
@@ -21,12 +22,20 @@ function getJobUrl() {
 }
 
 async function main() {
+  const jobUrl = getJobUrl();
+  let job;
+  if (jobUrl) {
+    console.log('Step 0: Get job from URL (scrape or cache)...');
+    job = await getJobFromUrl(jobUrl);
+    console.log('Job:', job.title || job.company || jobUrl);
+  } else {
+    job = loadJob();
+  }
+
   console.log('Step 1: Generate resume from profile + job...');
-  const job = loadJob();
   const { resumePath } = runResumeGenerator({ job });
   console.log('Resume:', resumePath);
 
-  const jobUrl = getJobUrl();
   if (!jobUrl) {
     console.log('No JOB_URL. Run handshake:apply with the job URL when ready.');
     return;
