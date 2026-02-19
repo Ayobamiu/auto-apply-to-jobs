@@ -17,6 +17,7 @@ export const PATHS = {
   jobCache: join(ROOT, 'output', 'job-cache'),
   scrapeScreenshots: join(ROOT, 'output', 'scrape-screenshots'),
   applyState: join(ROOT, 'output', 'apply-state.json'),
+  jobsFile: join(ROOT, 'output', 'jobs.json'),
   profile: join(ROOT, 'shared', 'profile.json'),
   job: join(ROOT, 'shared', 'job.json'),
 };

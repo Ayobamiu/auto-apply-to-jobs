@@ -25,6 +25,24 @@ export function cacheKey(url) {
   return createHash('sha256').update(normalizeUrl(url)).digest('hex').slice(0, 16);
 }
 
+/** Extract job ID from URL (e.g. job-search/10732713 or /jobs/10732713). Returns null if not found. */
+export function getJobIdFromUrl(url) {
+  const normalized = normalizeUrl(url);
+  const m = normalized.match(/job-search\/(\d+)/) || normalized.match(/\/jobs\/(\d+)/);
+  return m ? m[1] : null;
+}
+
+/** Infer job site from URL hostname (e.g. joinhandshake.com -> 'handshake'). */
+export function getJobSiteFromUrl(url) {
+  try {
+    const host = new URL(normalizeUrl(url)).hostname.toLowerCase();
+    if (host.includes('handshake')) return 'handshake';
+    return host;
+  } catch {
+    return 'unknown';
+  }
+}
+
 /**
  * Expand all "Learn more" / "More" description sections on a Handshake job page so the full description is visible.
  * Clicks every button.view-more-button that shows "More" (aria-label "Show more (...)") until none left.
@@ -49,10 +67,35 @@ async function expandDescriptionSections(page) {
  * Uses selectors matching Handshake's DOM (see examples/handshake-job-example-*.html).
  * Expands any "More" / "Learn more" description sections before reading so the full description is captured.
  * @param {import('playwright').Page} page
- * @returns {Promise<{ title: string, company: string, description: string, url?: string }>}
+ * @returns {Promise<{ title: string, company: string, description: string, url?: string, applyType: 'apply' | 'apply_externally' | 'none', applicationSubmitted: boolean, appliedAt?: string }>}
  */
 export async function scrapeJobFromPage(page) {
   const url = page.url();
+
+  // Detect if user has already applied (e.g. "Applied on February 18, 2026" banner)
+  let applicationSubmitted = false;
+  let appliedAt = undefined;
+  const appliedBanner = page.getByText(/Applied on .+/i).first();
+  try {
+    await appliedBanner.waitFor({ state: 'visible', timeout: 2000 });
+    const text = (await appliedBanner.textContent().catch(() => null))?.trim();
+    if (text) {
+      applicationSubmitted = true;
+      appliedAt = text;
+    }
+  } catch (_) { }
+
+  // Detect apply button state: apply (in-Handshake), apply externally, or no button
+  let applyType = 'none';
+  const applyButton = page.getByRole('button', { name: /apply/i }).first();
+  const applyLink = page.getByRole('link', { name: /apply/i }).first();
+  const buttonText = (await applyButton.textContent().catch(() => null))?.trim() ?? '';
+  const linkText = (await applyLink.textContent().catch(() => null))?.trim() ?? '';
+  if (/apply\s+externally|apply\s+external/i.test(buttonText) || /apply\s+externally|apply\s+external/i.test(linkText)) {
+    applyType = 'apply_externally';
+  } else if (buttonText.toLowerCase().includes('apply') || linkText.toLowerCase().includes('apply')) {
+    applyType = 'apply';
+  }
 
   // Title: first h1 on the page (job detail title)
   const title =
@@ -109,7 +152,7 @@ export async function scrapeJobFromPage(page) {
       (await page.locator('[data-hook="job-detail-description"], [class*="description"]').first().innerText().catch(() => null))?.trim()?.slice(0, 12000) || '';
   }
 
-  return { title, company, description, url };
+  return { title, company, description, url, applyType, applicationSubmitted, ...(appliedAt && { appliedAt }) };
 }
 
 /**
@@ -121,10 +164,12 @@ export async function scrapeJobFromPage(page) {
  */
 export async function getJobFromUrl(jobUrl, options = {}) {
   const normalized = normalizeUrl(jobUrl);
-  const key = cacheKey(normalized);
+  const hashKey = cacheKey(normalized);
+  const jobId = getJobIdFromUrl(jobUrl);
+  const fileKey = jobId || hashKey;
   const cacheDir = options.cacheDir ?? PATHS.jobCache;
   const maxAgeMs = options.maxAgeMs ?? CACHE_MAX_AGE_MS;
-  const cachePath = join(cacheDir, `${key}.json`);
+  const cachePath = join(cacheDir, `${fileKey}.json`);
 
   const headless = options.headless ?? !(process.env.SCRAPE_HEADED === '1' || process.env.SCRAPE_HEADED === 'true');
   const skipCache = !headless;
@@ -174,7 +219,7 @@ export async function getJobFromUrl(jobUrl, options = {}) {
 
     const screenshotDir = PATHS.scrapeScreenshots ?? join(PATHS.output, 'scrape-screenshots');
     mkdirSync(screenshotDir, { recursive: true });
-    const screenshotPath = join(screenshotDir, `job-${key}.png`);
+    const screenshotPath = join(screenshotDir, `job-${fileKey}.png`);
     await page.screenshot({ path: screenshotPath, fullPage: true }).catch(() => { });
     if (existsSync(screenshotPath)) {
       console.log('Job page screenshot:', screenshotPath);
@@ -184,17 +229,20 @@ export async function getJobFromUrl(jobUrl, options = {}) {
     try {
       const html = await page.content();
       mkdirSync(cacheDir, { recursive: true });
-      const htmlPath = join(cacheDir, `${key}.html`);
+      const htmlPath = join(cacheDir, `${fileKey}.html`);
       writeFileSync(htmlPath, html, 'utf8');
       console.log('Job page HTML:', htmlPath);
     } catch (_) { }
 
     const job = await scrapeJobFromPage(page);
     job.url = normalized;
+    if (jobId) job.jobId = jobId;
 
     try {
       mkdirSync(cacheDir, { recursive: true });
-      writeFileSync(cachePath, JSON.stringify({ title: job.title, company: job.company, description: job.description, url: job.url }, null, 2), 'utf8');
+      const cachePayload = { title: job.title, company: job.company, description: job.description, url: job.url, jobId: job.jobId, applyType: job.applyType, applicationSubmitted: job.applicationSubmitted };
+      if (job.appliedAt) cachePayload.appliedAt = job.appliedAt;
+      writeFileSync(cachePath, JSON.stringify(cachePayload, null, 2), 'utf8');
     } catch (_) { }
 
     return job;
