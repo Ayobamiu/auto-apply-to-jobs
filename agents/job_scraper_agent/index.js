@@ -10,16 +10,17 @@
  */
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { existsSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { getJobFromUrl, cacheKey } from '../../shared/job-from-url.js';
+import { jobJsonBasename } from '../../shared/filename-slugs.js';
+import { PATHS } from '../../shared/config.js';
 
 const __filename = fileURLToPath(import.meta.url);
-import { getJobFromUrl, cacheKey } from '../../shared/job-from-url.js';
-import { PATHS } from '../../shared/config.js';
 
 /**
  * @param {string} jobUrl - Handshake job URL (e.g. job-search/12345?...)
  * @param {{ cacheDir?: string, headless?: boolean, useAuth?: boolean, maxAgeMs?: number }} [options]
- * @returns {Promise<{ job: { title: string, company: string, description: string, url?: string }, jsonPath: string | null, htmlPath: string | null }>}
+ * @returns {Promise<{ job: { title: string, company: string, description: string, url?: string }, jsonPath: string | null, htmlPath: string | null, namedJobPath: string | null }>}
  */
 export async function runJobScraper(jobUrl, options = {}) {
   const cacheDir = options.cacheDir ?? PATHS.jobCache;
@@ -34,10 +35,23 @@ export async function runJobScraper(jobUrl, options = {}) {
     maxAgeMs: options.maxAgeMs,
   });
 
+  // Also write job to human-readable path: output/handshake_<title initials>_<company>.json
+  let namedJobPath = null;
+  try {
+    const basename = jobJsonBasename(job);
+    if (basename && basename !== 'handshake_company') {
+      const outDir = options.outputDir ?? PATHS.output;
+      mkdirSync(outDir, { recursive: true });
+      namedJobPath = join(outDir, `${basename}.json`);
+      writeFileSync(namedJobPath, JSON.stringify({ title: job.title, company: job.company, description: job.description, url: job.url }, null, 2), 'utf8');
+    }
+  } catch (_) {}
+
   return {
     job,
     jsonPath: existsSync(jsonPath) ? jsonPath : null,
     htmlPath: existsSync(htmlPath) ? htmlPath : null,
+    namedJobPath,
   };
 }
 
@@ -58,10 +72,11 @@ if (process.argv[1] === __filename) {
   }
 
   runJobScraper(jobUrl)
-    .then(({ job, jsonPath, htmlPath }) => {
+    .then(({ job, jsonPath, htmlPath, namedJobPath }) => {
       console.log('Job:', job?.title || job?.company || jobUrl);
       console.log('Description length:', job?.description?.length ?? 0);
-      if (jsonPath) console.log('JSON:', jsonPath);
+      if (namedJobPath) console.log('Job JSON:', namedJobPath);
+      if (jsonPath) console.log('Cache JSON:', jsonPath);
       if (htmlPath) console.log('HTML:', htmlPath);
     })
     .catch((err) => {

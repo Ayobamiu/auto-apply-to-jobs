@@ -2,7 +2,8 @@
  * Real Handshake: load saved session, go to job URL, open apply modal.
  * If state says already uploaded for this job URL: skip upload, show "ready to submit".
  * Else: attach transcript/resume/cover letter, then save state (uploaded, resume path, timestamp).
- * Stops before submit. Job URL from JOB_URL env or first CLI arg.
+ * Set SUBMIT_APPLICATION=1 to click Submit after uploads; otherwise stops before submit.
+ * Job URL from JOB_URL env or first CLI arg.
  * Optional: RESUME_PATH, TRANSCRIPT_PATH, COVER_PATH override fixture paths.
  */
 import { chromium } from 'playwright';
@@ -16,7 +17,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function getFixtures() {
   return {
-    transcript: process.env.TRANSCRIPT_PATH || join(PATHS.fixtures, 'sample-transcript.pdf'),
+    transcript: process.env.TRANSCRIPT_PATH || join(PATHS.fixtures, 'Unofficial Academic Transcript .pdf'),
     resume: process.env.RESUME_PATH || join(PATHS.fixtures, 'sample-resume.pdf'),
     coverLetter: process.env.COVER_PATH || join(PATHS.fixtures, 'sample-cover-letter.pdf'),
   };
@@ -90,7 +91,11 @@ async function main() {
       return page.getByText('Attach your transcript').first().waitFor({ state: 'visible', timeout: 5000 });
     });
 
-    if (alreadyUploaded) {
+    const doSubmit = process.env.SUBMIT_APPLICATION === '1' || process.env.SUBMIT_APPLICATION === 'true';
+
+    // When we're going to submit, always do uploads so this session's modal has files (state only means we ran before).
+    // Only skip uploads when NOT submitting (user opened modal to manually submit later).
+    if (alreadyUploaded && !doSubmit) {
       console.log('Already uploaded for this job. Modal open; ready to submit when you are.');
       console.log('Stopped before submit. Close browser when done.');
       return;
@@ -135,7 +140,27 @@ async function main() {
       console.log('Uploads ready for submission. State saved (this job marked uploaded).');
     }
 
-    console.log('Stopped before submit. Close browser when done.');
+    if (doSubmit) {
+      const submitBtn = applyModal.getByRole('button', { name: /submit/i }).first();
+      if (await submitBtn.count() > 0) {
+        await submitBtn.scrollIntoViewIfNeeded().catch(() => {});
+        await new Promise((r) => setTimeout(r, 500));
+        await submitBtn.click({ timeout: 10000, force: true });
+        await new Promise((r) => setTimeout(r, 2000));
+        const appliedBanner = page.getByText(/Applied on .+/i).first();
+        try {
+          await appliedBanner.waitFor({ state: 'visible', timeout: 15000 });
+          const appliedText = await appliedBanner.textContent();
+          console.log('Application submitted. Confirmed:', (appliedText || '').trim() || 'Applied on [date]');
+        } catch (_) {
+          console.log('Submit clicked. Check the page to confirm application was sent.');
+        }
+      } else {
+        console.log('Submit button not found. Close browser when done.');
+      }
+    } else {
+      console.log('Stopped before submit. Set SUBMIT_APPLICATION=1 to submit. Close browser when done.');
+    }
   } catch (err) {
     console.error(err.message);
     process.exit(1);

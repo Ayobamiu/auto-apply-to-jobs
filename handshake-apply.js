@@ -9,7 +9,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const BASE_URL = process.env.BASE_URL || 'http://localhost:8765';
 const HANDSHAKE_URL = `${BASE_URL}/handshake.html`;
 const FIXTURES = {
-  transcript: join(__dirname, 'fixtures', 'sample-transcript.pdf'),
+  transcript: join(__dirname, 'fixtures', 'Unofficial Academic Transcript .pdf'),
   resume: join(__dirname, 'fixtures', 'sample-resume.pdf'),
   coverLetter: join(__dirname, 'fixtures', 'sample-cover-letter.pdf'),
 };
