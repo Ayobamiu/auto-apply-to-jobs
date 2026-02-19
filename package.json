@@ -12,6 +12,7 @@
     "handshake:login": "node agents/auto_apply_agent/handshake-login.js",
     "handshake:login:record": "node agents/auto_apply_agent/handshake-login-record.js",
     "handshake:apply": "node agents/auto_apply_agent/handshake-apply-real.js",
+    "job:scrape": "node agents/job_scraper_agent/index.js",
     "resume:generate": "node agents/resume_generator_agent/index.js",
     "pipeline": "node orchestration/run-pipeline.js"
   },
@@ -20,5 +21,9 @@
     "playwright": "^1.49.0",
     "puppeteer": "^24.37.3",
     "resumed": "^6.1.0"
+  },
+  "dependencies": {
+    "dotenv": "^17.3.1",
+    "openai": "^6.22.0"
   }
 }

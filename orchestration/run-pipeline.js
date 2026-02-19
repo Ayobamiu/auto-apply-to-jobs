@@ -4,8 +4,8 @@
  * If job-url is omitted, only resume is generated from shared/job.json. Env JOB_URL can be used instead.
  */
 import { runResumeGenerator } from '../agents/resume_generator_agent/index.js';
+import { runJobScraper } from '../agents/job_scraper_agent/index.js';
 import { loadJob } from '../shared/job.js';
-import { getJobFromUrl } from '../shared/job-from-url.js';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { join, dirname } from 'path';
@@ -26,14 +26,15 @@ async function main() {
   let job;
   if (jobUrl) {
     console.log('Step 0: Get job from URL (scrape or cache)...');
-    job = await getJobFromUrl(jobUrl);
+    const { job: scrapedJob } = await runJobScraper(jobUrl);
+    job = scrapedJob;
     console.log('Job:', job.title || job.company || jobUrl);
   } else {
     job = loadJob();
   }
 
   console.log('Step 1: Generate resume from profile + job...');
-  const { resumePath } = runResumeGenerator({ job });
+  const { resumePath } = await runResumeGenerator({ job });
   console.log('Resume:', resumePath);
 
   if (!jobUrl) {

@@ -1,16 +1,17 @@
 /**
- * Resume generator agent: Profile + Job → JSON Resume → PDF.
- * Uses JSON Resume schema; exports PDF via resumed + theme.
+ * Resume generator agent: Profile + Job → (assistant or mapping) → JSON → PDF.
+ * - Content: either Resume assistant (LLM) or profileToJsonResume (mapping). Assistant is separate for future conversational editing.
+ * - Export: JSON → file + PDF via exportResumeToPdf (separate so we can re-export after edits).
  * Output: { jsonPath, resumePath } (resumePath = PDF).
  */
-import { mkdirSync, writeFileSync } from 'fs';
-import { execSync } from 'child_process';
-import { join } from 'path';
-import { fileURLToPath } from 'url';
+import 'dotenv/config';
 import { loadProfile } from '../../shared/profile.js';
 import { loadJob } from '../../shared/job.js';
-import { PATHS, ROOT } from '../../shared/config.js';
+import { PATHS } from '../../shared/config.js';
 import { profileToJsonResume } from '../../shared/json-resume.js';
+import { generateResumeWithAssistant } from './assistant.js';
+import { exportResumeToPdf } from './export-pdf.js';
+import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 
@@ -18,39 +19,61 @@ function slug(str) {
   return (str || 'job').replace(/\s+/g, '-').replace(/[^a-z0-9-]/gi, '').toLowerCase().slice(0, 40);
 }
 
-const DEFAULT_THEME = 'jsonresume-theme-even';
+/** If job has a URL with /jobs/12345, return "job-12345" for use as slug when title/company are missing or hostname-like. */
+function jobSlugFromUrl(job) {
+  const u = job?.url;
+  if (!u || typeof u !== 'string') return null;
+  const m = u.match(/\/jobs\/(\d+)/);
+  return m ? `job-${m[1]}` : null;
+}
 
-export function runResumeGenerator(options = {}) {
+/**
+ * @param {object} [options]
+ * @param {object} [options.profile] - Override profile (else load from profilePath)
+ * @param {object} [options.job] - Override job (else load from jobPath)
+ * @param {string} [options.profilePath]
+ * @param {string} [options.jobPath]
+ * @param {string} [options.outputDir]
+ * @param {string} [options.theme]
+ * @param {boolean} [options.useAssistant] - Use LLM assistant (default: process.env.USE_RESUME_ASSISTANT === '1' or 'true')
+ * @param {string} [options.assistantApiKey]
+ * @param {string} [options.assistantModel]
+ * @returns {Promise<{ jsonPath: string, resumePath: string }>}
+ */
+export async function runResumeGenerator(options = {}) {
   const profile = options.profile ?? loadProfile(options.profilePath);
   const job = options.job ?? loadJob(options.jobPath);
-  const outDir = options.outputDir ?? PATHS.output;
-  const jobSlug = slug(job?.title || job?.company || 'job');
-  const theme = options.theme ?? DEFAULT_THEME;
+  const primarySlug = slug(job?.title || job?.company || '');
+  const looksLikeDomain = /joinhandshake|\.com|\.edu$/i.test(primarySlug) || primarySlug.length < 2;
+  const jobSlug = looksLikeDomain ? (jobSlugFromUrl(job) || primarySlug || 'job') : (primarySlug || 'job');
+  const useAssistant = options.useAssistant ?? (process.env.USE_RESUME_ASSISTANT === '1' || process.env.USE_RESUME_ASSISTANT === 'true');
 
-  try {
-    mkdirSync(outDir, { recursive: true });
-  } catch (_) { }
-
-  const jsonPath = join(outDir, `resume-${jobSlug}.json`);
-  const pdfPath = join(outDir, `resume-${jobSlug}.pdf`);
-
-  const resumeJson = profileToJsonResume(profile, job || {});
-  writeFileSync(jsonPath, JSON.stringify(resumeJson, null, 2), 'utf8');
-
-  try {
-    execSync(`npx resumed export "${jsonPath}" -o "${pdfPath}" -t ${theme}`, {
-      cwd: ROOT,
-      stdio: 'inherit',
+  let resumeJson;
+  if (useAssistant) {
+    resumeJson = await generateResumeWithAssistant({
+      profile,
+      job: job || {},
+      apiKey: options.assistantApiKey,
+      model: options.assistantModel,
     });
-  } catch (err) {
-    console.error('Resumed PDF export failed. Ensure dependencies are installed: npm install resumed jsonresume-theme-even puppeteer');
-    throw err;
+  } else {
+    resumeJson = profileToJsonResume(profile, job || {});
   }
 
-  return { jsonPath, resumePath: pdfPath };
+  return exportResumeToPdf(resumeJson, {
+    outputDir: options.outputDir ?? PATHS.output,
+    jobSlug,
+    theme: options.theme,
+  });
 }
 
 if (process.argv[1] === __filename) {
-  const result = runResumeGenerator();
-  console.log('Generated:', result.jsonPath, result.resumePath);
+  runResumeGenerator()
+    .then((result) => {
+      console.log('Generated:', result.jsonPath, result.resumePath);
+    })
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
 }

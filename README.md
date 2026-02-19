@@ -76,9 +76,10 @@ If you haven’t run `handshake:login` yet, `handshake:apply` will tell you to d
 The repo is structured for multiple agents (each with a clear input/output):
 
 - **Resume generator** — `shared/profile.json` + job (file or from URL) → JSON Resume → PDF in `output/`.  
-  - `npm run resume:generate` — uses `shared/job.json`; writes `output/resume-<job-slug>.json` and `output/resume-<job-slug>.pdf` (via [resumed](https://github.com/rbardini/resumed) + theme).
+  - `npm run resume:generate` — uses `shared/job.json`; writes `output/resume-<job-slug>.json` and `output/resume-<job-slug>.pdf` (via [resumed](https://github.com/rbardini/resumed) + theme).  
+  - **Resume assistant (LLM):** set `USE_RESUME_ASSISTANT=1` and `OPENAI_API_KEY` to use the LLM to tailor the resume to the job; otherwise a direct profile→JSON mapping is used. The assistant is in `assistant.js` (separate from the JSON→PDF step in `export-pdf.js`) so we can add conversational editing later.
 
-- **Job from URL** — Handshake job URL → scrape title, company, description; cache by URL in `output/job-cache/` (24h). Used automatically by the pipeline when `JOB_URL` is set.
+- **Job from URL** — Handshake job URL → scrape title, company, description; cache by URL in `output/job-cache/` (24h). Used automatically by the pipeline when `JOB_URL` is set. If the site shows a bot-protection page in headless mode, run with `SCRAPE_HEADED=1` to use a visible browser (e.g. `SCRAPE_HEADED=1 npm run pipeline -- 'https://...'`).
 
 - **Apply state** — Per-job state in `output/apply-state.json` (keyed by job URL). Records when a job has been uploaded (resume path, timestamp). If you run apply again for the same job, uploads are skipped and the modal opens in "ready to submit" mode.
 
@@ -95,7 +96,7 @@ The repo is structured for multiple agents (each with a clear input/output):
 
 - `shared/` – Profile and job loaders (`profile.js`, `job.js`, `config.js`), `job-from-url.js` (scrape + cache), `apply-state.js` (per-job state), `json-resume.js` (profile → JSON Resume), sample `profile.json`, `job.json`
 - `agents/auto_apply_agent/` – Handshake login, login record, apply-real (session, modal, uploads, state)
-- `agents/resume_generator_agent/` – Resume from profile + job → JSON + PDF
+- `agents/resume_generator_agent/` – Resume: assistant (LLM) or mapping → JSON; `export-pdf.js` turns JSON → PDF
 - `orchestration/run-pipeline.js` – Job from URL or file → resume gen → (optionally) apply
 - `public/` – Demo form, iframe form, fake Handshake page
 - `fill-form.js`, `handshake-apply.js`, `test-handshake.js` – Demo / fake Handshake (local tests)
