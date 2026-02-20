@@ -1,10 +1,8 @@
 /**
  * Real Handshake: load saved session, go to job URL, open apply modal.
- * If state says already uploaded for this job URL: skip upload, show "ready to submit".
- * Else: attach transcript/resume/cover letter, then save state (uploaded, resume path, timestamp).
+ * For each of transcript, resume, cover letter: search by file name and select if found, else upload new.
  * Set SUBMIT_APPLICATION=1 to click Submit after uploads; otherwise stops before submit.
- * Job URL from JOB_URL env or first CLI arg.
- * Optional: RESUME_PATH, TRANSCRIPT_PATH, COVER_PATH override fixture paths.
+ * Optional: RESUME_PATH, TRANSCRIPT_PATH, COVER_PATH override paths.
  */
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'url';
@@ -12,29 +10,49 @@ import { join, dirname } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { PATHS } from '../../shared/config.js';
 import { isJobUploaded, setJobUploaded } from '../../shared/apply-state.js';
+import { getJobIdFromUrl, getJobSiteFromUrl } from '../../shared/job-from-url.js';
+import { getJob as getStoredJob } from '../../shared/jobs-store.js';
+import { loadProfile } from '../../shared/profile.js';
+import { resumeBasename } from '../../shared/filename-slugs.js';
+import { attachSection, SECTION_CONFIG } from '../../shared/handshake-attach-helper.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-function getFixtures() {
+function getPreferredResumePathForJob(jobUrl) {
+  if (!jobUrl) return null;
+  const jobId = getJobIdFromUrl(jobUrl);
+  const site = getJobSiteFromUrl(jobUrl);
+  if (!jobId || !site) return null;
+  const job = getStoredJob(site, jobId);
+  if (!job) return null;
+  try {
+    const profile = loadProfile();
+    const basename = resumeBasename(profile, job);
+    if (!basename) return null;
+    const path = join(PATHS.output, `${basename}.pdf`);
+    return existsSync(path) ? path : null;
+  } catch {
+    return null;
+  }
+}
+
+function getFixtures(jobUrl) {
+  const preferredResume = !process.env.RESUME_PATH ? getPreferredResumePathForJob(jobUrl) : null;
   return {
     transcript: process.env.TRANSCRIPT_PATH || join(PATHS.fixtures, 'Unofficial Academic Transcript .pdf'),
-    resume: process.env.RESUME_PATH || join(PATHS.fixtures, 'sample-resume.pdf'),
+    resume: process.env.RESUME_PATH || preferredResume || join(PATHS.fixtures, 'sample-resume.pdf'),
     coverLetter: process.env.COVER_PATH || join(PATHS.fixtures, 'sample-cover-letter.pdf'),
   };
 }
 
 function getJobUrl() {
-  const env = process.env.JOB_URL;
-  if (env) return env;
-  const arg = process.argv[2];
-  if (arg) return arg;
-  return null;
+  return process.env.JOB_URL || process.argv[2] || null;
 }
 
 async function main() {
   const jobUrl = getJobUrl();
   if (!jobUrl) {
-    console.error('Provide job URL: JOB_URL=<url> npm run handshake:apply  OR  node handshake-apply-real.js <url>');
+    console.error('Provide job URL: JOB_URL=<url> npm run handshake:apply  OR  npm run handshake:apply -- <url>');
     process.exit(1);
   }
 
@@ -44,7 +62,13 @@ async function main() {
   }
 
   const alreadyUploaded = isJobUploaded(jobUrl);
-  const files = getFixtures();
+  const files = getFixtures(jobUrl);
+  const defaultResume = join(PATHS.fixtures, 'sample-resume.pdf');
+  if (files.resume !== defaultResume) {
+    console.log('Using resume:', files.resume);
+  } else {
+    console.log('Using fixture resume (no job-specific PDF found). Run pipeline with this URL first to use a tailored resume.');
+  }
 
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext({ storageState: PATHS.authState });
@@ -55,63 +79,45 @@ async function main() {
     await new Promise((r) => setTimeout(r, 2000));
 
     const url = page.url();
-    const path = new URL(url).pathname.toLowerCase();
     const host = new URL(url).hostname.toLowerCase();
-    const isLoginPage =
-      path.includes('login') ||
-      path.includes('configure_auth') ||
-      path.includes('sign_in') ||
-      host.includes('webauth.') ||
-      host.includes('idp.');
+    const isLoginPage = host.includes('login') || host.includes('sso.') || host.includes('webauth.') || host.includes('idp.');
     if (isLoginPage) {
       console.error('Session expired or not logged in. Run: npm run handshake:login');
       process.exit(1);
     }
 
-    // Detect "Apply externally" — not supported; we only handle in-Handshake apply.
     const applyButton = page.getByRole('button', { name: /apply/i }).first();
     const applyLink = page.getByRole('link', { name: /apply/i }).first();
     const buttonText = (await applyButton.textContent().catch(() => null))?.trim() ?? '';
     const linkText = (await applyLink.textContent().catch(() => null))?.trim() ?? '';
     const isExternalApply = /apply\s+externally|apply\s+external/i.test(buttonText) || /apply\s+externally|apply\s+external/i.test(linkText);
     if (isExternalApply) {
-      console.error('This job uses "Apply externally" and is not supported yet. Only in-Handshake apply is supported.');
+      console.error('This job uses "Apply externally" and is not supported. Only in-Handshake apply is supported.');
       process.exit(1);
     }
 
-    // If the page already shows "Applied on ...", the job has been applied to — nothing to do.
     const appliedBanner = page.getByText(/Applied on .+/i).first();
     try {
       await appliedBanner.waitFor({ state: 'visible', timeout: 3000 });
       const appliedText = await appliedBanner.textContent();
       console.log('Already applied to this job.', (appliedText || '').trim() || 'Applied on [date]');
       return;
-    } catch (_) {
-      // Not found — continue to apply flow
-    }
+    } catch (_) { }
 
     const applyBtn = page.getByRole('button', { name: /apply/i }).first();
-    await applyBtn.click({ timeout: 15000 }).catch(() => {
-      const link = page.getByRole('link', { name: /apply/i }).first();
-      return link.click({ timeout: 5000 });
-    });
+    await applyBtn.click({ timeout: 15000 }).catch(() =>
+      page.getByRole('link', { name: /apply/i }).first().click({ timeout: 5000 })
+    );
     await new Promise((r) => setTimeout(r, 1500));
 
     const applyModal = page.locator('[data-hook="apply-modal-content"]').first();
-    await applyModal.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {
-      return page.getByText('Attach your transcript').first().waitFor({ state: 'visible', timeout: 5000 });
-    });
+    await applyModal.waitFor({ state: 'visible', timeout: 15000 }).catch(() =>
+      page.getByText('Attach your transcript').first().waitFor({ state: 'visible', timeout: 5000 })
+    );
 
     const doSubmit = process.env.SUBMIT_APPLICATION === '1' || process.env.SUBMIT_APPLICATION === 'true';
 
-    // When we're going to submit, always do uploads so this session's modal has files (state only means we ran before).
-    // Only skip uploads when NOT submitting (user opened modal to manually submit later).
-    if (alreadyUploaded && !doSubmit) {
-      console.log('Already uploaded for this job. Modal open; ready to submit when you are.');
-      console.log('Stopped before submit. Close browser when done.');
-      return;
-    }
-
+    // Remove any pre-populated file chips so we can set our selection
     const removePrePopulated = applyModal.locator('[data-status="positive"]').getByRole('button', { name: 'Close' });
     let closeCount = await removePrePopulated.count();
     while (closeCount > 0) {
@@ -120,112 +126,71 @@ async function main() {
       closeCount = await removePrePopulated.count();
     }
 
-    const transcriptInput = page.locator('input[name="file-Transcript"]');
-    const resumeInput = page.locator('input[name="file-Resume"]');
-    const coverInput = page.locator('input[name="file-CoverLetter"]');
-
-    let filesToUpload = 0;
-    if (await transcriptInput.count() > 0) {
-      await transcriptInput.setInputFiles(files.transcript);
-      filesToUpload++;
-    }
-    if (await resumeInput.count() > 0) {
-      await resumeInput.setInputFiles(files.resume);
-      filesToUpload++;
-    }
-    if (await coverInput.count() > 0) {
-      await coverInput.setInputFiles(files.coverLetter);
-      filesToUpload++;
-    }
-
-    if (filesToUpload > 0) {
-      await page.waitForFunction(
-        (expected) => {
-          const chips = document.querySelectorAll('[data-hook="apply-modal-content"] [data-status="positive"]');
-          return chips.length >= expected;
-        },
-        filesToUpload,
-        { timeout: 30000 }
-      );
-      setJobUploaded(jobUrl, { resumePath: files.resume });
-      console.log('Upload chips visible. Waiting for uploads to complete...');
-      // Give the backend time to finish processing files; Submit may stay disabled until then
-      await new Promise((r) => setTimeout(r, 6000));
-      // Wait for Submit button to be enabled (Handshake disables it until uploads are ready)
-      await page.waitForFunction(
-        () => {
-          const btn = document.querySelector('[data-hook="apply-modal-content"] button[type="button"]');
-          if (!btn) return false;
-          const text = (btn.textContent || '').toLowerCase();
-          if (!text.includes('submit')) return false;
-          const disabled = btn.hasAttribute('disabled') || btn.getAttribute('aria-disabled') === 'true';
-          return !disabled;
-        },
-        { timeout: 25000 }
-      ).catch(() => { });
-      console.log('Uploads ready for submission. State saved (this job marked uploaded).');
+    // For each section present on the form: search by name then select or upload. Skip sections not required by this job.
+    const modal = applyModal;
+    for (const [key, config] of Object.entries(SECTION_CONFIG)) {
+      const filePath = files[key];
+      if (!filePath || !existsSync(filePath)) continue;
+      try {
+        const result = await attachSection(page, modal, {
+          ...config,
+          filePath,
+        });
+        console.log(`${key}: ${result === 'selected' ? 'selected existing' : 'uploaded new'}`);
+      } catch (err) {
+        if (key === 'coverLetter') {
+          try {
+            const fallback = modal.locator(`input[name="file-Cover"], input[name="file-CoverLetter"]`).first();
+            await fallback.setInputFiles(filePath, { timeout: 3000 });
+            console.log('coverLetter: uploaded new (fallback)');
+          } catch (_) {
+            console.log('Skipping cover letter (not required or section not found).');
+          }
+        } else {
+          console.log(`Skipping ${key} (not required or section not found).`);
+        }
+      }
     }
 
     if (doSubmit) {
-      const submitBtn = applyModal.getByRole('button', { name: /submit/i }).first();
-      if (await submitBtn.count() > 0) {
-        await submitBtn.scrollIntoViewIfNeeded().catch(() => { });
-        await new Promise((r) => setTimeout(r, 500));
-        await submitBtn.click({ timeout: 10000, force: true });
-        await new Promise((r) => setTimeout(r, 1500));
-        // If a confirmation dialog appears (e.g. "Submit application?"), click its submit/confirm button
-        const confirmDialog = page.locator('[role="dialog"]').filter({ has: page.getByRole('button', { name: /submit|confirm|yes|apply/i }) }).first();
-        if (await confirmDialog.isVisible().catch(() => false)) {
-          await confirmDialog.getByRole('button', { name: /submit|confirm|yes|apply/i }).first().click({ timeout: 5000 }).catch(() => { });
-          await new Promise((r) => setTimeout(r, 2000));
-        }
-        // If force click didn't trigger submit, try JS click (bypasses overlay)
-        const appliedSoon = page.getByText(/Applied on .+/i).first();
-        const withdrawSoon = page.getByText(/Withdraw\s+application/i).first();
-        const seenSoon = await appliedSoon.isVisible().catch(() => false) || await withdrawSoon.isVisible().catch(() => false);
-        if (!seenSoon) {
-          await submitBtn.evaluate((el) => el.click()).catch(() => { });
-          await new Promise((r) => setTimeout(r, 1500));
-          if (await confirmDialog.isVisible().catch(() => false)) {
-            await confirmDialog.getByRole('button', { name: /submit|confirm|yes|apply/i }).first().click({ timeout: 5000 }).catch(() => { });
-            await new Promise((r) => setTimeout(r, 2000));
-          }
-        }
-        // Modal often closes on success; then "Applied on" or "Withdraw application" appears. Wait for modal hidden or banner.
+      await new Promise((r) => setTimeout(r, 6000));
+      const submitBtn = applyModal.getByRole('button', { name: /submit\s*application/i }).first();
+      await submitBtn.waitFor({ state: 'visible', timeout: 5000 }).catch(() => { });
+      await submitBtn.click({ force: true, timeout: 5000 }).catch(() => {
+        return page.evaluate(() => {
+          const b = document.querySelector('button[type="button"]');
+          if (b && /submit/i.test(b.textContent || '')) b.click();
+        });
+      });
+      await new Promise((r) => setTimeout(r, 2000));
+      try {
+        await page.getByText(/Applied on .+/i).first().waitFor({ state: 'visible', timeout: 20000 });
+        console.log('Application submitted successfully.');
+      } catch (_) {
         try {
-          await applyModal.waitFor({ state: 'hidden', timeout: 8000 }).catch(() => { });
-        } catch (_) { }
-        await new Promise((r) => setTimeout(r, 2000));
-        const appliedBanner = page.getByText(/Applied on .+/i).first();
-        const withdrawBtn = page.getByText(/Withdraw\s+application/i).first();
-        try {
-          await Promise.race([
-            appliedBanner.waitFor({ state: 'visible', timeout: 20000 }),
-            withdrawBtn.waitFor({ state: 'visible', timeout: 20000 }),
-          ]);
-          const appliedText = (await appliedBanner.textContent().catch(() => null))?.trim()
-            || (await withdrawBtn.isVisible().catch(() => false) ? 'Applied (Withdraw button visible)' : '');
-          console.log('Application submitted. Confirmed:', appliedText || 'Applied on [date]');
-        } catch (_) {
-          try {
-            const screenshotDir = join(PATHS.output, 'apply-screenshots');
-            mkdirSync(screenshotDir, { recursive: true });
-            const path = join(screenshotDir, 'after-submit-failed.png');
-            await page.screenshot({ path, fullPage: true }).catch(() => { });
-            if (existsSync(path)) console.log('Screenshot saved:', path);
-          } catch (__) { }
-          console.log('Submit clicked. Confirmation banner not seen — check screenshot or Handshake.');
+          await page.getByText(/Withdraw application/i).first().waitFor({ state: 'visible', timeout: 5000 });
+          console.log('Application submitted successfully.');
+        } catch (__) {
+          const screenshotDir = join(PATHS.output, 'apply-screenshots');
+          mkdirSync(screenshotDir, { recursive: true });
+          await page.screenshot({ path: join(screenshotDir, 'after-submit-failed.png') });
+          console.error('Submit may have failed. Screenshot saved to output/apply-screenshots/after-submit-failed.png');
         }
-      } else {
-        console.log('Submit button not found. Close browser when done.');
       }
+      setJobUploaded(jobUrl, {
+        resumePath: files.resume,
+        submittedAt: new Date().toISOString(),
+      });
     } else {
+      setJobUploaded(jobUrl, { resumePath: files.resume });
       console.log('Stopped before submit. Set SUBMIT_APPLICATION=1 to submit. Close browser when done.');
     }
-  } catch (err) {
-    console.error(err.message);
-    process.exit(1);
+  } finally {
+    await browser.close();
   }
 }
 
-main();
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
