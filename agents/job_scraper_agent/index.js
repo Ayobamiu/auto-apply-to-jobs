@@ -11,7 +11,7 @@
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
-import { getJobFromUrl, cacheKey, getJobIdFromUrl, getJobSiteFromUrl } from '../../shared/job-from-url.js';
+import { getJobFromUrl, getApplicationStatusFromUrl, cacheKey, getJobIdFromUrl, getJobSiteFromUrl } from '../../shared/job-from-url.js';
 import { getJob as getStoredJob, setJob as setStoredJob } from '../../shared/jobs-store.js';
 import { PATHS } from '../../shared/config.js';
 
@@ -70,12 +70,43 @@ export async function runJobScraper(jobUrl, options = {}) {
   };
 }
 
+/**
+ * Get application-submitted status only (no full scrape). Checks store first; if not found and not fromStoreOnly, loads page and checks "Applied on" banner.
+ * @param {string} jobUrl
+ * @param {{ fromStoreOnly?: boolean }} [options] - If true, only return from store; never open browser.
+ * @returns {Promise<{ applicationSubmitted: boolean, appliedAt?: string, fromStore?: boolean }>}
+ */
+export async function getApplicationStatus(jobUrl, options = {}) {
+  const jobId = getJobIdFromUrl(jobUrl);
+  const site = getJobSiteFromUrl(jobUrl);
+
+  if (jobId && site) {
+    const stored = getStoredJob(site, jobId);
+    if (stored) {
+      return {
+        applicationSubmitted: !!stored.applicationSubmitted,
+        ...(stored.appliedAt != null && { appliedAt: stored.appliedAt }),
+        fromStore: true,
+      };
+    }
+  }
+
+  if (options.fromStoreOnly) {
+    return { applicationSubmitted: false, fromStore: false };
+  }
+
+  const result = await getApplicationStatusFromUrl(jobUrl);
+  return { ...result, fromStore: false };
+}
+
 function getJobUrl() {
   const env = process.env.JOB_URL;
   if (env) return env;
   const argv = process.argv.slice(2);
   const forceIdx = argv.findIndex((a) => a === '--force' || a === '-f');
   if (forceIdx !== -1) argv.splice(forceIdx, 1);
+  const statusIdx = argv.findIndex((a) => a === '--status' || a === '-s');
+  if (statusIdx !== -1) argv.splice(statusIdx, 1);
   return argv[0] || null;
 }
 
@@ -84,16 +115,33 @@ function getForceScrape() {
   return process.argv.includes('--force') || process.argv.includes('-f');
 }
 
+function isStatusOnly() {
+  return process.argv.includes('--status') || process.argv.includes('-s');
+}
+
 if (process.argv[1] === __filename) {
   const jobUrl = getJobUrl();
   if (!jobUrl) {
     console.error('Usage: node agents/job_scraper_agent/index.js [--force] <job-url>');
+    console.error('       node agents/job_scraper_agent/index.js --status <job-url>   # application status only');
     console.error('   or: JOB_URL=<url> node agents/job_scraper_agent/index.js');
     console.error('   or: FORCE_SCRAPE=1 node agents/job_scraper_agent/index.js <job-url>');
     process.exit(1);
   }
 
-  runJobScraper(jobUrl, { forceScrape: getForceScrape() })
+  if (isStatusOnly()) {
+    getApplicationStatus(jobUrl, { fromStoreOnly: false })
+      .then(({ applicationSubmitted, appliedAt, fromStore }) => {
+        if (fromStore) console.log('(from store)');
+        console.log('Application submitted:', applicationSubmitted ? (appliedAt ?? 'yes') : 'no');
+        if (appliedAt) console.log('Applied at:', appliedAt);
+      })
+      .catch((err) => {
+        console.error(err);
+        process.exit(1);
+      });
+  } else {
+    runJobScraper(jobUrl, { forceScrape: getForceScrape() })
     .then(({ job, jobsFilePath, fromStore, htmlPath }) => {
       if (fromStore) console.log('(from store, skip re-scrape; use --force or FORCE_SCRAPE=1 to re-scrape)');
       console.log('Job:', job?.title || job?.company || jobUrl);
@@ -110,4 +158,5 @@ if (process.argv[1] === __filename) {
       console.error(err);
       process.exit(1);
     });
+  }
 }

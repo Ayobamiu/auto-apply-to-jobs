@@ -1,10 +1,13 @@
 /**
  * Resume generator agent: Profile + Job → (assistant or mapping) → JSON → PDF.
+ * - Skips generation if a resume for the same job already exists (same basename: <name>_<title initials>_<company>_resume).
  * - Content: either Resume assistant (LLM) or profileToJsonResume (mapping). Assistant is separate for future conversational editing.
  * - Export: JSON → file + PDF via exportResumeToPdf (separate so we can re-export after edits).
  * Output: { jsonPath, resumePath } (resumePath = PDF).
  */
 import 'dotenv/config';
+import { join } from 'path';
+import { existsSync } from 'fs';
 import { loadProfile } from '../../shared/profile.js';
 import { loadJob } from '../../shared/job.js';
 import { PATHS } from '../../shared/config.js';
@@ -32,6 +35,17 @@ const __filename = fileURLToPath(import.meta.url);
 export async function runResumeGenerator(options = {}) {
   const profile = options.profile ?? loadProfile(options.profilePath);
   const job = options.job ?? loadJob(options.jobPath);
+  const outDir = options.outputDir ?? PATHS.output;
+  const basename = resumeBasename(profile, job || {});
+
+  // Same job = same basename (<name>_<title initials>_<company>_resume). Skip regeneration if PDF already exists.
+  const existingPdf = join(outDir, `${basename}.pdf`);
+  if (basename && existsSync(existingPdf)) {
+    const jsonPath = join(outDir, `${basename}.json`);
+    console.log('Resume already exists for this job, skipping generation:', existingPdf);
+    return { jsonPath, resumePath: existingPdf };
+  }
+
   const useAssistant = options.useAssistant ?? (process.env.USE_RESUME_ASSISTANT === '1' || process.env.USE_RESUME_ASSISTANT === 'true');
 
   let resumeJson;
@@ -46,10 +60,8 @@ export async function runResumeGenerator(options = {}) {
     resumeJson = profileToJsonResume(profile, job || {});
   }
 
-  const basename = resumeBasename(profile, job || {});
-
   return exportResumeToPdf(resumeJson, {
-    outputDir: options.outputDir ?? PATHS.output,
+    outputDir: outDir,
     resumeBasename: basename,
     theme: options.theme,
   });

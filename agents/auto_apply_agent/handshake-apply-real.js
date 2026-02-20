@@ -9,7 +9,7 @@
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'url';
 import { join, dirname } from 'path';
-import { existsSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
 import { PATHS } from '../../shared/config.js';
 import { isJobUploaded, setJobUploaded } from '../../shared/apply-state.js';
 
@@ -79,6 +79,17 @@ async function main() {
       process.exit(1);
     }
 
+    // If the page already shows "Applied on ...", the job has been applied to — nothing to do.
+    const appliedBanner = page.getByText(/Applied on .+/i).first();
+    try {
+      await appliedBanner.waitFor({ state: 'visible', timeout: 3000 });
+      const appliedText = await appliedBanner.textContent();
+      console.log('Already applied to this job.', (appliedText || '').trim() || 'Applied on [date]');
+      return;
+    } catch (_) {
+      // Not found — continue to apply flow
+    }
+
     const applyBtn = page.getByRole('button', { name: /apply/i }).first();
     await applyBtn.click({ timeout: 15000 }).catch(() => {
       const link = page.getByRole('link', { name: /apply/i }).first();
@@ -137,23 +148,73 @@ async function main() {
         { timeout: 30000 }
       );
       setJobUploaded(jobUrl, { resumePath: files.resume });
+      console.log('Upload chips visible. Waiting for uploads to complete...');
+      // Give the backend time to finish processing files; Submit may stay disabled until then
+      await new Promise((r) => setTimeout(r, 6000));
+      // Wait for Submit button to be enabled (Handshake disables it until uploads are ready)
+      await page.waitForFunction(
+        () => {
+          const btn = document.querySelector('[data-hook="apply-modal-content"] button[type="button"]');
+          if (!btn) return false;
+          const text = (btn.textContent || '').toLowerCase();
+          if (!text.includes('submit')) return false;
+          const disabled = btn.hasAttribute('disabled') || btn.getAttribute('aria-disabled') === 'true';
+          return !disabled;
+        },
+        { timeout: 25000 }
+      ).catch(() => { });
       console.log('Uploads ready for submission. State saved (this job marked uploaded).');
     }
 
     if (doSubmit) {
       const submitBtn = applyModal.getByRole('button', { name: /submit/i }).first();
       if (await submitBtn.count() > 0) {
-        await submitBtn.scrollIntoViewIfNeeded().catch(() => {});
+        await submitBtn.scrollIntoViewIfNeeded().catch(() => { });
         await new Promise((r) => setTimeout(r, 500));
         await submitBtn.click({ timeout: 10000, force: true });
+        await new Promise((r) => setTimeout(r, 1500));
+        // If a confirmation dialog appears (e.g. "Submit application?"), click its submit/confirm button
+        const confirmDialog = page.locator('[role="dialog"]').filter({ has: page.getByRole('button', { name: /submit|confirm|yes|apply/i }) }).first();
+        if (await confirmDialog.isVisible().catch(() => false)) {
+          await confirmDialog.getByRole('button', { name: /submit|confirm|yes|apply/i }).first().click({ timeout: 5000 }).catch(() => { });
+          await new Promise((r) => setTimeout(r, 2000));
+        }
+        // If force click didn't trigger submit, try JS click (bypasses overlay)
+        const appliedSoon = page.getByText(/Applied on .+/i).first();
+        const withdrawSoon = page.getByText(/Withdraw\s+application/i).first();
+        const seenSoon = await appliedSoon.isVisible().catch(() => false) || await withdrawSoon.isVisible().catch(() => false);
+        if (!seenSoon) {
+          await submitBtn.evaluate((el) => el.click()).catch(() => { });
+          await new Promise((r) => setTimeout(r, 1500));
+          if (await confirmDialog.isVisible().catch(() => false)) {
+            await confirmDialog.getByRole('button', { name: /submit|confirm|yes|apply/i }).first().click({ timeout: 5000 }).catch(() => { });
+            await new Promise((r) => setTimeout(r, 2000));
+          }
+        }
+        // Modal often closes on success; then "Applied on" or "Withdraw application" appears. Wait for modal hidden or banner.
+        try {
+          await applyModal.waitFor({ state: 'hidden', timeout: 8000 }).catch(() => { });
+        } catch (_) { }
         await new Promise((r) => setTimeout(r, 2000));
         const appliedBanner = page.getByText(/Applied on .+/i).first();
+        const withdrawBtn = page.getByText(/Withdraw\s+application/i).first();
         try {
-          await appliedBanner.waitFor({ state: 'visible', timeout: 15000 });
-          const appliedText = await appliedBanner.textContent();
-          console.log('Application submitted. Confirmed:', (appliedText || '').trim() || 'Applied on [date]');
+          await Promise.race([
+            appliedBanner.waitFor({ state: 'visible', timeout: 20000 }),
+            withdrawBtn.waitFor({ state: 'visible', timeout: 20000 }),
+          ]);
+          const appliedText = (await appliedBanner.textContent().catch(() => null))?.trim()
+            || (await withdrawBtn.isVisible().catch(() => false) ? 'Applied (Withdraw button visible)' : '');
+          console.log('Application submitted. Confirmed:', appliedText || 'Applied on [date]');
         } catch (_) {
-          console.log('Submit clicked. Check the page to confirm application was sent.');
+          try {
+            const screenshotDir = join(PATHS.output, 'apply-screenshots');
+            mkdirSync(screenshotDir, { recursive: true });
+            const path = join(screenshotDir, 'after-submit-failed.png');
+            await page.screenshot({ path, fullPage: true }).catch(() => { });
+            if (existsSync(path)) console.log('Screenshot saved:', path);
+          } catch (__) { }
+          console.log('Submit clicked. Confirmation banner not seen — check screenshot or Handshake.');
         }
       } else {
         console.log('Submit button not found. Close browser when done.');

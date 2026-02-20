@@ -258,3 +258,39 @@ export async function getJobFromUrl(jobUrl, options = {}) {
     await browser.close();
   }
 }
+
+/**
+ * Get only application-submitted status from the job page (no full scrape).
+ * Loads the URL, checks for "Applied on ..." banner, returns status. Use when you only need to know if applied.
+ * @param {string} jobUrl
+ * @param {{ headless?: boolean }} [options]
+ * @returns {Promise<{ applicationSubmitted: boolean, appliedAt?: string }>}
+ */
+export async function getApplicationStatusFromUrl(jobUrl, options = {}) {
+  const normalized = normalizeUrl(jobUrl);
+  const headless = options.headless ?? !(process.env.SCRAPE_HEADED === '1' || process.env.SCRAPE_HEADED === 'true');
+  const useAuth = options.useAuth !== false;
+  const browser = await chromium.launch({ headless: headless });
+  const context = await browser.newContext(
+    useAuth && existsSync(PATHS.authState) ? { storageState: PATHS.authState } : {}
+  );
+  const page = await context.newPage();
+  try {
+    await page.goto(normalized, { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await new Promise((r) => setTimeout(r, 3000));
+    const appliedBanner = page.getByText(/Applied on .+/i).first();
+    let applicationSubmitted = false;
+    let appliedAt = undefined;
+    try {
+      await appliedBanner.waitFor({ state: 'visible', timeout: 5000 });
+      const text = (await appliedBanner.textContent().catch(() => null))?.trim();
+      if (text) {
+        applicationSubmitted = true;
+        appliedAt = text;
+      }
+    } catch (_) {}
+    return { applicationSubmitted, ...(appliedAt && { appliedAt }) };
+  } finally {
+    await browser.close();
+  }
+}

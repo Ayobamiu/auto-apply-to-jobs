@@ -13,6 +13,7 @@
     "handshake:login:record": "node agents/auto_apply_agent/handshake-login-record.js",
     "handshake:apply": "node agents/auto_apply_agent/handshake-apply-real.js",
     "job:scrape": "node agents/job_scraper_agent/index.js",
+    "job:status": "node agents/job_scraper_agent/index.js --status",
     "resume:generate": "node agents/resume_generator_agent/index.js",
     "pipeline": "node orchestration/run-pipeline.js"
   },
