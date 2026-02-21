@@ -3,7 +3,9 @@
  * For each of transcript, resume, cover letter: search by file name and select if found, else upload new.
  * Set SUBMIT_APPLICATION=1 to click Submit after uploads; otherwise stops before submit.
  * Optional: RESUME_PATH, TRANSCRIPT_PATH, COVER_PATH override paths.
+ * Loads .env when run standalone.
  */
+import 'dotenv/config';
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'url';
 import { join, dirname } from 'path';
@@ -11,7 +13,7 @@ import { existsSync, mkdirSync } from 'fs';
 import { PATHS } from '../../shared/config.js';
 import { isJobUploaded, setJobUploaded } from '../../shared/apply-state.js';
 import { getJobIdFromUrl, getJobSiteFromUrl, toHandshakeJobDetailsUrl } from '../../shared/job-from-url.js';
-import { getJob as getStoredJob } from '../../shared/jobs-store.js';
+import { getJob as getStoredJob, setJob as setStoredJob } from '../../shared/jobs-store.js';
 import { loadProfile } from '../../shared/profile.js';
 import { resumeBasename } from '../../shared/filename-slugs.js';
 import { attachSection, SECTION_CONFIG } from '../../shared/handshake-attach-helper.js';
@@ -164,13 +166,16 @@ async function main() {
         });
       });
       await new Promise((r) => setTimeout(r, 2000));
+      let submitted = false;
       try {
         await page.getByText(/Applied on .+/i).first().waitFor({ state: 'visible', timeout: 20000 });
         console.log('Application submitted successfully.');
+        submitted = true;
       } catch (_) {
         try {
           await page.getByText(/Withdraw application/i).first().waitFor({ state: 'visible', timeout: 5000 });
           console.log('Application submitted successfully.');
+          submitted = true;
         } catch (__) {
           const screenshotDir = join(PATHS.output, 'apply-screenshots');
           mkdirSync(screenshotDir, { recursive: true });
@@ -178,10 +183,23 @@ async function main() {
           console.error('Submit may have failed. Screenshot saved to output/apply-screenshots/after-submit-failed.png');
         }
       }
+      const submittedAt = new Date().toISOString();
       setJobUploaded(jobUrl, {
         resumePath: files.resume,
-        submittedAt: new Date().toISOString(),
+        submittedAt,
       });
+      if (submitted) {
+        const jobId = getJobIdFromUrl(jobUrl);
+        const site = getJobSiteFromUrl(jobUrl);
+        if (jobId && site) {
+          const stored = getStoredJob(site, jobId);
+          setStoredJob(site, jobId, {
+            ...(stored || { url: jobUrl }),
+            applicationSubmitted: true,
+            appliedAt: submittedAt,
+          });
+        }
+      }
     } else {
       setJobUploaded(jobUrl, { resumePath: files.resume });
       console.log('Stopped before submit. Set SUBMIT_APPLICATION=1 to submit. Close browser when done.');

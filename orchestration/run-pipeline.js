@@ -2,7 +2,9 @@
  * Pipeline: get job (from URL scrape/cache or file), generate resume, then run Handshake apply when JOB_URL provided.
  * Usage: node orchestration/run-pipeline.js [job-url]
  * If job-url is omitted, only resume is generated from shared/job.json. Env JOB_URL can be used instead.
+ * Loads .env so SCRAPE_HEADED, OPENAI_API_KEY, etc. work from one file.
  */
+import 'dotenv/config';
 import { runResumeGenerator } from '../agents/resume_generator_agent/index.js';
 import { runJobScraper } from '../agents/job_scraper_agent/index.js';
 import { loadJob } from '../shared/job.js';

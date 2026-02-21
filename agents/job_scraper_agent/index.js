@@ -2,12 +2,14 @@
  * Job scraper agent: fetch job by URL, scrape title/company/description, save to single jobs file (output/jobs.json).
  * Jobs are keyed by site + jobId; re-scrape is skipped if job already in store unless FORCE_SCRAPE=1 or --force.
  * Use SCRAPE_HEADED=1 for a visible browser (avoids bot-protection on Handshake).
+ * Loads .env when run standalone.
  *
  * Usage:
  *   node agents/job_scraper_agent/index.js <job-url>
  *   FORCE_SCRAPE=1 node agents/job_scraper_agent/index.js <job-url>
  *   node agents/job_scraper_agent/index.js --force <job-url>
  */
+import 'dotenv/config';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
