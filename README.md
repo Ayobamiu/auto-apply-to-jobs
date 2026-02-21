@@ -71,6 +71,39 @@ If you haven’t run `handshake:login` yet, `handshake:apply` will tell you to d
 
 **Recording the login flow:** To fix or tune the "logged in" detection, run `npm run handshake:login:record`, then log in in the browser and close the window when you are fully in. Every main-frame navigation is written to `.auth/navigation-log.json` (URL and timestamp). Use that log to see the exact sequence from login page to post-login and update the login script accordingly.
 
+## Beta: one-job flow (quick start)
+
+1. **Setup**
+   ```bash
+   npm install
+   npx playwright install chromium
+   cp .env.example .env
+   ```
+   Edit `.env`: set `OPENAI_API_KEY` if you want LLM resume tailoring (`USE_RESUME_ASSISTANT=1`).
+
+2. **Login once**
+   ```bash
+   npm run handshake:login
+   ```
+   Log in in the browser; session is saved to `.auth/`. Close the browser when done.
+
+3. **Put your files in `fixtures/`**  
+   At least resume; transcript and cover letter if your school requires them. Default names: `sample-resume.pdf`, `Unofficial Academic Transcript .pdf`, `sample-cover-letter.pdf`. Or set `RESUME_PATH`, `TRANSCRIPT_PATH`, `COVER_PATH` in `.env`.
+
+4. **Fill `shared/profile.json`**  
+   Name, email, education, experience, etc. Used for resume generation.
+
+5. **Run pipeline for one job**
+   ```bash
+   npm run pipeline -- 'https://yourschool.joinhandshake.com/jobs/12345'
+   ```
+   This scrapes the job, generates a tailored resume PDF, opens the apply modal and attaches files. By default it **stops before submit** so you can review. To submit automatically, set `SUBMIT_APPLICATION=1` in `.env` or run:
+   ```bash
+   SUBMIT_APPLICATION=1 npm run pipeline -- 'https://yourschool.joinhandshake.com/jobs/12345'
+   ```
+
+If Handshake shows a bot-protection or blocking page when scraping, run with a visible browser: set `SCRAPE_HEADED=1` in `.env` or prefix the command: `SCRAPE_HEADED=1 npm run pipeline -- '...'`.
+
 ## Agents and pipeline
 
 The repo is structured for multiple agents (each with a clear input/output):
@@ -81,7 +114,7 @@ The repo is structured for multiple agents (each with a clear input/output):
 
 - **Job from URL** — Handshake job URL → scrape title, company, description; cache by URL in `output/job-cache/` (24h). Used automatically by the pipeline when `JOB_URL` is set. If the site shows a bot-protection page in headless mode, run with `SCRAPE_HEADED=1` to use a visible browser (e.g. `SCRAPE_HEADED=1 npm run pipeline -- 'https://...'`).
 
-- **Apply state** — Per-job state in `output/apply-state.json` (keyed by job URL). Records when a job has been uploaded (resume path, timestamp). If you run apply again for the same job, uploads are skipped and the modal opens in "ready to submit" mode.
+- **Apply state** — Per-job state in `output/apply-state.json` (keyed by job URL). Records when a job has been uploaded (resume path, timestamp). If you run apply again for the same job, uploads are skipped and the modal opens in "ready to submit" mode. On successful submit, `output/jobs.json` is also updated so that job’s `applicationSubmitted` and `appliedAt` stay in sync.
 
 - **Auto-apply (Handshake)** — session + job URL + PDFs → apply flow (stops before submit).  
   - `npm run handshake:login` | `handshake:login:record` | `handshake:apply` (see Real Handshake above).  

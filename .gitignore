@@ -9,4 +9,5 @@ playwright/.cache/
 screenshots/
 .auth/
 output/
+data/
 *.tgz
