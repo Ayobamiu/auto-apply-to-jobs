@@ -1,12 +1,28 @@
 /**
  * Get job (title, company, description) from a Handshake job URL by loading the page and scraping.
  * Optionally cache by URL; cache can be used to skip scraping when fresh.
+ * Job details are taken from [data-hook="job-details-page"]; "Similar Jobs" and "Alumni in similar roles" sections are stripped; HTML is converted to markdown.
  */
 import { createHash } from 'crypto';
 import { mkdirSync, readFileSync, writeFileSync, existsSync, statSync } from 'fs';
 import { join } from 'path';
 import { chromium } from 'playwright';
+import TurndownService from 'turndown';
 import { PATHS } from './config.js';
+
+const turndown = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
+
+/** Convert HTML string to markdown. Normalizes newlines so preview doesn't show excessive gaps. */
+function htmlToMarkdown(html) {
+  if (!html || typeof html !== 'string') return '';
+  try {
+    let md = turndown.turndown(html).trim();
+    md = md.replace(/\n{3,}/g, '\n\n');
+    return md;
+  } catch {
+    return '';
+  }
+}
 
 const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -137,23 +153,39 @@ export async function scrapeJobFromPage(page) {
       (await page.locator('a[href^="/e/"]').first().textContent().catch(() => null))?.trim() || '';
   }
 
-  // Description: expand all "More" sections first, then wait for the description block and read it (.cSDQep)
+  // Description: expand "More" sections, then prefer [data-hook="job-details-page"] (strip last two sections, HTML→markdown)
   await expandDescriptionSections(page);
   await new Promise((r) => setTimeout(r, 500));
 
-  // Description: try multiple patterns (Handshake varies by school/build)
-  // 1) .cSDQep — example / some builds
-  // 2) div preceding button.view-more-button — wmich and other real job detail pages
   let description = '';
-  const descriptionBlock = page.locator('.cSDQep').first();
+  const jobDetailsPage = page.locator('[data-hook="job-details-page"]').first();
   try {
-    await descriptionBlock.waitFor({ state: 'attached', timeout: 3000 });
-    await descriptionBlock.scrollIntoViewIfNeeded().catch(() => { });
-    await new Promise((r) => setTimeout(r, 500));
-    const raw = await descriptionBlock.evaluate((el) => el?.textContent ?? '');
-    description = (raw || (await descriptionBlock.innerText().catch(() => null))?.trim() || '').trim();
-    description = description.replace(/\s*(More|Less)\s*$/gm, '').trim();
+    await jobDetailsPage.waitFor({ state: 'attached', timeout: 4000 });
+    const htmlFromDetailsPage = await jobDetailsPage.evaluate((root) => {
+      const container = root.firstElementChild;
+      if (!container) return root.innerHTML;
+      const children = Array.from(container.children);
+      if (children.length >= 2) {
+        children[children.length - 1].remove();
+        children[children.length - 2].remove();
+      }
+      return root.innerHTML;
+    });
+    description = htmlToMarkdown(htmlFromDetailsPage).replace(/\s*(More|Less)\s*$/gm, '').trim();
+    if (description.length > 500) description = description.slice(0, 20000);
   } catch (_) { }
+
+  if (!description || description.length < 100) {
+    const descriptionBlock = page.locator('.cSDQep').first();
+    try {
+      await descriptionBlock.waitFor({ state: 'attached', timeout: 3000 });
+      await descriptionBlock.scrollIntoViewIfNeeded().catch(() => { });
+      await new Promise((r) => setTimeout(r, 500));
+      const raw = await descriptionBlock.evaluate((el) => el?.textContent ?? '');
+      description = (raw || (await descriptionBlock.innerText().catch(() => null))?.trim() || '').trim();
+      description = description.replace(/\s*(More|Less)\s*$/gm, '').trim();
+    } catch (_) { }
+  }
 
   if (!description) {
     try {
