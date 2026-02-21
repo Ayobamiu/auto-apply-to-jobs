@@ -11,7 +11,7 @@
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
-import { getJobFromUrl, getApplicationStatusFromUrl, cacheKey, getJobIdFromUrl, getJobSiteFromUrl } from '../../shared/job-from-url.js';
+import { getJobFromUrl, getApplicationStatusFromUrl, cacheKey, getJobIdFromUrl, getJobSiteFromUrl, toHandshakeJobDetailsUrl } from '../../shared/job-from-url.js';
 import { getJob as getStoredJob, setJob as setStoredJob } from '../../shared/jobs-store.js';
 import { PATHS } from '../../shared/config.js';
 
@@ -101,13 +101,13 @@ export async function getApplicationStatus(jobUrl, options = {}) {
 
 function getJobUrl() {
   const env = process.env.JOB_URL;
-  if (env) return env;
   const argv = process.argv.slice(2);
   const forceIdx = argv.findIndex((a) => a === '--force' || a === '-f');
   if (forceIdx !== -1) argv.splice(forceIdx, 1);
   const statusIdx = argv.findIndex((a) => a === '--status' || a === '-s');
   if (statusIdx !== -1) argv.splice(statusIdx, 1);
-  return argv[0] || null;
+  const raw = env || argv[0] || null;
+  return raw ? toHandshakeJobDetailsUrl(raw) : null;
 }
 
 function getForceScrape() {

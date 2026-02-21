@@ -10,7 +10,7 @@ import { join, dirname } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { PATHS } from '../../shared/config.js';
 import { isJobUploaded, setJobUploaded } from '../../shared/apply-state.js';
-import { getJobIdFromUrl, getJobSiteFromUrl } from '../../shared/job-from-url.js';
+import { getJobIdFromUrl, getJobSiteFromUrl, toHandshakeJobDetailsUrl } from '../../shared/job-from-url.js';
 import { getJob as getStoredJob } from '../../shared/jobs-store.js';
 import { loadProfile } from '../../shared/profile.js';
 import { resumeBasename } from '../../shared/filename-slugs.js';
@@ -46,7 +46,8 @@ function getFixtures(jobUrl) {
 }
 
 function getJobUrl() {
-  return process.env.JOB_URL || process.argv[2] || null;
+  const raw = process.env.JOB_URL || process.argv[2] || null;
+  return raw ? toHandshakeJobDetailsUrl(raw) : null;
 }
 
 async function main() {

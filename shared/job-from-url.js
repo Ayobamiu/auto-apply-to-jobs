@@ -43,6 +43,30 @@ export function getJobSiteFromUrl(url) {
   }
 }
 
+/** Fallback when input URL has no host (e.g. relative path). Override with HANDSHAKE_JOBS_BASE_URL for your school. */
+const HANDSHAKE_JOBS_BASE = process.env.HANDSHAKE_JOBS_BASE_URL || 'https://wmich.joinhandshake.com';
+
+/**
+ * Convert any Handshake job URL (e.g. job-search/<id>?page=1 from list) to the job details URL: <same-host>/jobs/<id>.
+ * Keeps the subdomain from the link you pass (e.g. wmich.joinhandshake.com, stanford.joinhandshake.com).
+ * @param {string} url - Any Handshake URL containing a job id (job-search/123 or jobs/123)
+ * @returns {string} Same URL if not Handshake or no id; else https://<your-school>.joinhandshake.com/jobs/<id>
+ */
+export function toHandshakeJobDetailsUrl(url) {
+  const id = getJobIdFromUrl(url);
+  if (!id) return normalizeUrl(url);
+  try {
+    const u = new URL(normalizeUrl(url));
+    const host = u.hostname.toLowerCase();
+    if (!host.includes('handshake')) return normalizeUrl(url);
+    const origin = u.origin;
+    return `${origin}/jobs/${id}`;
+  } catch {
+    const base = HANDSHAKE_JOBS_BASE.replace(/\/$/, '');
+    return `${base}/jobs/${id}`;
+  }
+}
+
 /**
  * Expand all "Learn more" / "More" description sections on a Handshake job page so the full description is visible.
  * Clicks every button.view-more-button that shows "More" (aria-label "Show more (...)") until none left.
@@ -288,7 +312,7 @@ export async function getApplicationStatusFromUrl(jobUrl, options = {}) {
         applicationSubmitted = true;
         appliedAt = text;
       }
-    } catch (_) {}
+    } catch (_) { }
     return { applicationSubmitted, ...(appliedAt && { appliedAt }) };
   } finally {
     await browser.close();

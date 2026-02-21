@@ -6,6 +6,7 @@
 import { runResumeGenerator } from '../agents/resume_generator_agent/index.js';
 import { runJobScraper } from '../agents/job_scraper_agent/index.js';
 import { loadJob } from '../shared/job.js';
+import { toHandshakeJobDetailsUrl } from '../shared/job-from-url.js';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { join, dirname } from 'path';
@@ -14,11 +15,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 
 function getJobUrl() {
-  const env = process.env.JOB_URL;
-  if (env) return env;
-  const arg = process.argv[2];
-  if (arg) return arg;
-  return null;
+  const raw = process.env.JOB_URL || process.argv[2] || null;
+  return raw ? toHandshakeJobDetailsUrl(raw) : null;
 }
 
 async function main() {
