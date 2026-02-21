@@ -8,16 +8,24 @@ import { join, dirname } from 'path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const ROOT = join(__dirname, '..');
 
+/** Data root: all persistent app data (file-based for MVP). */
+export const dataRoot = join(ROOT, 'data');
+
 export const PATHS = {
   auth: join(ROOT, '.auth'),
   authState: join(ROOT, '.auth', 'handshake-state.json'),
   navigationLog: join(ROOT, '.auth', 'navigation-log.json'),
   fixtures: join(ROOT, 'fixtures'),
   output: join(ROOT, 'output'),
-  jobCache: join(ROOT, 'output', 'job-cache'),
   scrapeScreenshots: join(ROOT, 'output', 'scrape-screenshots'),
-  applyState: join(ROOT, 'output', 'apply-state.json'),
-  jobsFile: join(ROOT, 'output', 'jobs.json'),
-  profile: join(ROOT, 'shared', 'profile.json'),
+  applyScreenshots: join(ROOT, 'output', 'apply-screenshots'),
+  // Data layer paths (under data/)
+  profile: join(dataRoot, 'profile.json'),
+  jobsFile: join(dataRoot, 'jobs.json'),
+  applyState: join(dataRoot, 'apply-state.json'),
+  resumes: join(dataRoot, 'resumes'),
+  applyForms: join(dataRoot, 'apply-forms'),
+  jobCache: join(dataRoot, 'job-cache'),
+  // Legacy / shared
   job: join(ROOT, 'shared', 'job.json'),
 };

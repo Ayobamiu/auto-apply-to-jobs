@@ -95,3 +95,48 @@ export async function generateResumeWithAssistant({ profile, job = {}, messages 
 
   return parsed;
 }
+
+const EDIT_SYSTEM_PROMPT = `You are a resume editor. You will receive the current resume as JSON (JSON Resume schema) and a user request. Apply the requested changes and return the complete updated resume as a single JSON object only. No markdown, no explanation. Preserve all fields not affected by the request. The JSON must remain valid JSON Resume format.`;
+
+/**
+ * Edit resume via natural language request. Returns updated JSON Resume.
+ * @param {object} resumeJson - Current JSON Resume document
+ * @param {string} userMessage - User's edit request (e.g. "Add skill Python", "Shorten summary")
+ * @param {{ apiKey?: string, model?: string, baseURL?: string }} [options]
+ * @returns {Promise<object>} Updated JSON Resume document
+ */
+export async function updateResumeFromChat(resumeJson, userMessage, options = {}) {
+  const key = options.apiKey ?? process.env.OPENAI_API_KEY;
+  if (!key) {
+    throw new Error('Resume edit requires OPENAI_API_KEY (or pass apiKey in options).');
+  }
+
+  const openaiOptions = { apiKey: key };
+  if (options.baseURL) openaiOptions.baseURL = options.baseURL;
+
+  const client = new OpenAI(openaiOptions);
+  const model = options.model ?? DEFAULT_MODEL;
+
+  const content = `${JSON.stringify(resumeJson, null, 2)}\n\nUser request: ${userMessage}`;
+
+  const completion = await client.chat.completions.create({
+    model,
+    messages: [
+      { role: 'system', content: EDIT_SYSTEM_PROMPT },
+      { role: 'user', content },
+    ],
+    response_format: { type: 'json_object' },
+    temperature: 0.2,
+  });
+
+  const raw = completion.choices?.[0]?.message?.content;
+  if (!raw) {
+    throw new Error('Resume edit received empty response from LLM.');
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    throw new Error(`Resume edit: LLM response was not valid JSON. ${e.message}`);
+  }
+}

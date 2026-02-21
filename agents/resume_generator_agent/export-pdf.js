@@ -2,9 +2,9 @@
  * JSON Resume → file + PDF. Separate from content generation so we can
  * re-export after assistant or conversational edits without regenerating content.
  */
-import { mkdirSync, writeFileSync } from 'fs';
+import { mkdirSync, writeFileSync, readFileSync, statSync } from 'fs';
 import { execSync } from 'child_process';
-import { join } from 'path';
+import { join, dirname, basename as pathBasename } from 'path';
 import { PATHS, ROOT } from '../../shared/config.js';
 
 const DEFAULT_THEME = 'jsonresume-theme-even';
@@ -18,7 +18,7 @@ const DEFAULT_THEME = 'jsonresume-theme-even';
  * @returns {{ jsonPath: string, resumePath: string }} Paths to the .json and .pdf files
  */
 export function exportResumeToPdf(resumeJson, options = {}) {
-  const outDir = options.outputDir ?? PATHS.output;
+  const outDir = options.outputDir ?? PATHS.resumes;
   const jobSlug = options.jobSlug ?? 'resume';
   const basename = options.resumeBasename ?? `resume-${jobSlug}`;
   const theme = options.theme ?? DEFAULT_THEME;
@@ -43,4 +43,27 @@ export function exportResumeToPdf(resumeJson, options = {}) {
   }
 
   return { jsonPath, resumePath: pdfPath };
+}
+
+/**
+ * Ensure PDF exists for a resume JSON file. If PDF already exists and is newer than JSON, return paths without re-exporting.
+ * @param {string} jsonPath - Path to resume .json file
+ * @param {{ outputDir?: string, theme?: string }} [options]
+ * @returns {{ jsonPath: string, resumePath: string }}
+ */
+export function ensureResumePdfFromJsonFile(jsonPath, options = {}) {
+  const outDir = options.outputDir ?? dirname(jsonPath);
+  const theme = options.theme ?? DEFAULT_THEME;
+  const base = pathBasename(jsonPath, '.json');
+  const pdfPath = join(outDir, `${base}.pdf`);
+  try {
+    const jsonStat = statSync(jsonPath);
+    const pdfStat = statSync(pdfPath);
+    if (pdfStat.mtimeMs >= jsonStat.mtimeMs) {
+      return { jsonPath, resumePath: pdfPath };
+    }
+  } catch (_) {}
+  const raw = readFileSync(jsonPath, 'utf8');
+  const resumeJson = JSON.parse(raw);
+  return exportResumeToPdf(resumeJson, { outputDir: outDir, resumeBasename: base, theme });
 }

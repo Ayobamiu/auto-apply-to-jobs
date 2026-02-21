@@ -14,7 +14,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
 import { getJobFromUrl, getApplicationStatusFromUrl, cacheKey, getJobIdFromUrl, getJobSiteFromUrl, toHandshakeJobDetailsUrl } from '../../shared/job-from-url.js';
-import { getJob as getStoredJob, setJob as setStoredJob } from '../../shared/jobs-store.js';
+import { getJob, updateJob } from '../../data/jobs.js';
 import { PATHS } from '../../shared/config.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -31,7 +31,7 @@ export async function runJobScraper(jobUrl, options = {}) {
   const forceScrape = options.forceScrape ?? (process.env.FORCE_SCRAPE === '1' || process.env.FORCE_SCRAPE === 'true');
 
   if (jobId && site && !forceScrape) {
-    const stored = getStoredJob(site, jobId);
+    const stored = getJob(site, jobId);
     if (stored) {
       return {
         job: stored,
@@ -61,7 +61,8 @@ export async function runJobScraper(jobUrl, options = {}) {
       applicationSubmitted: job.applicationSubmitted,
     };
     if (job.appliedAt != null) payload.appliedAt = job.appliedAt;
-    setStoredJob(site, jobId, payload);
+    if (job.jobClosed != null) payload.jobClosed = job.jobClosed;
+    updateJob(site, jobId, payload);
   }
 
   return {
@@ -83,7 +84,7 @@ export async function getApplicationStatus(jobUrl, options = {}) {
   const site = getJobSiteFromUrl(jobUrl);
 
   if (jobId && site) {
-    const stored = getStoredJob(site, jobId);
+    const stored = getJob(site, jobId);
     if (stored) {
       return {
         applicationSubmitted: !!stored.applicationSubmitted,
@@ -144,21 +145,21 @@ if (process.argv[1] === __filename) {
       });
   } else {
     runJobScraper(jobUrl, { forceScrape: getForceScrape() })
-    .then(({ job, jobsFilePath, fromStore, htmlPath }) => {
-      if (fromStore) console.log('(from store, skip re-scrape; use --force or FORCE_SCRAPE=1 to re-scrape)');
-      console.log('Job:', job?.title || job?.company || jobUrl);
-      if (job?.jobId) console.log('Job ID:', job.jobId);
-      if (job?.site) console.log('Site:', job.site);
-      console.log('Apply:', job?.applyType ?? 'unknown');
-      if (job?.applicationSubmitted) console.log('Application submitted:', job.appliedAt ?? 'yes');
-      else console.log('Application submitted: no');
-      console.log('Description length:', job?.description?.length ?? 0);
-      console.log('Jobs file:', jobsFilePath);
-      if (htmlPath) console.log('HTML:', htmlPath);
-    })
-    .catch((err) => {
-      console.error(err);
-      process.exit(1);
-    });
+      .then(({ job, jobsFilePath, fromStore, htmlPath }) => {
+        if (fromStore) console.log('(from store, skip re-scrape; use --force or FORCE_SCRAPE=1 to re-scrape)');
+        console.log('Job:', job?.title || job?.company || jobUrl);
+        if (job?.jobId) console.log('Job ID:', job.jobId);
+        if (job?.site) console.log('Site:', job.site);
+        console.log('Apply:', job?.applyType ?? 'unknown');
+        if (job?.applicationSubmitted) console.log('Application submitted:', job.appliedAt ?? 'yes');
+        else console.log('Application submitted: no');
+        console.log('Description length:', job?.description?.length ?? 0);
+        console.log('Jobs file:', jobsFilePath);
+        if (htmlPath) console.log('HTML:', htmlPath);
+      })
+      .catch((err) => {
+        console.error(err);
+        process.exit(1);
+      });
   }
 }

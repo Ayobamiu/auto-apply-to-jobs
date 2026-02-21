@@ -11,35 +11,48 @@ import { fileURLToPath } from 'url';
 import { join, dirname } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { PATHS } from '../../shared/config.js';
-import { isJobUploaded, setJobUploaded } from '../../shared/apply-state.js';
+import { isJobUploaded, setApplicationState } from '../../data/apply-state.js';
 import { getJobIdFromUrl, getJobSiteFromUrl, toHandshakeJobDetailsUrl } from '../../shared/job-from-url.js';
-import { getJob as getStoredJob, setJob as setStoredJob } from '../../shared/jobs-store.js';
-import { loadProfile } from '../../shared/profile.js';
+import { getJob, updateJob } from '../../data/jobs.js';
+import { getProfile } from '../../data/profile.js';
 import { resumeBasename } from '../../shared/filename-slugs.js';
+import { getResumePathsForJob } from '../../data/resumes.js';
+import { saveApplyFormSchema } from '../../data/apply-forms.js';
 import { attachSection, SECTION_CONFIG } from '../../shared/handshake-attach-helper.js';
+import { captureApplyFormSchema } from '../../shared/apply-form-capture.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-function getPreferredResumePathForJob(jobUrl) {
+async function getPreferredResumePathForJob(jobUrl) {
   if (!jobUrl) return null;
   const jobId = getJobIdFromUrl(jobUrl);
   const site = getJobSiteFromUrl(jobUrl);
   if (!jobId || !site) return null;
-  const job = getStoredJob(site, jobId);
+  const job = getJob(site, jobId);
   if (!job) return null;
   try {
-    const profile = loadProfile();
+    const { jsonPath, pdfPath } = getResumePathsForJob(site, jobId);
+    if (job.resumeBasename) {
+      if (existsSync(pdfPath)) return pdfPath;
+      if (existsSync(jsonPath)) {
+        const { ensureResumePdfFromJsonFile } = await import('../../agents/resume_generator_agent/export-pdf.js');
+        const { resumePath } = ensureResumePdfFromJsonFile(jsonPath, { outputDir: PATHS.resumes });
+        return resumePath;
+      }
+      return null;
+    }
+    const profile = getProfile();
     const basename = resumeBasename(profile, job);
     if (!basename) return null;
-    const path = join(PATHS.output, `${basename}.pdf`);
+    const path = join(PATHS.resumes, `${basename}.pdf`);
     return existsSync(path) ? path : null;
   } catch {
     return null;
   }
 }
 
-function getFixtures(jobUrl) {
-  const preferredResume = !process.env.RESUME_PATH ? getPreferredResumePathForJob(jobUrl) : null;
+async function getFixtures(jobUrl) {
+  const preferredResume = !process.env.RESUME_PATH ? await getPreferredResumePathForJob(jobUrl) : null;
   return {
     transcript: process.env.TRANSCRIPT_PATH || join(PATHS.fixtures, 'Unofficial Academic Transcript .pdf'),
     resume: process.env.RESUME_PATH || preferredResume || join(PATHS.fixtures, 'sample-resume.pdf'),
@@ -65,7 +78,7 @@ async function main() {
   }
 
   const alreadyUploaded = isJobUploaded(jobUrl);
-  const files = getFixtures(jobUrl);
+  const files = await getFixtures(jobUrl);
   const defaultResume = join(PATHS.fixtures, 'sample-resume.pdf');
   if (files.resume !== defaultResume) {
     console.log('Using resume:', files.resume);
@@ -117,6 +130,14 @@ async function main() {
     await applyModal.waitFor({ state: 'visible', timeout: 15000 }).catch(() =>
       page.getByText('Attach your transcript').first().waitFor({ state: 'visible', timeout: 5000 })
     );
+
+    const jobId = getJobIdFromUrl(jobUrl);
+    if (jobId) {
+      try {
+        const schema = await captureApplyFormSchema(page, applyModal);
+        saveApplyFormSchema(jobId, schema);
+      } catch (_) {}
+    }
 
     const doSubmit = process.env.SUBMIT_APPLICATION === '1' || process.env.SUBMIT_APPLICATION === 'true';
 
@@ -177,14 +198,14 @@ async function main() {
           console.log('Application submitted successfully.');
           submitted = true;
         } catch (__) {
-          const screenshotDir = join(PATHS.output, 'apply-screenshots');
+          const screenshotDir = PATHS.applyScreenshots || join(PATHS.output, 'apply-screenshots');
           mkdirSync(screenshotDir, { recursive: true });
           await page.screenshot({ path: join(screenshotDir, 'after-submit-failed.png') });
           console.error('Submit may have failed. Screenshot saved to output/apply-screenshots/after-submit-failed.png');
         }
       }
       const submittedAt = new Date().toISOString();
-      setJobUploaded(jobUrl, {
+      setApplicationState(jobUrl, {
         resumePath: files.resume,
         submittedAt,
       });
@@ -192,8 +213,8 @@ async function main() {
         const jobId = getJobIdFromUrl(jobUrl);
         const site = getJobSiteFromUrl(jobUrl);
         if (jobId && site) {
-          const stored = getStoredJob(site, jobId);
-          setStoredJob(site, jobId, {
+          const stored = getJob(site, jobId);
+          updateJob(site, jobId, {
             ...(stored || { url: jobUrl }),
             applicationSubmitted: true,
             appliedAt: submittedAt,
@@ -201,7 +222,7 @@ async function main() {
         }
       }
     } else {
-      setJobUploaded(jobUrl, { resumePath: files.resume });
+      setApplicationState(jobUrl, { resumePath: files.resume });
       console.log('Stopped before submit. Set SUBMIT_APPLICATION=1 to submit. Close browser when done.');
     }
   } finally {

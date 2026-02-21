@@ -5,10 +5,14 @@
  * Loads .env so SCRAPE_HEADED, OPENAI_API_KEY, etc. work from one file.
  */
 import 'dotenv/config';
+import { basename } from 'path';
 import { runResumeGenerator } from '../agents/resume_generator_agent/index.js';
+import { ensureResumePdfFromJsonFile } from '../agents/resume_generator_agent/export-pdf.js';
 import { runJobScraper } from '../agents/job_scraper_agent/index.js';
 import { loadJob } from '../shared/job.js';
-import { toHandshakeJobDetailsUrl } from '../shared/job-from-url.js';
+import { toHandshakeJobDetailsUrl, getJobIdFromUrl, getJobSiteFromUrl } from '../shared/job-from-url.js';
+import { updateJob } from '../data/jobs.js';
+import { PATHS } from '../shared/config.js';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { join, dirname } from 'path';
@@ -34,8 +38,22 @@ async function main() {
   }
 
   console.log('Step 1: Generate resume from profile + job...');
-  const { resumePath } = await runResumeGenerator({ job });
-  console.log('Resume:', resumePath);
+  const { jsonPath, resumePath: generatedPdfPath } = await runResumeGenerator({ job });
+  let resumePath = generatedPdfPath;
+  if (!resumePath && jsonPath) {
+    const { resumePath: ensured } = ensureResumePdfFromJsonFile(jsonPath, { outputDir: PATHS.resumes });
+    resumePath = ensured;
+  }
+  console.log('Resume:', resumePath ?? jsonPath);
+
+  if (jobUrl) {
+    const site = getJobSiteFromUrl(jobUrl);
+    const jobId = getJobIdFromUrl(jobUrl);
+    if (site && jobId && jsonPath) {
+      const resumeBasename = basename(jsonPath, '.json');
+      updateJob(site, jobId, { ...job, resumeBasename });
+    }
+  }
 
   if (!jobUrl) {
     console.log('No JOB_URL. Run handshake:apply with the job URL when ready.');

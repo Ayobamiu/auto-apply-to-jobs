@@ -9,6 +9,7 @@ import { join } from 'path';
 import { chromium } from 'playwright';
 import TurndownService from 'turndown';
 import { PATHS } from './config.js';
+import { setCachedJobHtml } from '../data/job-cache.js';
 
 const turndown = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
 
@@ -137,6 +138,26 @@ export async function scrapeJobFromPage(page) {
     applyType = 'apply';
   }
 
+  // Detect if job posting is closed: look for "Apply by <date>" (e.g. "Apply by March 5, 2026 at 8:59 PM") and compare to now
+  let jobClosed = false;
+  try {
+    const applyByResult = await page.evaluate(() => {
+      const text = document.body?.innerText ?? '';
+      const match = text.match(/Apply by\s+([A-Za-z]+\s+\d{1,2},?\s+\d{4}(?:\s+at\s+[\d:]+\s*[AP]M)?)/i);
+      if (!match) return { found: false };
+      const dateStr = match[1].trim();
+      const deadline = new Date(dateStr);
+      if (Number.isNaN(deadline.getTime())) return { found: true, closed: false };
+      return { found: true, closed: Date.now() > deadline.getTime() };
+    });
+    if (applyByResult?.found && applyByResult.closed) jobClosed = true;
+    if (!jobClosed) {
+      const bodyText = await page.evaluate(() => document.body?.innerText ?? '');
+      const closedPatterns = /closed|no longer accepting|application deadline has passed|position (is )?closed/i;
+      if (closedPatterns.test(bodyText)) jobClosed = true;
+    }
+  } catch (_) {}
+
   // Title: first h1 on the page (job detail title)
   const title =
     (await page.locator('h1').first().textContent().catch(() => null))?.trim() || '';
@@ -208,7 +229,7 @@ export async function scrapeJobFromPage(page) {
       (await page.locator('[data-hook="job-detail-description"], [class*="description"]').first().innerText().catch(() => null))?.trim()?.slice(0, 12000) || '';
   }
 
-  return { title, company, description, url, applyType, applicationSubmitted, ...(appliedAt && { appliedAt }) };
+  return { title, company, description, url, applyType, applicationSubmitted, jobClosed, ...(appliedAt && { appliedAt }) };
 }
 
 /**
@@ -284,10 +305,8 @@ export async function getJobFromUrl(jobUrl, options = {}) {
     // Store full page HTML in job-cache for debugging / offline use
     try {
       const html = await page.content();
-      mkdirSync(cacheDir, { recursive: true });
-      const htmlPath = join(cacheDir, `${fileKey}.html`);
-      writeFileSync(htmlPath, html, 'utf8');
-      console.log('Job page HTML:', htmlPath);
+      setCachedJobHtml(fileKey, html);
+      console.log('Job page HTML:', join(PATHS.jobCache, `${fileKey}.html`));
     } catch (_) { }
 
     const job = await scrapeJobFromPage(page);
@@ -298,6 +317,7 @@ export async function getJobFromUrl(jobUrl, options = {}) {
       mkdirSync(cacheDir, { recursive: true });
       const cachePayload = { title: job.title, company: job.company, description: job.description, url: job.url, jobId: job.jobId, applyType: job.applyType, applicationSubmitted: job.applicationSubmitted };
       if (job.appliedAt) cachePayload.appliedAt = job.appliedAt;
+      if (job.jobClosed != null) cachePayload.jobClosed = job.jobClosed;
       writeFileSync(cachePath, JSON.stringify(cachePayload, null, 2), 'utf8');
     } catch (_) { }
 

@@ -1,27 +1,12 @@
 /**
- * Load and validate Profile (single source of truth for resume/apply agents).
+ * Profile: thin wrapper over data layer for backwards compatibility.
+ * Prefer importing getProfile / updateProfile from data/profile.js.
  */
-import { readFileSync } from 'fs';
-import { PATHS } from './config.js';
+import { getProfile, updateProfile } from '../data/profile.js';
 
-const DEFAULT_PROFILE = {
-  name: '',
-  email: '',
-  phone: '',
-  linkedin: '',
-  summary: '',
-  education: [],
-  experience: [],
-  skills: [],
-};
+export { getProfile, updateProfile };
 
-export function loadProfile(path = PATHS.profile) {
-  try {
-    const raw = readFileSync(path, 'utf8');
-    const data = JSON.parse(raw);
-    return { ...DEFAULT_PROFILE, ...data };
-  } catch (err) {
-    if (err.code === 'ENOENT') return DEFAULT_PROFILE;
-    throw err;
-  }
+/** @deprecated Use getProfile() from data/profile.js */
+export function loadProfile() {
+  return getProfile();
 }
