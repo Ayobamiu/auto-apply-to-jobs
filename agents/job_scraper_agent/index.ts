@@ -14,7 +14,8 @@ import {
   toHandshakeJobDetailsUrl,
 } from '../../shared/job-from-url.js';
 import { getJob, updateJob } from '../../data/jobs.js';
-import { PATHS } from '../../shared/config.js';
+import { PATHS, resolveUserId } from '../../shared/config.js';
+import { getUserJobState, toJobRef } from '../../data/user-job-state.js';
 import type { Job } from '../../shared/types.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -85,21 +86,25 @@ export async function runJobScraper(jobUrl: string, options: RunJobScraperOption
 
 export interface GetApplicationStatusOptions {
   fromStoreOnly?: boolean;
+  userId?: string;
 }
 
 export async function getApplicationStatus(
   jobUrl: string,
   options: GetApplicationStatusOptions = {}
 ): Promise<{ applicationSubmitted: boolean; appliedAt?: string; fromStore?: boolean }> {
+  const userId = options.userId ?? 'default';
   const jobId = getJobIdFromUrl(jobUrl);
   const site = getJobSiteFromUrl(jobUrl);
 
   if (jobId && site) {
-    const stored = getJob(site, jobId);
-    if (stored) {
+    const { getUserJobState, toJobRef } = await import('../../data/user-job-state.js');
+    const jobRef = toJobRef(site, jobId);
+    const state = getUserJobState(userId, jobRef);
+    if (state) {
       return {
-        applicationSubmitted: !!stored.applicationSubmitted,
-        ...(stored.appliedAt != null && { appliedAt: stored.appliedAt ?? undefined }),
+        applicationSubmitted: !!state.applicationSubmitted,
+        ...(state.appliedAt != null && { appliedAt: String(state.appliedAt) }),
         fromStore: true,
       };
     }
@@ -115,11 +120,13 @@ export async function getApplicationStatus(
 
 function getJobUrl(): string | null {
   const env = process.env.JOB_URL;
-  const argv = process.argv.slice(2);
+  let argv = process.argv.slice(2);
   const forceIdx = argv.findIndex((a) => a === '--force' || a === '-f');
   if (forceIdx !== -1) argv.splice(forceIdx, 1);
   const statusIdx = argv.findIndex((a) => a === '--status' || a === '-s');
   if (statusIdx !== -1) argv.splice(statusIdx, 1);
+  const userIdx = argv.indexOf('--user');
+  if (userIdx !== -1 && argv[userIdx + 1]) argv = argv.slice(0, userIdx).concat(argv.slice(userIdx + 2));
   const raw = env || argv[0] || null;
   return raw ? toHandshakeJobDetailsUrl(raw) : null;
 }
@@ -144,7 +151,8 @@ if (process.argv[1] === __filename) {
   }
 
   if (isStatusOnly()) {
-    getApplicationStatus(jobUrl, { fromStoreOnly: false })
+    const userId = resolveUserId({ envUserId: process.env.USER_ID, argv: process.argv });
+    getApplicationStatus(jobUrl, { fromStoreOnly: false, userId })
       .then(({ applicationSubmitted, appliedAt, fromStore }) => {
         if (fromStore) console.log('(from store)');
         console.log('Application submitted:', applicationSubmitted ? (appliedAt ?? 'yes') : 'no');
@@ -155,6 +163,7 @@ if (process.argv[1] === __filename) {
         process.exit(1);
       });
   } else {
+    const userId = resolveUserId({ envUserId: process.env.USER_ID, argv: process.argv });
     runJobScraper(jobUrl, { forceScrape: getForceScrape() })
       .then(({ job, jobsFilePath, fromStore, htmlPath }) => {
         if (fromStore) console.log('(from store, skip re-scrape; use --force or FORCE_SCRAPE=1 to re-scrape)');
@@ -162,7 +171,8 @@ if (process.argv[1] === __filename) {
         if (job?.jobId) console.log('Job ID:', job.jobId);
         if (job?.site) console.log('Site:', job.site);
         console.log('Apply:', job?.applyType ?? 'unknown');
-        if (job?.applicationSubmitted) console.log('Application submitted:', job.appliedAt ?? 'yes');
+        const userState = job?.site && job?.jobId ? getUserJobState(userId, toJobRef(job.site, job.jobId)) : null;
+        if (userState?.applicationSubmitted) console.log('Application submitted:', userState.appliedAt ?? 'yes');
         else console.log('Application submitted: no');
         console.log('Description length:', job?.description?.length ?? 0);
         console.log('Jobs file:', jobsFilePath);

@@ -14,31 +14,31 @@ function ensureJobUrl(url: string | undefined): string | null {
   return url ? toHandshakeJobDetailsUrl(url) : null;
 }
 
-function checkProfile(errors: string[]): void {
-  const profile = getProfile();
-  if (!profile?.name?.trim()) errors.push('Profile name is required (data/profile.json)');
-  if (!profile?.email?.trim()) errors.push('Profile email is required (data/profile.json)');
+function checkProfile(errors: string[], userId?: string): void {
+  const profile = getProfile(userId);
+  if (!profile?.name?.trim()) errors.push('Profile name is required (data/profiles.json)');
+  if (!profile?.email?.trim()) errors.push('Profile email is required (data/profiles.json)');
 }
 
-function resumePathExistsForApply(jobUrl: string): boolean {
+function resumePathExistsForApply(jobUrl: string, userId?: string): boolean {
   if (process.env.RESUME_PATH && existsSync(process.env.RESUME_PATH)) return true;
   const jobId = getJobIdFromUrl(jobUrl);
   const site = getJobSiteFromUrl(jobUrl);
   if (jobId && site) {
-    const { jsonPath, pdfPath } = getResumePathsForJob(site, jobId);
+    const { jsonPath, pdfPath } = getResumePathsForJob(site, jobId, userId);
     if (existsSync(pdfPath) || existsSync(jsonPath)) return true;
   }
   const fixture = join(PATHS.fixtures, 'sample-resume.pdf');
   return existsSync(fixture);
 }
 
-export function preflightForApply(jobUrl: string | undefined): { ok: true } {
+export function preflightForApply(jobUrl: string | undefined, userId?: string): { ok: true } {
   const errors: string[] = [];
   const resolvedUrl = ensureJobUrl(jobUrl);
   if (!resolvedUrl) {
     errors.push('Job URL required (JOB_URL or argument)');
   } else {
-    if (!resumePathExistsForApply(resolvedUrl)) {
+    if (!resumePathExistsForApply(resolvedUrl, userId)) {
       errors.push('No resume file found (set RESUME_PATH, run pipeline for this job, or add data/resumes/ or fixtures/sample-resume.pdf)');
     }
   }
@@ -48,14 +48,14 @@ export function preflightForApply(jobUrl: string | undefined): { ok: true } {
   return { ok: true };
 }
 
-export function preflightForPipeline(jobUrl: string | undefined): { ok: true } {
+export function preflightForPipeline(jobUrl: string | undefined, userId?: string): { ok: true } {
   const errors: string[] = [];
   if (jobUrl) {
     const resolvedUrl = ensureJobUrl(jobUrl);
     if (!resolvedUrl) {
       errors.push('Job URL required (JOB_URL or argument)');
     } else {
-      checkProfile(errors);
+      checkProfile(errors, userId);
     }
   }
   if (errors.length) {

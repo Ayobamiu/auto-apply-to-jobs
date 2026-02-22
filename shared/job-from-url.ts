@@ -8,7 +8,7 @@ import { join } from 'path';
 import { chromium } from 'playwright';
 import type { Page } from 'playwright';
 import TurndownService from 'turndown';
-import { PATHS } from './config.js';
+import { PATHS, getPathsForUser } from './config.js';
 import { setCachedJobHtml } from '../data/job-cache.js';
 import type { Job } from './types.js';
 
@@ -249,7 +249,7 @@ export async function getJobFromUrl(jobUrl: string, options: GetJobFromUrlOption
   const useAuth = options.useAuth !== false;
   const browser = await chromium.launch({ headless });
   const context = await browser.newContext(
-    useAuth && existsSync(PATHS.authState) ? { storageState: PATHS.authState } : {}
+    useAuth && existsSync(getPathsForUser('default').authState) ? { storageState: getPathsForUser('default').authState } : {}
   );
   const page = await context.newPage();
 
@@ -336,7 +336,7 @@ export async function getApplicationStatusFromUrl(
   const useAuth = options.useAuth !== false;
   const browser = await chromium.launch({ headless });
   const context = await browser.newContext(
-    useAuth && existsSync(PATHS.authState) ? { storageState: PATHS.authState } : {}
+    useAuth && existsSync(getPathsForUser('default').authState) ? { storageState: getPathsForUser('default').authState } : {}
   );
   const page = await context.newPage();
   try {

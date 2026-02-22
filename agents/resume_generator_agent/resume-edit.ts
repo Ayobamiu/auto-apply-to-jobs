@@ -9,6 +9,7 @@ import { AppError, CODES } from '../../shared/errors.js';
 export interface UpdateResumeForJobOptions {
   apiKey?: string;
   model?: string;
+  userId?: string;
 }
 
 /**
@@ -20,8 +21,9 @@ export async function updateResumeForJob(
   userMessage: string,
   options: UpdateResumeForJobOptions = {}
 ): Promise<Record<string, unknown>> {
+  const userId = options.userId ?? 'default';
   getJob(site, jobId); // ensure job exists (optional check)
-  const jsonPath = getResumeJsonPathForJob(site, jobId);
+  const jsonPath = getResumeJsonPathForJob(site, jobId, userId);
   if (!jsonPath) {
     throw new AppError(CODES.NO_RESUME);
   }

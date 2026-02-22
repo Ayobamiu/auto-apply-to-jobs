@@ -1,22 +1,24 @@
 /**
- * Real Handshake: open login page, wait for manual login, save session to .auth/handshake-state.json.
+ * Real Handshake: open login page, wait for manual login, save session to .auth/<userId>/handshake-state.json.
  */
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { dirname, join } from 'path';
 import { mkdirSync } from 'fs';
-import { PATHS } from '../../shared/config.js';
+import { getPathsForUser, resolveUserId, ROOT } from '../../shared/config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-function ensureAuthDir(): void {
+function ensureAuthDirForUser(userId: string): void {
   try {
-    mkdirSync(PATHS.auth, { recursive: true });
+    mkdirSync(join(ROOT, '.auth', userId), { recursive: true });
   } catch (_) {}
 }
 
 async function main(): Promise<void> {
-  ensureAuthDir();
+  const userId = resolveUserId({ envUserId: process.env.USER_ID, argv: process.argv });
+  const paths = getPathsForUser(userId);
+  ensureAuthDirForUser(userId);
 
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext();
@@ -42,8 +44,8 @@ async function main(): Promise<void> {
 
   await new Promise((r) => setTimeout(r, 1500));
 
-  await context.storageState({ path: PATHS.authState });
-  console.log('Session saved to .auth/handshake-state.json');
+  await context.storageState({ path: paths.authState });
+  console.log('Session saved to', paths.authState);
   console.log('You can close the browser when done.');
 }
 

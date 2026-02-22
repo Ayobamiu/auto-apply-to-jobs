@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { mkdirSync, writeFileSync } from 'fs';
-import { PATHS } from '../../shared/config.js';
+import { getPathsForUser, resolveUserId } from '../../shared/config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LOGIN_URL = 'https://app.joinhandshake.com/login';
@@ -16,31 +16,34 @@ interface LogEntry {
   label: string;
 }
 
-function ensureAuthDir(): void {
+function ensureAuthDir(userId: string): void {
+  const { navigationLog } = getPathsForUser(userId);
   try {
-    mkdirSync(PATHS.auth, { recursive: true });
+    mkdirSync(dirname(navigationLog), { recursive: true });
   } catch (_) {}
 }
 
-function writeLogToFile(entries: LogEntry[]): void {
-  ensureAuthDir();
-  writeFileSync(PATHS.navigationLog, JSON.stringify(entries, null, 2), 'utf8');
+function writeLogToFile(entries: LogEntry[], userId: string): void {
+  const { navigationLog } = getPathsForUser(userId);
+  mkdirSync(dirname(navigationLog), { recursive: true });
+  writeFileSync(navigationLog, JSON.stringify(entries, null, 2), 'utf8');
 }
 
-function writeLog(entries: LogEntry[]): void {
-  writeLogToFile(entries);
-  console.log('Wrote', entries.length, 'entries to', PATHS.navigationLog);
+function writeLog(entries: LogEntry[], userId: string): void {
+  writeLogToFile(entries, userId);
+  console.log('Wrote', entries.length, 'entries to', getPathsForUser(userId).navigationLog);
 }
 
 async function main(): Promise<void> {
-  ensureAuthDir();
+  const userId = resolveUserId({ envUserId: process.env.USER_ID, argv: process.argv });
+  ensureAuthDir(userId);
   const entries: LogEntry[] = [];
 
   function record(url: string, label = 'navigate'): void {
     const entry = { url, timestamp: new Date().toISOString(), label };
     entries.push(entry);
     console.log(`[${entries.length}] ${label}: ${url}`);
-    writeLogToFile(entries);
+    writeLogToFile(entries, userId);
   }
 
   const browser = await chromium.launch({ headless: false });
@@ -59,14 +62,14 @@ async function main(): Promise<void> {
   });
 
   const saveAndExit = (): void => {
-    writeLog(entries);
+    writeLog(entries, userId);
     process.exit(0);
   };
 
   process.on('SIGINT', saveAndExit);
   process.on('SIGTERM', saveAndExit);
   browser.on('disconnected', () => {
-    writeLog(entries);
+    writeLog(entries, userId);
     process.exit(0);
   });
 

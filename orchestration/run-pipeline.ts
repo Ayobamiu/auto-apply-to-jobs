@@ -2,14 +2,13 @@
  * Pipeline: get job (from URL scrape/cache or file), generate resume, then run Handshake apply when JOB_URL provided.
  */
 import 'dotenv/config';
-import { basename } from 'path';
 import { runResumeGenerator } from '../agents/resume_generator_agent/index.js';
 import { ensureResumePdfFromJsonFile } from '../agents/resume_generator_agent/export-pdf.js';
 import { runJobScraper } from '../agents/job_scraper_agent/index.js';
 import { loadJob } from '../shared/job.js';
 import { toHandshakeJobDetailsUrl, getJobIdFromUrl, getJobSiteFromUrl } from '../shared/job-from-url.js';
 import { updateJob } from '../data/jobs.js';
-import { PATHS } from '../shared/config.js';
+import { PATHS, getPathsForUser, resolveUserId } from '../shared/config.js';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { isAppError } from '../shared/errors.js';
@@ -22,13 +21,19 @@ import type { Job } from '../shared/types.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function getJobUrl(): string | null {
-  const raw = process.env.JOB_URL || process.argv[2] || null;
+  let argv = process.argv.slice(2);
+  const userIdx = argv.indexOf('--user');
+  if (userIdx !== -1 && argv[userIdx + 1]) {
+    argv = argv.slice(0, userIdx).concat(argv.slice(userIdx + 2));
+  }
+  const raw = process.env.JOB_URL || argv[0] || null;
   return raw ? toHandshakeJobDetailsUrl(raw as string) : null;
 }
 
 export interface RunPipelineForJobOptions {
   submit?: boolean;
   forceScrape?: boolean;
+  userId?: string;
 }
 
 export interface RunPipelineForJobResult {
@@ -43,10 +48,11 @@ export async function runPipelineForJob(
   jobUrl: string | null,
   options: RunPipelineForJobOptions = {}
 ): Promise<RunPipelineForJobResult> {
+  const userId = options.userId ?? resolveUserId({ envUserId: process.env.USER_ID, argv: process.argv });
   if (isTimingEnabled()) console.log('[timing] Phase breakdown:');
   const endTotal = startTotal('pipeline');
   const endPreflight = startPhase('Preflight');
-  preflightForPipeline(jobUrl ?? undefined);
+  preflightForPipeline(jobUrl ?? undefined, userId);
   endPreflight();
 
   let job: Job;
@@ -65,11 +71,13 @@ export async function runPipelineForJob(
 
   console.log('Step 1: Generate resume from profile + job...');
   const endStep1 = startPhase('Step 1: Generate resume');
-  const { jsonPath, resumePath: generatedPdfPath } = await runResumeGenerator({ job });
+  const { jsonPath, resumePath: generatedPdfPath } = await runResumeGenerator({ job, userId });
   let resumePath = generatedPdfPath;
   if (!resumePath && jsonPath) {
     const endPdf = startPhase('Step 1b: Ensure PDF from JSON');
-    const { resumePath: ensured } = ensureResumePdfFromJsonFile(jsonPath, { outputDir: PATHS.resumes });
+    const { resumePath: ensured } = ensureResumePdfFromJsonFile(jsonPath, {
+      outputDir: getPathsForUser(userId).resumesDir,
+    });
     resumePath = ensured;
     endPdf();
   }
@@ -79,9 +87,8 @@ export async function runPipelineForJob(
   if (jobUrl) {
     const site = getJobSiteFromUrl(jobUrl);
     const jobId = getJobIdFromUrl(jobUrl) ?? undefined;
-    if (site && jobId && jsonPath) {
-      const resumeBasename = basename(jsonPath, '.json');
-      updateJob(site, jobId, { ...job, resumeBasename });
+    if (site && jobId) {
+      updateJob(site, jobId, { ...job });
     }
   }
 
@@ -92,7 +99,7 @@ export async function runPipelineForJob(
   }
 
   const endAlreadyApplied = startPhase('Check already applied (store)');
-  const { applicationSubmitted } = await getApplicationStatus(jobUrl, { fromStoreOnly: true });
+  const { applicationSubmitted } = await getApplicationStatus(jobUrl, { fromStoreOnly: true, userId });
   endAlreadyApplied();
   if (applicationSubmitted) {
     console.log('Already applied to this job. Skipping apply step.');
@@ -105,6 +112,7 @@ export async function runPipelineForJob(
   const applyResult = await runHandshakeApply(jobUrl, {
     submit: options.submit ?? (process.env.SUBMIT_APPLICATION === '1' || process.env.SUBMIT_APPLICATION === 'true'),
     resumePath: resumePath ?? undefined,
+    userId,
   });
   endApply();
   endTotal();
@@ -118,9 +126,11 @@ export async function runPipelineForJob(
 
 async function main(): Promise<void> {
   const jobUrl = getJobUrl();
+  const userId = resolveUserId({ envUserId: process.env.USER_ID, argv: process.argv });
   await runPipelineForJob(jobUrl, {
     submit: process.env.SUBMIT_APPLICATION === '1' || process.env.SUBMIT_APPLICATION === 'true',
     forceScrape: process.env.FORCE_SCRAPE === '1' || process.env.FORCE_SCRAPE === 'true',
+    userId,
   });
 }
 

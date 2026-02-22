@@ -6,8 +6,9 @@ import 'dotenv/config';
 import { join } from 'path';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { getProfile } from '../../data/profile.js';
+import { setUserJobState, toJobRef } from '../../data/user-job-state.js';
 import { loadJob } from '../../shared/job.js';
-import { PATHS } from '../../shared/config.js';
+import { getPathsForUser, resolveUserId } from '../../shared/config.js';
 import { resumeBasename } from '../../shared/filename-slugs.js';
 import { profileToJsonResume } from '../../shared/json-resume.js';
 import { generateResumeWithAssistant } from './assistant.js';
@@ -22,6 +23,7 @@ export interface RunResumeGeneratorOptions {
   profilePath?: string;
   jobPath?: string;
   outputDir?: string;
+  userId?: string;
   theme?: string;
   useAssistant?: boolean;
   assistantApiKey?: string;
@@ -33,9 +35,10 @@ export async function runResumeGenerator(options: RunResumeGeneratorOptions = {}
   jsonPath: string;
   resumePath: string | null;
 }> {
-  const profile = options.profile ?? getProfile();
+  const userId = options.userId ?? 'default';
+  const profile = options.profile ?? getProfile(userId);
   const job = options.job ?? loadJob(options.jobPath);
-  const outDir = options.outputDir ?? PATHS.resumes;
+  const outDir = options.outputDir ?? getPathsForUser(userId).resumesDir;
   const basename = resumeBasename(profile, job || {});
 
   const existingJson = join(outDir, `${basename}.json`);
@@ -62,11 +65,15 @@ export async function runResumeGenerator(options: RunResumeGeneratorOptions = {}
   mkdirSync(outDir, { recursive: true });
   const jsonPath = join(outDir, `${basename}.json`);
   writeFileSync(jsonPath, JSON.stringify(resumeJson, null, 2), 'utf8');
+  if (job?.site && job?.jobId) {
+    setUserJobState(userId, toJobRef(job.site, job.jobId), { resumeBasename: basename });
+  }
   return { jsonPath, resumePath: null };
 }
 
 if (process.argv[1] === __filename) {
-  runResumeGenerator()
+  const userId = resolveUserId({ envUserId: process.env.USER_ID, argv: process.argv });
+  runResumeGenerator({ userId })
     .then((result) => {
       console.log('Generated:', result.jsonPath, result.resumePath ?? '(PDF not generated; run apply or export to create)');
     })

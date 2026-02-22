@@ -3,7 +3,7 @@
  */
 import { existsSync } from 'fs';
 import { chromium } from 'playwright';
-import { PATHS } from './config.js';
+import { getPathsForUser } from './config.js';
 
 const SESSION_CHECK_TIMEOUT_MS = 15000;
 const STABLE_HANDSHAKE_URL = process.env.HANDSHAKE_JOBS_BASE_URL || 'https://app.joinhandshake.com';
@@ -12,14 +12,15 @@ export type SessionCheckResult =
   | { valid: true }
   | { valid: false; reason: 'no_session' | 'session_expired' };
 
-export async function checkSessionValid(): Promise<SessionCheckResult> {
-  if (!existsSync(PATHS.authState)) {
+export async function checkSessionValid(userId?: string): Promise<SessionCheckResult> {
+  const paths = getPathsForUser(userId ?? 'default');
+  if (!existsSync(paths.authState)) {
     return { valid: false, reason: 'no_session' };
   }
 
   const browser = await chromium.launch({ headless: true });
   try {
-    const context = await browser.newContext({ storageState: PATHS.authState });
+    const context = await browser.newContext({ storageState: paths.authState });
     const page = await context.newPage();
     await page.goto(STABLE_HANDSHAKE_URL, { waitUntil: 'domcontentloaded', timeout: SESSION_CHECK_TIMEOUT_MS });
     await new Promise((r) => setTimeout(r, 2000));

@@ -1,4 +1,4 @@
-/** Minimal job shape used across scrape, pipeline, apply. */
+/** Canonical job metadata (shared; no per-user fields). Per-user state in user-job-state. */
 export interface Job {
   title?: string;
   company?: string;
@@ -6,12 +6,16 @@ export interface Job {
   url?: string;
   jobId?: string;
   site?: string;
-  resumeBasename?: string;
-  applicationSubmitted?: boolean;
-  appliedAt?: string;
   applyType?: string;
   jobClosed?: boolean;
   [key: string]: unknown;
+}
+
+/** Per-user state for a job (resume used, applied or not). */
+export interface UserJobState {
+  resumeBasename?: string;
+  applicationSubmitted?: boolean;
+  appliedAt?: string;
 }
 
 /** Profile shape (data/profile.json). */

@@ -7,8 +7,9 @@ import { chromium } from 'playwright';
 import { fileURLToPath } from 'url';
 import { join, dirname } from 'path';
 import { existsSync, mkdirSync } from 'fs';
-import { PATHS } from '../../shared/config.js';
+import { PATHS, getPathsForUser, resolveUserId } from '../../shared/config.js';
 import { setApplicationState } from '../../data/apply-state.js';
+import { setUserJobState, toJobRef } from '../../data/user-job-state.js';
 import { getJobIdFromUrl, getJobSiteFromUrl, toHandshakeJobDetailsUrl } from '../../shared/job-from-url.js';
 import { getJob, updateJob } from '../../data/jobs.js';
 import { getProfile } from '../../data/profile.js';
@@ -30,6 +31,7 @@ export interface RunHandshakeApplyOptions {
   resumePath?: string;
   transcriptPath?: string;
   coverPath?: string;
+  userId?: string;
 }
 
 export interface RunHandshakeApplyResult {
@@ -37,27 +39,28 @@ export interface RunHandshakeApplyResult {
   skipped?: boolean;
 }
 
-async function getPreferredResumePathForJob(jobUrl: string): Promise<string | null> {
+async function getPreferredResumePathForJob(jobUrl: string, userId: string): Promise<string | null> {
   const jobId = getJobIdFromUrl(jobUrl);
   const site = getJobSiteFromUrl(jobUrl);
   if (!jobId || !site) return null;
   const job = getJob(site, jobId);
   if (!job) return null;
   try {
-    const { jsonPath, pdfPath } = getResumePathsForJob(site, jobId);
-    if (job.resumeBasename) {
+    const { jsonPath, pdfPath } = getResumePathsForJob(site, jobId, userId);
+    if (jsonPath && pdfPath) {
       if (existsSync(pdfPath)) return pdfPath;
       if (existsSync(jsonPath)) {
         const { ensureResumePdfFromJsonFile } = await import('../resume_generator_agent/export-pdf.js');
-        const { resumePath } = ensureResumePdfFromJsonFile(jsonPath, { outputDir: PATHS.resumes });
+        const { resumesDir } = getPathsForUser(userId);
+        const { resumePath } = ensureResumePdfFromJsonFile(jsonPath, { outputDir: resumesDir });
         return resumePath;
       }
       return null;
     }
-    const profile = getProfile();
+    const profile = getProfile(userId);
     const basename = resumeBasename(profile, job);
     if (!basename) return null;
-    const path = join(PATHS.resumes, `${basename}.pdf`);
+    const path = join(getPathsForUser(userId).resumesDir, `${basename}.pdf`);
     return existsSync(path) ? path : null;
   } catch {
     return null;
@@ -66,10 +69,11 @@ async function getPreferredResumePathForJob(jobUrl: string): Promise<string | nu
 
 async function getFixtures(
   jobUrl: string,
-  options: { resumePath?: string; transcriptPath?: string; coverPath?: string } = {}
+  options: { resumePath?: string; transcriptPath?: string; coverPath?: string; userId?: string } = {}
 ): Promise<{ transcript: string; resume: string; coverLetter: string }> {
+  const userId = options.userId ?? 'default';
   const preferredResume =
-    !(options.resumePath ?? process.env.RESUME_PATH) ? await getPreferredResumePathForJob(jobUrl) : null;
+    !(options.resumePath ?? process.env.RESUME_PATH) ? await getPreferredResumePathForJob(jobUrl, userId) : null;
   return {
     transcript:
       options.transcriptPath ??
@@ -90,19 +94,22 @@ function getJobUrl(): string | null {
 }
 
 export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApplyOptions = {}): Promise<RunHandshakeApplyResult> {
+  const userId = options.userId ?? resolveUserId({ envUserId: process.env.USER_ID, argv: process.argv });
+  const userPaths = getPathsForUser(userId);
+
   const endPreflight = startPhase('Apply: preflight');
-  preflightForApply(jobUrl);
+  preflightForApply(jobUrl, userId);
   endPreflight();
 
   const endAlready = startPhase('Apply: check already applied (store)');
-  const { applicationSubmitted } = await getApplicationStatus(jobUrl, { fromStoreOnly: true });
+  const { applicationSubmitted } = await getApplicationStatus(jobUrl, { fromStoreOnly: true, userId });
   endAlready();
   if (applicationSubmitted) {
     return { applied: true, skipped: true };
   }
 
   const endSession = startPhase('Apply: session check (headless browser)');
-  const session = await checkSessionValid();
+  const session = await checkSessionValid(userId);
   endSession();
   if (!session.valid) {
     if (session.reason === 'no_session') throw new AppError(CODES.NO_SESSION);
@@ -114,6 +121,7 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
     resumePath: options.resumePath,
     transcriptPath: options.transcriptPath,
     coverPath: options.coverPath,
+    userId,
   });
   endFixtures();
   const defaultResume = join(PATHS.fixtures, 'sample-resume.pdf');
@@ -125,7 +133,7 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
 
   const endLaunch = startPhase('Apply: browser launch');
   const browser = await chromium.launch({ headless: false });
-  const context = await browser.newContext({ storageState: PATHS.authState });
+  const context = await browser.newContext({ storageState: userPaths.authState });
   const page = await context.newPage();
   endLaunch();
 
@@ -294,23 +302,21 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
         }
       }
       const submittedAt = new Date().toISOString();
-      setApplicationState(jobUrl, { resumePath: files.resume, submittedAt });
+      setApplicationState(jobUrl, { resumePath: files.resume, submittedAt }, userId);
       if (submitted) {
         applied = true;
         const jid = getJobIdFromUrl(jobUrl);
         const site = getJobSiteFromUrl(jobUrl);
         if (jid && site) {
+          const jobRef = toJobRef(site, jid);
+          setUserJobState(userId, jobRef, { applicationSubmitted: true, appliedAt: submittedAt });
           const stored = getJob(site, jid);
-          updateJob(site, jid, {
-            ...(stored || { url: jobUrl }),
-            applicationSubmitted: true,
-            appliedAt: submittedAt,
-          });
+          updateJob(site, jid, { ...(stored || { url: jobUrl }) });
         }
       }
       endSubmit();
     } else {
-      setApplicationState(jobUrl, { resumePath: files.resume });
+      setApplicationState(jobUrl, { resumePath: files.resume }, userId);
       console.log('Stopped before submit. Set SUBMIT_APPLICATION=1 to submit. Close browser when done.');
     }
     return { applied };
@@ -324,11 +330,13 @@ async function main(): Promise<void> {
   if (!jobUrl) {
     throw new AppError(CODES.NO_JOB_URL);
   }
+  const userId = resolveUserId({ envUserId: process.env.USER_ID, argv: process.argv });
   await runHandshakeApply(jobUrl, {
     submit: process.env.SUBMIT_APPLICATION === '1' || process.env.SUBMIT_APPLICATION === 'true',
     resumePath: process.env.RESUME_PATH,
     transcriptPath: process.env.TRANSCRIPT_PATH,
     coverPath: process.env.COVER_PATH,
+    userId,
   });
 }
 
