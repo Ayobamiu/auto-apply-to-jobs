@@ -42,7 +42,7 @@ export async function runJobScraper(jobUrl: string, options: RunJobScraperOption
   const forceScrape = options.forceScrape ?? (process.env.FORCE_SCRAPE === '1' || process.env.FORCE_SCRAPE === 'true');
 
   if (jobId && site && !forceScrape) {
-    const stored = getJob(site, jobId);
+    const stored = await getJob(site, jobId);
     if (stored) {
       return {
         job: stored,
@@ -73,7 +73,7 @@ export async function runJobScraper(jobUrl: string, options: RunJobScraperOption
     };
     if (job.appliedAt != null) payload.appliedAt = job.appliedAt;
     if (job.jobClosed != null) payload.jobClosed = job.jobClosed;
-    updateJob(site, jobId, payload);
+    await updateJob(site, jobId, payload);
   }
 
   return {
@@ -100,7 +100,7 @@ export async function getApplicationStatus(
   if (jobId && site) {
     const { getUserJobState, toJobRef } = await import('../../data/user-job-state.js');
     const jobRef = toJobRef(site, jobId);
-    const state = getUserJobState(userId, jobRef);
+    const state = await getUserJobState(userId, jobRef);
     if (state) {
       return {
         applicationSubmitted: !!state.applicationSubmitted,
@@ -165,13 +165,13 @@ if (process.argv[1] === __filename) {
   } else {
     const userId = resolveUserId({ envUserId: process.env.USER_ID, argv: process.argv });
     runJobScraper(jobUrl, { forceScrape: getForceScrape() })
-      .then(({ job, jobsFilePath, fromStore, htmlPath }) => {
+      .then(async ({ job, jobsFilePath, fromStore, htmlPath }) => {
         if (fromStore) console.log('(from store, skip re-scrape; use --force or FORCE_SCRAPE=1 to re-scrape)');
         console.log('Job:', job?.title || job?.company || jobUrl);
         if (job?.jobId) console.log('Job ID:', job.jobId);
         if (job?.site) console.log('Site:', job.site);
         console.log('Apply:', job?.applyType ?? 'unknown');
-        const userState = job?.site && job?.jobId ? getUserJobState(userId, toJobRef(job.site, job.jobId)) : null;
+        const userState = job?.site && job?.jobId ? await getUserJobState(userId, toJobRef(job.site, job.jobId)) : null;
         if (userState?.applicationSubmitted) console.log('Application submitted:', userState.appliedAt ?? 'yes');
         else console.log('Application submitted: no');
         console.log('Description length:', job?.description?.length ?? 0);

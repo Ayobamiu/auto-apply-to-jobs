@@ -31,19 +31,19 @@ export interface JobWithStatus {
   appliedAt?: string;
 }
 
-export function listJobsWithStatus(userId?: string): JobWithStatus[] {
+export async function listJobsWithStatus(userId?: string): Promise<JobWithStatus[]> {
   const uid = userId ?? 'default';
-  const data = listJobs();
+  const data = await listJobs();
   const result: JobWithStatus[] = [];
   for (const [site, jobs] of Object.entries(data)) {
     if (!jobs || typeof jobs !== 'object') continue;
     for (const [jobId, job] of Object.entries(jobs)) {
       const j = job as Job;
       const jobUrl = jobUrlFor(site, jobId, j);
-      const applicationState = jobUrl ? getApplicationState(jobUrl, uid) : null;
-      const { jsonPath, pdfPath } = getResumePathsForJob(site, jobId, uid);
+      const applicationState = jobUrl ? await getApplicationState(jobUrl, uid) : null;
+      const { jsonPath, pdfPath } = await getResumePathsForJob(site, jobId, uid);
       const hasResume = !!(jsonPath && existsSync(jsonPath)) || !!(pdfPath && existsSync(pdfPath));
-      const userState = getUserJobState(uid, toJobRef(site, jobId));
+      const userState = await getUserJobState(uid, toJobRef(site, jobId));
       const appliedAt: string | undefined = userState?.appliedAt ?? applicationState?.submittedAt ?? undefined;
       result.push({
         job: { ...j, jobId, site },

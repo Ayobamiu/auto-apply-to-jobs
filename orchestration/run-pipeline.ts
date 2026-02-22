@@ -52,7 +52,7 @@ export async function runPipelineForJob(
   if (isTimingEnabled()) console.log('[timing] Phase breakdown:');
   const endTotal = startTotal('pipeline');
   const endPreflight = startPhase('Preflight');
-  preflightForPipeline(jobUrl ?? undefined, userId);
+  await preflightForPipeline(jobUrl ?? undefined, userId);
   endPreflight();
 
   let job: Job;
@@ -88,7 +88,7 @@ export async function runPipelineForJob(
     const site = getJobSiteFromUrl(jobUrl);
     const jobId = getJobIdFromUrl(jobUrl) ?? undefined;
     if (site && jobId) {
-      updateJob(site, jobId, { ...job });
+      await updateJob(site, jobId, { ...job });
     }
   }
 

@@ -36,7 +36,7 @@ export async function runResumeGenerator(options: RunResumeGeneratorOptions = {}
   resumePath: string | null;
 }> {
   const userId = options.userId ?? 'default';
-  const profile = options.profile ?? getProfile(userId);
+  const profile = options.profile ?? (await getProfile(userId));
   const job = options.job ?? loadJob(options.jobPath);
   const outDir = options.outputDir ?? getPathsForUser(userId).resumesDir;
   const basename = resumeBasename(profile, job || {});
@@ -66,7 +66,7 @@ export async function runResumeGenerator(options: RunResumeGeneratorOptions = {}
   const jsonPath = join(outDir, `${basename}.json`);
   writeFileSync(jsonPath, JSON.stringify(resumeJson, null, 2), 'utf8');
   if (job?.site && job?.jobId) {
-    setUserJobState(userId, toJobRef(job.site, job.jobId), { resumeBasename: basename });
+    await setUserJobState(userId, toJobRef(job.site, job.jobId), { resumeBasename: basename });
   }
   return { jsonPath, resumePath: null };
 }

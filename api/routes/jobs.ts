@@ -5,14 +5,14 @@ import type { Request, Response } from 'express';
 import { listJobsWithStatus } from '../../orchestration/list-jobs-with-status.js';
 import { getApplicationStatus } from '../../agents/job_scraper_agent/index.js';
 
-export function getJobs(req: Request, res: Response): void {
+export async function getJobs(req: Request, res: Response): Promise<void> {
   const userId = req.userId;
   if (!userId) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
   try {
-    const jobs = listJobsWithStatus(userId);
+    const jobs = await listJobsWithStatus(userId);
     res.status(200).json(jobs);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to list jobs';

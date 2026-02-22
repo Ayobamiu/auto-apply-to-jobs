@@ -22,8 +22,8 @@ export async function updateResumeForJob(
   options: UpdateResumeForJobOptions = {}
 ): Promise<Record<string, unknown>> {
   const userId = options.userId ?? 'default';
-  getJob(site, jobId); // ensure job exists (optional check)
-  const jsonPath = getResumeJsonPathForJob(site, jobId, userId);
+  await getJob(site, jobId); // ensure job exists (optional check)
+  const jsonPath = await getResumeJsonPathForJob(site, jobId, userId);
   if (!jsonPath) {
     throw new AppError(CODES.NO_RESUME);
   }

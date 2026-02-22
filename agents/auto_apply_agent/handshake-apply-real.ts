@@ -43,10 +43,10 @@ async function getPreferredResumePathForJob(jobUrl: string, userId: string): Pro
   const jobId = getJobIdFromUrl(jobUrl);
   const site = getJobSiteFromUrl(jobUrl);
   if (!jobId || !site) return null;
-  const job = getJob(site, jobId);
+  const job = await getJob(site, jobId);
   if (!job) return null;
   try {
-    const { jsonPath, pdfPath } = getResumePathsForJob(site, jobId, userId);
+    const { jsonPath, pdfPath } = await getResumePathsForJob(site, jobId, userId);
     if (jsonPath && pdfPath) {
       if (existsSync(pdfPath)) return pdfPath;
       if (existsSync(jsonPath)) {
@@ -57,7 +57,7 @@ async function getPreferredResumePathForJob(jobUrl: string, userId: string): Pro
       }
       return null;
     }
-    const profile = getProfile(userId);
+    const profile = await getProfile(userId);
     const basename = resumeBasename(profile, job);
     if (!basename) return null;
     const path = join(getPathsForUser(userId).resumesDir, `${basename}.pdf`);
@@ -98,7 +98,7 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
   const userPaths = getPathsForUser(userId);
 
   const endPreflight = startPhase('Apply: preflight');
-  preflightForApply(jobUrl, userId);
+  await preflightForApply(jobUrl, userId);
   endPreflight();
 
   const endAlready = startPhase('Apply: check already applied (store)');
@@ -302,21 +302,21 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
         }
       }
       const submittedAt = new Date().toISOString();
-      setApplicationState(jobUrl, { resumePath: files.resume, submittedAt }, userId);
+      await setApplicationState(jobUrl, { resumePath: files.resume, submittedAt }, userId);
       if (submitted) {
         applied = true;
         const jid = getJobIdFromUrl(jobUrl);
         const site = getJobSiteFromUrl(jobUrl);
         if (jid && site) {
           const jobRef = toJobRef(site, jid);
-          setUserJobState(userId, jobRef, { applicationSubmitted: true, appliedAt: submittedAt });
-          const stored = getJob(site, jid);
-          updateJob(site, jid, { ...(stored || { url: jobUrl }) });
+          await setUserJobState(userId, jobRef, { applicationSubmitted: true, appliedAt: submittedAt });
+          const stored = await getJob(site, jid);
+          await updateJob(site, jid, { ...(stored || { url: jobUrl }) });
         }
       }
       endSubmit();
     } else {
-      setApplicationState(jobUrl, { resumePath: files.resume }, userId);
+      await setApplicationState(jobUrl, { resumePath: files.resume }, userId);
       console.log('Stopped before submit. Set SUBMIT_APPLICATION=1 to submit. Close browser when done.');
     }
     return { applied };
