@@ -9,8 +9,8 @@ import { loadJob } from '../shared/job.js';
 import { toHandshakeJobDetailsUrl, getJobIdFromUrl, getJobSiteFromUrl } from '../shared/job-from-url.js';
 import { updateJob } from '../data/jobs.js';
 import { PATHS, getPathsForUser, resolveUserId } from '../shared/config.js';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { fileURLToPath, pathToFileURL } from 'url';
+import { dirname, resolve } from 'path';
 import { isAppError } from '../shared/errors.js';
 import { preflightForPipeline } from '../shared/preflight.js';
 import { runHandshakeApply } from '../agents/auto_apply_agent/handshake-apply-real.js';
@@ -134,13 +134,16 @@ async function main(): Promise<void> {
   });
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((err: unknown) => {
-    if (isAppError(err)) {
-      console.error(err.message);
-    } else {
-      console.error(err);
-    }
-    process.exit(1);
-  });
+const entryHref = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : '';
+if (entryHref === import.meta.url) {
+  main()
+    .then(() => process.exit(0))
+    .catch((err: unknown) => {
+      if (isAppError(err)) {
+        console.error(err.message);
+      } else {
+        console.error(err);
+      }
+      process.exit(1);
+    });
+}
