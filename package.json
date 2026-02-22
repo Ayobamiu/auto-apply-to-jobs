@@ -15,6 +15,7 @@
     "job:scrape": "node agents/job_scraper_agent/index.js",
     "job:status": "node agents/job_scraper_agent/index.js --status",
     "resume:generate": "node agents/resume_generator_agent/index.js",
+    "resume:edit": "node agents/resume_generator_agent/resume-edit-cli.js",
     "pipeline": "node orchestration/run-pipeline.js"
   },
   "devDependencies": {

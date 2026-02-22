@@ -4,6 +4,7 @@
  * Uses an LLM to tailor the resume to the job; returns a single JSON Resume object.
  */
 import OpenAI from 'openai';
+import { AppError, CODES } from '../../shared/errors.js';
 
 const SCHEMA_URL = 'https://raw.githubusercontent.com/jsonresume/resume-schema/master/schema.json';
 
@@ -108,7 +109,7 @@ const EDIT_SYSTEM_PROMPT = `You are a resume editor. You will receive the curren
 export async function updateResumeFromChat(resumeJson, userMessage, options = {}) {
   const key = options.apiKey ?? process.env.OPENAI_API_KEY;
   if (!key) {
-    throw new Error('Resume edit requires OPENAI_API_KEY (or pass apiKey in options).');
+    throw new AppError(CODES.MISSING_API_KEY);
   }
 
   const openaiOptions = { apiKey: key };

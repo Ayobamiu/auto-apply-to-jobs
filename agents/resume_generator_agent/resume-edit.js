@@ -4,6 +4,7 @@
 import { getJob } from '../../data/jobs.js';
 import { getResumeJsonPathForJob, readResumeJson, writeResumeJson } from '../../data/resumes.js';
 import { updateResumeFromChat } from './assistant.js';
+import { AppError, CODES } from '../../shared/errors.js';
 
 /**
  * Edit the resume for a job per user message. Requires OPENAI_API_KEY (or options.apiKey).
@@ -17,7 +18,7 @@ export async function updateResumeForJob(site, jobId, userMessage, options = {})
   const job = getJob(site, jobId);
   const jsonPath = getResumeJsonPathForJob(site, jobId);
   if (!jsonPath) {
-    throw new Error('No resume for this job. Generate one first (e.g. run pipeline with this job URL).');
+    throw new AppError(CODES.NO_RESUME);
   }
 
   const resumeJson = readResumeJson(jsonPath);

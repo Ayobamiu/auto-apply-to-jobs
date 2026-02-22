@@ -13,24 +13,33 @@ import { loadJob } from '../shared/job.js';
 import { toHandshakeJobDetailsUrl, getJobIdFromUrl, getJobSiteFromUrl } from '../shared/job-from-url.js';
 import { updateJob } from '../data/jobs.js';
 import { PATHS } from '../shared/config.js';
-import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { join, dirname } from 'path';
+import { isAppError } from '../shared/errors.js';
+import { preflightForPipeline } from '../shared/preflight.js';
+import { runHandshakeApply } from '../agents/auto_apply_agent/handshake-apply-real.js';
+import { getApplicationStatus } from '../agents/job_scraper_agent/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(__dirname, '..');
 
 function getJobUrl() {
   const raw = process.env.JOB_URL || process.argv[2] || null;
   return raw ? toHandshakeJobDetailsUrl(raw) : null;
 }
 
-async function main() {
-  const jobUrl = getJobUrl();
+/**
+ * Run full pipeline for a job: scrape, generate resume, optionally apply. Callable API (no spawn).
+ * @param {string | null} jobUrl - Handshake job URL (or null for resume-only from shared/job.json)
+ * @param {{ submit?: boolean, forceScrape?: boolean }} [options]
+ * @returns {Promise<{ job: object, jsonPath?: string, resumePath?: string, applied?: boolean }>}
+ */
+export async function runPipelineForJob(jobUrl, options = {}) {
+  preflightForPipeline(jobUrl ?? undefined);
+
   let job;
   if (jobUrl) {
     console.log('Step 0: Get job from URL (scrape or cache)...');
-    const { job: scrapedJob } = await runJobScraper(jobUrl);
+    const { job: scrapedJob } = await runJobScraper(jobUrl, { forceScrape: options.forceScrape });
     job = scrapedJob;
     console.log('Job:', job.title || job.company || jobUrl);
   } else {
@@ -57,23 +66,41 @@ async function main() {
 
   if (!jobUrl) {
     console.log('No JOB_URL. Run handshake:apply with the job URL when ready.');
-    return;
+    return { job, jsonPath, resumePath };
+  }
+
+  const { applicationSubmitted } = await getApplicationStatus(jobUrl, { fromStoreOnly: true });
+  if (applicationSubmitted) {
+    console.log('Already applied to this job. Skipping apply step.');
+    return { job, jsonPath, resumePath, applied: true, skipped: true };
   }
 
   console.log('Step 2: Run Handshake apply...');
-  const child = spawn(
-    'node',
-    [join(ROOT, 'agents/auto_apply_agent/handshake-apply-real.js'), jobUrl],
-    {
-      cwd: ROOT,
-      stdio: 'inherit',
-      env: { ...process.env, RESUME_PATH: resumePath },
-    }
-  );
-  child.on('exit', (code) => process.exit(code ?? 0));
+  const applyResult = await runHandshakeApply(jobUrl, {
+    submit: options.submit ?? (process.env.SUBMIT_APPLICATION === '1' || process.env.SUBMIT_APPLICATION === 'true'),
+    resumePath,
+  });
+  return {
+    job,
+    jsonPath,
+    resumePath,
+    applied: applyResult.applied || applyResult.skipped,
+  };
 }
 
-main().catch((err) => {
-  console.error(err);
+async function main() {
+  const jobUrl = getJobUrl();
+  await runPipelineForJob(jobUrl, {
+    submit: process.env.SUBMIT_APPLICATION === '1' || process.env.SUBMIT_APPLICATION === 'true',
+    forceScrape: process.env.FORCE_SCRAPE === '1' || process.env.FORCE_SCRAPE === 'true',
+  });
+}
+
+main().then(() => process.exit(0)).catch((err) => {
+  if (isAppError(err)) {
+    console.error(err.message);
+  } else {
+    console.error(err);
+  }
   process.exit(1);
 });
