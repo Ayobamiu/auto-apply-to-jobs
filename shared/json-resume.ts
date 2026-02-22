@@ -1,12 +1,11 @@
 /**
  * Map our profile (and optional job) to JSON Resume schema.
- * Schema: https://jsonresume.org/schema/
  */
+import type { Profile, Job } from './types.js';
 
 const SCHEMA_URL = 'https://raw.githubusercontent.com/jsonresume/resume-schema/master/schema.json';
 
-/** Parse "May 2025 – Sep 2025" or "2023 – 2025" or "2025" to { startDate, endDate } (ISO8601-ish). */
-function parseDateRange(dates) {
+function parseDateRange(dates: string | undefined): { startDate?: string; endDate?: string } {
   if (!dates || typeof dates !== 'string') return {};
   const s = dates.trim();
   const dash = s.includes('–') ? '–' : s.includes('-') ? '-' : null;
@@ -16,7 +15,7 @@ function parseDateRange(dates) {
   }
   const [startPart, endPart] = s.split(dash).map((x) => x.trim());
   const monthNames = 'jan feb mar apr may jun jul aug sep oct nov dec'.split(' ');
-  const toIso = (part) => {
+  const toIso = (part: string): string | null => {
     const year = part.match(/\d{4}/)?.[0];
     if (!year) return null;
     const lower = part.toLowerCase();
@@ -29,15 +28,29 @@ function parseDateRange(dates) {
   return { startDate: startDate || undefined, endDate: endDate || undefined };
 }
 
-/**
- * @param {object} profile - Our profile (name, email, education, experience, skills, projects, ...)
- * @param {object} [job] - Optional job (title, company, description) for future tailoring
- * @returns {object} JSON Resume document
- */
-export function profileToJsonResume(profile, job = {}) {
-  const basics = {
+interface ExperienceEntry {
+  company?: string;
+  title?: string;
+  location?: string;
+  dates?: string;
+  bullets?: string[];
+}
+
+interface EducationEntry {
+  school?: string;
+  degree?: string;
+  year?: string | number;
+}
+
+interface ProjectEntry {
+  name?: string;
+  bullets?: string[];
+}
+
+export function profileToJsonResume(profile: Profile & { contact?: { email?: string; phone?: string }; github?: string; title?: string; location?: string | { region?: string } }, job: Job = {}): Record<string, unknown> {
+  const basics: Record<string, unknown> = {
     name: profile.name,
-    label: profile.title || job.title || 'Software Engineer',
+    label: (profile as { title?: string }).title || job.title || 'Software Engineer',
     email: profile.email || profile.contact?.email,
     phone: profile.phone || profile.contact?.phone,
     url: profile.github || profile.linkedin,
@@ -49,13 +62,12 @@ export function profileToJsonResume(profile, job = {}) {
       : undefined,
     profiles: [],
   };
-  if (profile.linkedin)
-    basics.profiles.push({ network: 'LinkedIn', url: profile.linkedin });
-  if (profile.github)
-    basics.profiles.push({ network: 'GitHub', url: profile.github });
-  if (!basics.profiles.length) delete basics.profiles;
+  const profiles = basics.profiles as Array<{ network: string; url: string }>;
+  if (profile.linkedin) profiles.push({ network: 'LinkedIn', url: profile.linkedin });
+  if (profile.github) profiles.push({ network: 'GitHub', url: profile.github });
+  if (!profiles.length) delete basics.profiles;
 
-  const work = (profile.experience || []).map((e) => {
+  const work = ((profile.experience || []) as ExperienceEntry[]).map((e) => {
     const { startDate, endDate } = parseDateRange(e.dates);
     return {
       name: e.company,
@@ -68,7 +80,7 @@ export function profileToJsonResume(profile, job = {}) {
     };
   });
 
-  const education = (profile.education || []).map((e) => {
+  const education = ((profile.education || []) as EducationEntry[]).map((e) => {
     const year = e.year ? String(e.year).trim() : '';
     const degree = e.degree || '';
     const studyType = /M\.?S\.?|Master/i.test(degree) ? 'Master' : /B\.?S\.?|Bachelor/i.test(degree) ? 'Bachelor' : undefined;
@@ -80,20 +92,20 @@ export function profileToJsonResume(profile, job = {}) {
     };
   });
 
-  const skills = [];
+  const skills: Array<{ name: string; keywords: string[] }> = [];
   if (profile.skills && typeof profile.skills === 'object') {
     for (const [name, keywords] of Object.entries(profile.skills)) {
       skills.push({ name, keywords: Array.isArray(keywords) ? keywords : [] });
     }
   }
 
-  const projects = (profile.projects || []).map((p) => ({
+  const projects = ((profile.projects || []) as ProjectEntry[]).map((p) => ({
     name: p.name,
     description: (p.bullets && p.bullets[0]) || undefined,
     highlights: p.bullets && p.bullets.length > 1 ? p.bullets.slice(1) : p.bullets || [],
   }));
 
-  const out = {
+  return {
     $schema: SCHEMA_URL,
     basics,
     work,
@@ -101,5 +113,4 @@ export function profileToJsonResume(profile, job = {}) {
     skills,
     projects,
   };
-  return out;
 }

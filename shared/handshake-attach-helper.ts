@@ -1,25 +1,27 @@
 /**
- * Handshake apply modal: for each attachment (transcript, resume, cover letter),
- * try to select an existing file by name (search) first; if not found, upload new.
- * Modal structure matches public/handshake.html: form[data-hook="apply-modal-content"], fieldsets with
- * "Attach your transcript/resume/Cover letter", then "Upload new" label + file input (name and id).
+ * Handshake apply modal: for each attachment, try to select by name first; if not found, upload new.
  */
 import { basename } from 'path';
+import type { Page, Locator } from 'playwright';
 
-/**
- * Try to select an existing attachment by name from the "Search your X" dropdown; otherwise upload the file.
- * @param {import('playwright').Page} page
- * @param {import('playwright').Locator} modal - Apply modal (e.g. [data-hook="apply-modal-content"])
- * @param {{ sectionHeading: string, searchPlaceholder: string, fileInputName: string, fileInputId?: string, filePath: string }} options
- * @returns {Promise<'selected' | 'uploaded'>}
- */
-export async function attachSection(page, modal, options) {
+export interface AttachSectionOptions {
+  sectionHeading: string;
+  searchPlaceholder: string;
+  fileInputName: string;
+  fileInputId?: string;
+  filePath: string;
+}
+
+export async function attachSection(page: Page, modal: Locator, options: AttachSectionOptions): Promise<'selected' | 'uploaded'> {
   const { sectionHeading, searchPlaceholder, fileInputName, fileInputId, filePath } = options;
   const fileNameForSearch = basename(filePath);
 
-  const fieldset = modal.locator('fieldset').filter({
-    has: page.getByRole('heading', { name: new RegExp(sectionHeading, 'i') }),
-  }).first();
+  const fieldset = modal
+    .locator('fieldset')
+    .filter({
+      has: page.getByRole('heading', { name: new RegExp(sectionHeading, 'i') }),
+    })
+    .first();
 
   try {
     const searchInput = fieldset.getByPlaceholder(new RegExp(searchPlaceholder, 'i'));
@@ -32,21 +34,18 @@ export async function attachSection(page, modal, options) {
     await option.waitFor({ state: 'visible', timeout: 2000 });
     await option.click();
     return 'selected';
-  } catch (_) {
-    // No search UI (e.g. public/handshake.html) or no match — upload new
-  }
+  } catch (_) {}
 
-  const upload = async (inputLocator) => {
+  const upload = async (inputLocator: Locator) => {
     await inputLocator.setInputFiles(filePath, { timeout: 10000 });
   };
 
-  // Try in order: within fieldset, in modal by name, whole page (real Handshake), by id (public/handshake.html)
   const withinSection = fieldset.locator(`input[name="${fileInputName}"], input[type="file"]`).first();
   const inModalByName = modal.locator(`input[name="${fileInputName}"]`).first();
   const onPage = page.locator(`input[name="${fileInputName}"]`).first();
   const byId = fileInputId ? page.locator(`#${fileInputId}`).first() : null;
 
-  const tryAll = () =>
+  const tryAll = (): Promise<void> =>
     upload(withinSection)
       .catch(() => upload(inModalByName))
       .catch(() => upload(onPage))
@@ -56,14 +55,13 @@ export async function attachSection(page, modal, options) {
     await tryAll();
   } catch (_) {
     const uploadNewLabel = fieldset.getByText(/Upload\s+new/i).first();
-    await uploadNewLabel.click({ timeout: 3000 }).catch(() => { });
+    await uploadNewLabel.click({ timeout: 3000 }).catch(() => {});
     await new Promise((r) => setTimeout(r, 500));
     await tryAll();
   }
   return 'uploaded';
 }
 
-/** Section config aligned with public/handshake.html (legend text and input name/id). */
 export const SECTION_CONFIG = {
   transcript: {
     sectionHeading: 'Attach your transcript',
@@ -83,4 +81,4 @@ export const SECTION_CONFIG = {
     fileInputName: 'file-CoverLetter',
     fileInputId: 'file-cover',
   },
-};
+} as const;

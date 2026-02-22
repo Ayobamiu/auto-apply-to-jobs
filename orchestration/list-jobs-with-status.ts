@@ -6,10 +6,12 @@ import { listJobs } from '../data/jobs.js';
 import { getApplicationState } from '../data/apply-state.js';
 import { getResumePathsForJob } from '../data/resumes.js';
 import { normalizeUrl, toHandshakeJobDetailsUrl } from '../shared/job-from-url.js';
+import type { Job } from '../shared/types.js';
+import type { ApplicationState } from '../shared/types.js';
 
 const HANDSHAKE_JOBS_BASE = process.env.HANDSHAKE_JOBS_BASE_URL || 'https://wmich.joinhandshake.com';
 
-function jobUrlFor(site, jobId, job) {
+function jobUrlFor(site: string, jobId: string, job: Job): string | null {
   if (job?.url) {
     return site === 'handshake' ? toHandshakeJobDetailsUrl(job.url) : normalizeUrl(job.url);
   }
@@ -20,22 +22,28 @@ function jobUrlFor(site, jobId, job) {
   return null;
 }
 
-/**
- * @returns {Array<{ job: object, jobUrl: string | null, applicationState: object | null, hasResume: boolean, appliedAt?: string }>}
- */
-export function listJobsWithStatus() {
+export interface JobWithStatus {
+  job: Job & { jobId: string; site: string };
+  jobUrl: string | null;
+  applicationState: ApplicationState | null;
+  hasResume: boolean;
+  appliedAt?: string;
+}
+
+export function listJobsWithStatus(): JobWithStatus[] {
   const data = listJobs();
-  const result = [];
+  const result: JobWithStatus[] = [];
   for (const [site, jobs] of Object.entries(data)) {
     if (!jobs || typeof jobs !== 'object') continue;
     for (const [jobId, job] of Object.entries(jobs)) {
-      const jobUrl = jobUrlFor(site, jobId, job);
+      const j = job as Job;
+      const jobUrl = jobUrlFor(site, jobId, j);
       const applicationState = jobUrl ? getApplicationState(jobUrl) : null;
       const { jsonPath, pdfPath } = getResumePathsForJob(site, jobId);
       const hasResume = !!(jsonPath && existsSync(jsonPath)) || !!(pdfPath && existsSync(pdfPath));
-      const appliedAt = job?.appliedAt ?? applicationState?.submittedAt ?? null;
+      const appliedAt = j?.appliedAt ?? applicationState?.submittedAt ?? null;
       result.push({
-        job: { ...job, jobId, site },
+        job: { ...j, jobId, site },
         jobUrl,
         applicationState,
         hasResume,

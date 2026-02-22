@@ -1,6 +1,5 @@
 /**
  * Playwright form-filling bot for the job application demo.
- * Handles iframe, dynamic fields, validation retries, and screenshots.
  */
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'url';
@@ -11,13 +10,27 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const BASE_URL = process.env.BASE_URL || 'http://localhost:8765';
 const SAMPLE_PDF = join(__dirname, 'fixtures', 'sample-resume.pdf');
 
-function ensureDir(dir) {
+function ensureDir(dir: string): void {
   try {
     mkdirSync(dir, { recursive: true });
-  } catch (_) { }
+  } catch (_) {}
 }
 
-export async function fillJobApplicationForm(options = {}) {
+export interface FillJobApplicationFormOptions {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  workAuth?: string;
+  phone?: string;
+  linkedin?: string;
+  stopBeforeSubmit?: boolean;
+  headless?: boolean;
+  keepOpen?: boolean;
+  screenshotDir?: string;
+  runId?: number | null;
+}
+
+export async function fillJobApplicationForm(options: FillJobApplicationFormOptions = {}): Promise<{ success: boolean; message: string }> {
   const {
     firstName = 'Jane',
     lastName = 'Doe',
@@ -43,13 +56,11 @@ export async function fillJobApplicationForm(options = {}) {
     await page.goto(BASE_URL, { waitUntil: 'load' });
     await page.waitForSelector('#first-name', { state: 'visible' });
 
-    // --- Step 1: Main page fields (order is random; we fill by id) ---
     await page.fill('#first-name', firstName);
     await page.fill('#last-name', lastName);
     await page.fill('#email', email);
     await page.selectOption('#work-auth', { value: workAuth });
 
-    // Dynamic field: appears when work-auth is "visa" or "other"
     if (workAuth === 'visa') {
       await page.waitForSelector('#visa-type', { state: 'visible', timeout: 3000 });
       await page.fill('#visa-type', 'H1B');
@@ -58,7 +69,6 @@ export async function fillJobApplicationForm(options = {}) {
       await page.fill('#other-specify', 'Other work authorization');
     }
 
-    // Iframe fields
     await page.waitForSelector('#application-iframe', { state: 'attached' });
     const frame = page.frameLocator('#application-iframe');
     await frame.locator('#iframe-phone').waitFor({ state: 'visible', timeout: 5000 });
@@ -67,7 +77,6 @@ export async function fillJobApplicationForm(options = {}) {
 
     await page.screenshot({ path: join(screenshotDir, `${prefix}step-1-filled.png`) });
 
-    // Click Next; retry if validation errors keep us on step 1
     const maxRetries = 5;
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       await page.locator('#next-btn').scrollIntoViewIfNeeded();
@@ -85,7 +94,6 @@ export async function fillJobApplicationForm(options = {}) {
     await page.waitForSelector('#step2.active', { state: 'visible', timeout: 5000 });
     await page.screenshot({ path: join(screenshotDir, `${prefix}step-2-visible.png`) });
 
-    // --- Step 2: Resume + terms ---
     await page.setInputFiles('#resume', SAMPLE_PDF);
     await page.check('#agree-terms');
 
@@ -106,7 +114,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   fillJobApplicationForm({ stopBeforeSubmit: true, keepOpen: true })
     .then((r) => console.log(r.message))
     .catch((err) => {
-      console.error('Error:', err.message);
+      console.error('Error:', (err as Error).message);
       process.exit(1);
     });
 }

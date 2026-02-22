@@ -1,22 +1,21 @@
 /**
  * Real Handshake: open login page, wait for manual login, save session to .auth/handshake-state.json.
- * Run once (or when session expires). No credentials in code; you log in in the browser.
  */
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'url';
-import { join, dirname } from 'path';
+import { dirname } from 'path';
 import { mkdirSync } from 'fs';
 import { PATHS } from '../../shared/config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-function ensureAuthDir() {
+function ensureAuthDir(): void {
   try {
     mkdirSync(PATHS.auth, { recursive: true });
-  } catch (_) { }
+  } catch (_) {}
 }
 
-async function main() {
+async function main(): Promise<void> {
   ensureAuthDir();
 
   const browser = await chromium.launch({ headless: false });

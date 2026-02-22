@@ -12,9 +12,11 @@ export const CODES = {
   PREFLIGHT_FAILED: 'PREFLIGHT_FAILED',
   SCRAPE_TIMEOUT: 'SCRAPE_TIMEOUT',
   MISSING_API_KEY: 'MISSING_API_KEY',
-};
+} as const;
 
-const DEFAULT_MESSAGES = {
+export type AppErrorCode = (typeof CODES)[keyof typeof CODES];
+
+const DEFAULT_MESSAGES: Record<AppErrorCode, string> = {
   [CODES.SESSION_EXPIRED]: 'Session expired or not logged in. Run: npm run handshake:login',
   [CODES.NO_SESSION]: 'No saved session. Run: npm run handshake:login',
   [CODES.NO_JOB_URL]: 'Provide job URL: JOB_URL=<url> npm run handshake:apply  OR  npm run handshake:apply -- <url>',
@@ -28,21 +30,18 @@ const DEFAULT_MESSAGES = {
 };
 
 export class AppError extends Error {
-  /**
-   * @param {string} code - One of CODES
-   * @param {string} [message] - Override default message
-   */
-  constructor(code, message) {
+  code: AppErrorCode;
+  constructor(code: AppErrorCode, message?: string) {
     super(message ?? DEFAULT_MESSAGES[code] ?? code);
     this.name = 'AppError';
     this.code = code;
   }
 }
 
-export function isAppError(err) {
-  return err && err.name === 'AppError' && err.code;
+export function isAppError(err: unknown): err is AppError {
+  return err instanceof AppError && err.code !== undefined;
 }
 
-export function messageForCode(code) {
+export function messageForCode(code: AppErrorCode): string {
   return DEFAULT_MESSAGES[code] ?? code;
 }

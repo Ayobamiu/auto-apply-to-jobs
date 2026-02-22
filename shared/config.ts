@@ -19,13 +19,11 @@ export const PATHS = {
   output: join(ROOT, 'output'),
   scrapeScreenshots: join(ROOT, 'output', 'scrape-screenshots'),
   applyScreenshots: join(ROOT, 'output', 'apply-screenshots'),
-  // Data layer paths (under data/)
   profile: join(dataRoot, 'profile.json'),
   jobsFile: join(dataRoot, 'jobs.json'),
   applyState: join(dataRoot, 'apply-state.json'),
   resumes: join(dataRoot, 'resumes'),
   applyForms: join(dataRoot, 'apply-forms'),
   jobCache: join(dataRoot, 'job-cache'),
-  // Legacy / shared
   job: join(ROOT, 'shared', 'job.json'),
 };

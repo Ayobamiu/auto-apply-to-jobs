@@ -5,14 +5,14 @@ import { runHandshakeApply } from './handshake-apply.js';
 
 const RUNS = 10;
 
-async function main() {
+async function main(): Promise<void> {
   for (let i = 0; i < RUNS; i++) {
     const run = i + 1;
     try {
       const result = await runHandshakeApply({ stopBeforeSubmit: true, keepOpen: true });
       console.log(`Run ${run}/${RUNS}: success — ${result.log ?? result.message}`);
     } catch (err) {
-      console.error(`Run ${run}/${RUNS}: failure — ${err.message}`);
+      console.error(`Run ${run}/${RUNS}: failure — ${(err as Error).message}`);
       process.exit(1);
     }
   }

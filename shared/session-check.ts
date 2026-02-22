@@ -1,6 +1,5 @@
 /**
  * Check if Handshake session (saved auth state) is still valid without running the full apply flow.
- * Used by apply script and pipeline so UI/CLI can fail fast with NO_SESSION or SESSION_EXPIRED.
  */
 import { existsSync } from 'fs';
 import { chromium } from 'playwright';
@@ -9,12 +8,11 @@ import { PATHS } from './config.js';
 const SESSION_CHECK_TIMEOUT_MS = 15000;
 const STABLE_HANDSHAKE_URL = process.env.HANDSHAKE_JOBS_BASE_URL || 'https://app.joinhandshake.com';
 
-/**
- * Load storage state from PATHS.authState; launch headless browser, restore context, goto Handshake URL,
- * then check if we're on a login page. Close browser when done.
- * @returns {{ valid: true } | { valid: false, reason: 'no_session' | 'session_expired' }}
- */
-export async function checkSessionValid() {
+export type SessionCheckResult =
+  | { valid: true }
+  | { valid: false; reason: 'no_session' | 'session_expired' };
+
+export async function checkSessionValid(): Promise<SessionCheckResult> {
   if (!existsSync(PATHS.authState)) {
     return { valid: false, reason: 'no_session' };
   }

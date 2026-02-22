@@ -104,17 +104,55 @@ If you haven’t run `handshake:login` yet, `handshake:apply` will tell you to d
 
 If Handshake shows a bot-protection or blocking page when scraping, run with a visible browser: set `SCRAPE_HEADED=1` in `.env` or prefix the command: `SCRAPE_HEADED=1 npm run pipeline -- '...'`.
 
+### Commands reference
+
+| Script | Description |
+|--------|-------------|
+| `handshake:login` | One-time login; saves session to `.auth/` |
+| `handshake:login:record` | Record navigation during login (for tuning login detection) |
+| `handshake:apply` | Apply to one job (session + job URL); stops before submit unless `SUBMIT_APPLICATION=1` |
+| `job:scrape` | Scrape job from URL into `data/jobs.json` |
+| `job:status` | Show application status for a job URL |
+| `resume:generate` | Generate resume from profile + `shared/job.json` (no URL) |
+| `resume:edit` | Edit resume for a job by message (see “Editing a resume” below) |
+| `pipeline` | Scrape job (if URL given), generate resume, then run apply when `JOB_URL` set |
+
+**Env vars that change behavior:** `JOB_URL`, `SUBMIT_APPLICATION` (1 = submit after attach), `SCRAPE_HEADED` (1 = visible browser for scrape), `FORCE_SCRAPE` (1 = re-scrape even if job in store), `RESUME_PATH`, `TRANSCRIPT_PATH`, `COVER_PATH` (override fixture paths), `OPENAI_API_KEY` (for resume assistant / edit), `HANDSHAKE_JOBS_BASE_URL` (school Handshake base).
+
+### Where data is stored
+
+- `data/profile.json` — Your profile (name, email, education, experience, skills).
+- `data/jobs.json` — Scraped jobs keyed by site + job ID.
+- `data/apply-state.json` — Per-job apply state (resume path, submittedAt).
+- `data/resumes/` — Generated resume JSON and PDFs per job.
+- `data/apply-forms/` — Captured apply form schemas per job.
+- `data/job-cache/` — Cached job HTML by URL.
+- `output/` — Screenshots (e.g. scrape, apply); some legacy paths may still write here.
+- `.auth/` — Saved Handshake session (gitignored).
+
+### Editing a resume for a job
+
+To change a tailored resume without regenerating from scratch:
+
+```bash
+npm run resume:edit -- handshake <jobId> "Your edit message"
+```
+
+Example: `npm run resume:edit -- handshake 10764179 "Add Django to skills"`
+
+The job must already have a resume linked (run the pipeline with that job URL first, or ensure the job exists in `data/jobs.json` with a `resumeBasename` and the corresponding file in `data/resumes/`). Requires `OPENAI_API_KEY` in `.env`. After editing, re-run the pipeline or export PDF if you need an updated PDF.
+
 ## Agents and pipeline
 
 The repo is structured for multiple agents (each with a clear input/output):
 
-- **Resume generator** — `shared/profile.json` + job (file or from URL) → JSON Resume → PDF in `output/`.  
-  - `npm run resume:generate` — uses `shared/job.json`; writes `output/resume-<job-slug>.json` and `output/resume-<job-slug>.pdf` (via [resumed](https://github.com/rbardini/resumed) + theme).  
+- **Resume generator** — `data/profile.json` + job (file or from URL) → JSON Resume → PDF in `data/resumes/` (or legacy `output/`).
+  - `npm run resume:generate` — uses `shared/job.json`; writes resume JSON and PDF (e.g. in `data/resumes/`). (via [resumed](https://github.com/rbardini/resumed) + theme).  
   - **Resume assistant (LLM):** set `USE_RESUME_ASSISTANT=1` and `OPENAI_API_KEY` to use the LLM to tailor the resume to the job; otherwise a direct profile→JSON mapping is used. The assistant is in `assistant.js` (separate from the JSON→PDF step in `export-pdf.js`) so we can add conversational editing later.
 
-- **Job from URL** — Handshake job URL → scrape title, company, description; cache by URL in `output/job-cache/` (24h). Used automatically by the pipeline when `JOB_URL` is set. If the site shows a bot-protection page in headless mode, run with `SCRAPE_HEADED=1` to use a visible browser (e.g. `SCRAPE_HEADED=1 npm run pipeline -- 'https://...'`).
+- **Job from URL** — Handshake job URL → scrape title, company, description; cache by URL in `data/job-cache/` (24h). Used automatically by the pipeline when `JOB_URL` is set. If the site shows a bot-protection page in headless mode, run with `SCRAPE_HEADED=1` to use a visible browser (e.g. `SCRAPE_HEADED=1 npm run pipeline -- 'https://...'`).
 
-- **Apply state** — Per-job state in `output/apply-state.json` (keyed by job URL). Records when a job has been uploaded (resume path, timestamp). If you run apply again for the same job, uploads are skipped and the modal opens in "ready to submit" mode. On successful submit, `output/jobs.json` is also updated so that job’s `applicationSubmitted` and `appliedAt` stay in sync.
+- **Apply state** — Per-job state in `data/apply-state.json` (keyed by job URL). Records when a job has been uploaded (resume path, timestamp). If you run apply again for the same job, uploads are skipped and the modal opens in "ready to submit" mode. On successful submit, `data/jobs.json` is also updated so that job’s `applicationSubmitted` and `appliedAt` stay in sync.
 
 - **Auto-apply (Handshake)** — session + job URL + PDFs → apply flow (stops before submit).  
   - `npm run handshake:login` | `handshake:login:record` | `handshake:apply` (see Real Handshake above).  
@@ -133,5 +171,5 @@ The repo is structured for multiple agents (each with a clear input/output):
 - `orchestration/run-pipeline.js` – Job from URL or file → resume gen → (optionally) apply
 - `public/` – Demo form, iframe form, fake Handshake page
 - `fill-form.js`, `handshake-apply.js`, `test-handshake.js` – Demo / fake Handshake (local tests)
-- `fixtures/` – Sample PDFs; `output/` – Generated resumes, job cache, apply state (gitignored)
+- `fixtures/` – Sample PDFs; `data/` – Profile, jobs, apply state, resumes, job cache; `output/` – Screenshots (gitignored)
 - `.auth/` – Saved Handshake session (gitignored)

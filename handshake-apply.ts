@@ -14,9 +14,15 @@ const FIXTURES = {
   coverLetter: join(__dirname, 'fixtures', 'sample-cover-letter.pdf'),
 };
 
-export async function runHandshakeApply(options = {}) {
+export interface RunHandshakeApplyOptions {
+  headless?: boolean;
+  stopBeforeSubmit?: boolean;
+  keepOpen?: boolean;
+}
+
+export async function runHandshakeApply(options: RunHandshakeApplyOptions = {}): Promise<{ success: boolean; message?: string; log?: string }> {
   const { headless = true, stopBeforeSubmit = true, keepOpen = false } = options;
-  const submittedLogs = [];
+  const submittedLogs: string[] = [];
 
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext();
@@ -56,7 +62,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       console.log(r.log != null ? 'Success: ' + r.log : r.message);
     })
     .catch((err) => {
-      console.error('Error:', err.message);
+      console.error('Error:', (err as Error).message);
       process.exit(1);
     });
 }

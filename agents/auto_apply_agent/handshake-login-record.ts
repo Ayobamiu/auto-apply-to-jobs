@@ -1,7 +1,5 @@
 /**
  * Record all main-frame navigations during Handshake login.
- * Run this, log in manually in the browser, then close the browser window.
- * URLs are written to .auth/navigation-log.json.
  */
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'url';
@@ -12,27 +10,33 @@ import { PATHS } from '../../shared/config.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LOGIN_URL = 'https://app.joinhandshake.com/login';
 
-function ensureAuthDir() {
-  try {
-    mkdirSync(PATHS.auth, { recursive: true });
-  } catch (_) { }
+interface LogEntry {
+  url: string;
+  timestamp: string;
+  label: string;
 }
 
-function writeLogToFile(entries) {
+function ensureAuthDir(): void {
+  try {
+    mkdirSync(PATHS.auth, { recursive: true });
+  } catch (_) {}
+}
+
+function writeLogToFile(entries: LogEntry[]): void {
   ensureAuthDir();
   writeFileSync(PATHS.navigationLog, JSON.stringify(entries, null, 2), 'utf8');
 }
 
-function writeLog(entries) {
+function writeLog(entries: LogEntry[]): void {
   writeLogToFile(entries);
   console.log('Wrote', entries.length, 'entries to', PATHS.navigationLog);
 }
 
-async function main() {
+async function main(): Promise<void> {
   ensureAuthDir();
-  const entries = [];
+  const entries: LogEntry[] = [];
 
-  function record(url, label = 'navigate') {
+  function record(url: string, label = 'navigate'): void {
     const entry = { url, timestamp: new Date().toISOString(), label };
     entries.push(entry);
     console.log(`[${entries.length}] ${label}: ${url}`);
@@ -54,7 +58,7 @@ async function main() {
     }
   });
 
-  const saveAndExit = () => {
+  const saveAndExit = (): void => {
     writeLog(entries);
     process.exit(0);
   };
@@ -71,7 +75,7 @@ async function main() {
   await page.goto(LOGIN_URL, { waitUntil: 'load' });
   record(page.url(), 'initial');
 
-  await new Promise(() => { });
+  await new Promise(() => {});
 }
 
 main().catch((err) => {

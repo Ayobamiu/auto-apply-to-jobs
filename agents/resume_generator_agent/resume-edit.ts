@@ -6,16 +6,21 @@ import { getResumeJsonPathForJob, readResumeJson, writeResumeJson } from '../../
 import { updateResumeFromChat } from './assistant.js';
 import { AppError, CODES } from '../../shared/errors.js';
 
+export interface UpdateResumeForJobOptions {
+  apiKey?: string;
+  model?: string;
+}
+
 /**
  * Edit the resume for a job per user message. Requires OPENAI_API_KEY (or options.apiKey).
- * @param {string} site - e.g. 'handshake'
- * @param {string} jobId - Job ID
- * @param {string} userMessage - Edit request (e.g. "Add skill Python")
- * @param {{ apiKey?: string, model?: string }} [options]
- * @returns {Promise<object>} Updated JSON Resume document
  */
-export async function updateResumeForJob(site, jobId, userMessage, options = {}) {
-  const job = getJob(site, jobId);
+export async function updateResumeForJob(
+  site: string,
+  jobId: string,
+  userMessage: string,
+  options: UpdateResumeForJobOptions = {}
+): Promise<Record<string, unknown>> {
+  getJob(site, jobId); // ensure job exists (optional check)
   const jsonPath = getResumeJsonPathForJob(site, jobId);
   if (!jsonPath) {
     throw new AppError(CODES.NO_RESUME);

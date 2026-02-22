@@ -4,25 +4,29 @@
   "description": "Demo project to test a Playwright form-filling bot",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "bot": "node fill-form.js",
-    "test": "node test-form-fill.js",
-    "handshake": "node handshake-apply.js",
-    "test:handshake": "node test-handshake.js",
-    "handshake:login": "node agents/auto_apply_agent/handshake-login.js",
-    "handshake:login:record": "node agents/auto_apply_agent/handshake-login-record.js",
-    "handshake:apply": "node agents/auto_apply_agent/handshake-apply-real.js",
-    "job:scrape": "node agents/job_scraper_agent/index.js",
-    "job:status": "node agents/job_scraper_agent/index.js --status",
-    "resume:generate": "node agents/resume_generator_agent/index.js",
-    "resume:edit": "node agents/resume_generator_agent/resume-edit-cli.js",
-    "pipeline": "node orchestration/run-pipeline.js"
+    "start": "tsx server.ts",
+    "bot": "tsx fill-form.ts",
+    "test": "tsx test-form-fill.ts",
+    "handshake": "tsx handshake-apply.ts",
+    "test:handshake": "tsx test-handshake.ts",
+    "handshake:login": "tsx agents/auto_apply_agent/handshake-login.ts",
+    "handshake:login:record": "tsx agents/auto_apply_agent/handshake-login-record.ts",
+    "handshake:apply": "tsx agents/auto_apply_agent/handshake-apply-real.ts",
+    "job:scrape": "tsx agents/job_scraper_agent/index.ts",
+    "job:status": "tsx agents/job_scraper_agent/index.ts --status",
+    "resume:generate": "tsx agents/resume_generator_agent/index.ts",
+    "resume:edit": "tsx agents/resume_generator_agent/resume-edit-cli.ts",
+    "pipeline": "tsx orchestration/run-pipeline.ts",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "jsonresume-theme-even": "^0.26.1",
     "playwright": "^1.49.0",
     "puppeteer": "^24.37.3",
-    "resumed": "^6.1.0"
+    "resumed": "^6.1.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
   },
   "dependencies": {
     "dotenv": "^17.3.1",

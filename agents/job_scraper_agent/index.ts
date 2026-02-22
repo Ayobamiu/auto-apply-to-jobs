@@ -1,30 +1,40 @@
 /**
- * Job scraper agent: fetch job by URL, scrape title/company/description, save to single jobs file (output/jobs.json).
- * Jobs are keyed by site + jobId; re-scrape is skipped if job already in store unless FORCE_SCRAPE=1 or --force.
- * Use SCRAPE_HEADED=1 for a visible browser (avoids bot-protection on Handshake).
- * Loads .env when run standalone.
- *
- * Usage:
- *   node agents/job_scraper_agent/index.js <job-url>
- *   FORCE_SCRAPE=1 node agents/job_scraper_agent/index.js <job-url>
- *   node agents/job_scraper_agent/index.js --force <job-url>
+ * Job scraper agent: fetch job by URL, scrape title/company/description, save to jobs file.
  */
 import 'dotenv/config';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
-import { getJobFromUrl, getApplicationStatusFromUrl, cacheKey, getJobIdFromUrl, getJobSiteFromUrl, toHandshakeJobDetailsUrl } from '../../shared/job-from-url.js';
+import {
+  getJobFromUrl,
+  getApplicationStatusFromUrl,
+  cacheKey,
+  getJobIdFromUrl,
+  getJobSiteFromUrl,
+  toHandshakeJobDetailsUrl,
+} from '../../shared/job-from-url.js';
 import { getJob, updateJob } from '../../data/jobs.js';
 import { PATHS } from '../../shared/config.js';
+import type { Job } from '../../shared/types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 
-/**
- * @param {string} jobUrl - Job URL (e.g. handshake job-search/12345?...)
- * @param {{ cacheDir?: string, headless?: boolean, useAuth?: boolean, maxAgeMs?: number, forceScrape?: boolean }} [options]
- * @returns {Promise<{ job: object, jobsFilePath: string, fromStore?: boolean, htmlPath?: string | null }>}
- */
-export async function runJobScraper(jobUrl, options = {}) {
+export interface RunJobScraperOptions {
+  cacheDir?: string;
+  headless?: boolean;
+  useAuth?: boolean;
+  maxAgeMs?: number;
+  forceScrape?: boolean;
+}
+
+export interface RunJobScraperResult {
+  job: Job & { url?: string };
+  jobsFilePath: string;
+  fromStore?: boolean;
+  htmlPath?: string | null;
+}
+
+export async function runJobScraper(jobUrl: string, options: RunJobScraperOptions = {}): Promise<RunJobScraperResult> {
   const cacheDir = options.cacheDir ?? PATHS.jobCache;
   const jobId = getJobIdFromUrl(jobUrl);
   const site = getJobSiteFromUrl(jobUrl);
@@ -51,7 +61,7 @@ export async function runJobScraper(jobUrl, options = {}) {
   const htmlPath = join(cacheDir, `${fileKey}.html`);
 
   if (jobId && site) {
-    const payload = {
+    const payload: Partial<Job> = {
       title: job.title,
       company: job.company,
       description: job.description,
@@ -66,20 +76,21 @@ export async function runJobScraper(jobUrl, options = {}) {
   }
 
   return {
-    job: { ...job, jobId: job.jobId ?? jobId, site },
+    job: { ...job, jobId: job.jobId ?? jobId ?? undefined, site },
     jobsFilePath: PATHS.jobsFile,
     fromStore: false,
     htmlPath: existsSync(htmlPath) ? htmlPath : null,
   };
 }
 
-/**
- * Get application-submitted status only (no full scrape). Checks store first; if not found and not fromStoreOnly, loads page and checks "Applied on" banner.
- * @param {string} jobUrl
- * @param {{ fromStoreOnly?: boolean }} [options] - If true, only return from store; never open browser.
- * @returns {Promise<{ applicationSubmitted: boolean, appliedAt?: string, fromStore?: boolean }>}
- */
-export async function getApplicationStatus(jobUrl, options = {}) {
+export interface GetApplicationStatusOptions {
+  fromStoreOnly?: boolean;
+}
+
+export async function getApplicationStatus(
+  jobUrl: string,
+  options: GetApplicationStatusOptions = {}
+): Promise<{ applicationSubmitted: boolean; appliedAt?: string; fromStore?: boolean }> {
   const jobId = getJobIdFromUrl(jobUrl);
   const site = getJobSiteFromUrl(jobUrl);
 
@@ -88,7 +99,7 @@ export async function getApplicationStatus(jobUrl, options = {}) {
     if (stored) {
       return {
         applicationSubmitted: !!stored.applicationSubmitted,
-        ...(stored.appliedAt != null && { appliedAt: stored.appliedAt }),
+        ...(stored.appliedAt != null && { appliedAt: stored.appliedAt ?? undefined }),
         fromStore: true,
       };
     }
@@ -102,7 +113,7 @@ export async function getApplicationStatus(jobUrl, options = {}) {
   return { ...result, fromStore: false };
 }
 
-function getJobUrl() {
+function getJobUrl(): string | null {
   const env = process.env.JOB_URL;
   const argv = process.argv.slice(2);
   const forceIdx = argv.findIndex((a) => a === '--force' || a === '-f');
@@ -113,22 +124,22 @@ function getJobUrl() {
   return raw ? toHandshakeJobDetailsUrl(raw) : null;
 }
 
-function getForceScrape() {
+function getForceScrape(): boolean {
   if (process.env.FORCE_SCRAPE === '1' || process.env.FORCE_SCRAPE === 'true') return true;
   return process.argv.includes('--force') || process.argv.includes('-f');
 }
 
-function isStatusOnly() {
+function isStatusOnly(): boolean {
   return process.argv.includes('--status') || process.argv.includes('-s');
 }
 
 if (process.argv[1] === __filename) {
   const jobUrl = getJobUrl();
   if (!jobUrl) {
-    console.error('Usage: node agents/job_scraper_agent/index.js [--force] <job-url>');
-    console.error('       node agents/job_scraper_agent/index.js --status <job-url>   # application status only');
-    console.error('   or: JOB_URL=<url> node agents/job_scraper_agent/index.js');
-    console.error('   or: FORCE_SCRAPE=1 node agents/job_scraper_agent/index.js <job-url>');
+    console.error('Usage: node agents/job_scraper_agent/index.ts [--force] <job-url>');
+    console.error('       node agents/job_scraper_agent/index.ts --status <job-url>   # application status only');
+    console.error('   or: JOB_URL=<url> node agents/job_scraper_agent/index.ts');
+    console.error('   or: FORCE_SCRAPE=1 node agents/job_scraper_agent/index.ts <job-url>');
     process.exit(1);
   }
 

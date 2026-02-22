@@ -10,14 +10,14 @@ import { fileURLToPath } from 'url';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const publicDir = join(__dirname, 'public');
 
-const mime = {
+const mime: Record<string, string> = {
   '.html': 'text/html',
   '.css': 'text/css',
   '.js': 'application/javascript',
 };
 
 const server = createServer((req, res) => {
-  const path = req.url === '/' ? '/index.html' : req.url;
+  const path = req.url === '/' ? '/index.html' : req.url ?? '/';
   const file = join(publicDir, path);
 
   try {
@@ -25,7 +25,7 @@ const server = createServer((req, res) => {
     const ext = extname(file);
     res.setHeader('Content-Type', mime[ext] || 'application/octet-stream');
     res.end(data);
-  } catch (err) {
+  } catch {
     res.statusCode = 404;
     res.end('Not found');
   }

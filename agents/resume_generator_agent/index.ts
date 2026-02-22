@@ -12,24 +12,27 @@ import { resumeBasename } from '../../shared/filename-slugs.js';
 import { profileToJsonResume } from '../../shared/json-resume.js';
 import { generateResumeWithAssistant } from './assistant.js';
 import { fileURLToPath } from 'url';
+import type { Profile, Job } from '../../shared/types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 
-/**
- * @param {object} [options]
- * @param {object} [options.profile] - Override profile (else load from profilePath)
- * @param {object} [options.job] - Override job (else load from jobPath)
- * @param {string} [options.profilePath]
- * @param {string} [options.jobPath]
- * @param {string} [options.outputDir]
- * @param {string} [options.theme]
- * @param {boolean} [options.useAssistant] - Use LLM assistant (default: process.env.USE_RESUME_ASSISTANT === '1' or 'true')
- * @param {string} [options.assistantApiKey]
- * @param {string} [options.assistantModel]
- * @param {boolean} [options.forceRegenerate] - If true, regenerate even when JSON exists
- * @returns {Promise<{ jsonPath: string, resumePath: string | null }>}
- */
-export async function runResumeGenerator(options = {}) {
+export interface RunResumeGeneratorOptions {
+  profile?: Profile;
+  job?: Job;
+  profilePath?: string;
+  jobPath?: string;
+  outputDir?: string;
+  theme?: string;
+  useAssistant?: boolean;
+  assistantApiKey?: string;
+  assistantModel?: string;
+  forceRegenerate?: boolean;
+}
+
+export async function runResumeGenerator(options: RunResumeGeneratorOptions = {}): Promise<{
+  jsonPath: string;
+  resumePath: string | null;
+}> {
   const profile = options.profile ?? getProfile();
   const job = options.job ?? loadJob(options.jobPath);
   const outDir = options.outputDir ?? PATHS.resumes;
@@ -41,18 +44,19 @@ export async function runResumeGenerator(options = {}) {
     return { jsonPath: existingJson, resumePath: null };
   }
 
-  const useAssistant = options.useAssistant ?? (process.env.USE_RESUME_ASSISTANT === '1' || process.env.USE_RESUME_ASSISTANT === 'true');
+  const useAssistant =
+    options.useAssistant ?? (process.env.USE_RESUME_ASSISTANT === '1' || process.env.USE_RESUME_ASSISTANT === 'true');
 
-  let resumeJson;
+  let resumeJson: Record<string, unknown>;
   if (useAssistant) {
     resumeJson = await generateResumeWithAssistant({
       profile,
-      job: job || {},
+      job: (job || {}) as Job,
       apiKey: options.assistantApiKey,
       model: options.assistantModel,
     });
   } else {
-    resumeJson = profileToJsonResume(profile, job || {});
+    resumeJson = profileToJsonResume(profile, (job || {}) as Job) as Record<string, unknown>;
   }
 
   mkdirSync(outDir, { recursive: true });

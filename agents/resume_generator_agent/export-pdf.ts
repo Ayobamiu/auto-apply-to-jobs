@@ -1,6 +1,5 @@
 /**
- * JSON Resume → file + PDF. Separate from content generation so we can
- * re-export after assistant or conversational edits without regenerating content.
+ * JSON Resume → file + PDF. Separate from content generation so we can re-export after edits.
  */
 import { mkdirSync, writeFileSync, readFileSync, statSync } from 'fs';
 import { execSync } from 'child_process';
@@ -9,15 +8,17 @@ import { PATHS, ROOT } from '../../shared/config.js';
 
 const DEFAULT_THEME = 'jsonresume-theme-even';
 
-/**
- * Write resume JSON to a file and export to PDF via resumed.
- * @param {object} resumeJson - JSON Resume document
- * @param {{ outputDir?: string, jobSlug?: string, resumeBasename?: string, theme?: string }} [options]
- *   - resumeBasename: full basename (no extension), e.g. JohnDoe_SE_Acme_resume → JohnDoe_SE_Acme_resume.pdf
- *   - jobSlug: fallback when resumeBasename not set → resume-${jobSlug}.pdf
- * @returns {{ jsonPath: string, resumePath: string }} Paths to the .json and .pdf files
- */
-export function exportResumeToPdf(resumeJson, options = {}) {
+export interface ExportResumeOptions {
+  outputDir?: string;
+  jobSlug?: string;
+  resumeBasename?: string;
+  theme?: string;
+}
+
+export function exportResumeToPdf(
+  resumeJson: Record<string, unknown>,
+  options: ExportResumeOptions = {}
+): { jsonPath: string; resumePath: string } {
   const outDir = options.outputDir ?? PATHS.resumes;
   const jobSlug = options.jobSlug ?? 'resume';
   const basename = options.resumeBasename ?? `resume-${jobSlug}`;
@@ -45,13 +46,10 @@ export function exportResumeToPdf(resumeJson, options = {}) {
   return { jsonPath, resumePath: pdfPath };
 }
 
-/**
- * Ensure PDF exists for a resume JSON file. If PDF already exists and is newer than JSON, return paths without re-exporting.
- * @param {string} jsonPath - Path to resume .json file
- * @param {{ outputDir?: string, theme?: string }} [options]
- * @returns {{ jsonPath: string, resumePath: string }}
- */
-export function ensureResumePdfFromJsonFile(jsonPath, options = {}) {
+export function ensureResumePdfFromJsonFile(
+  jsonPath: string,
+  options: { outputDir?: string; theme?: string } = {}
+): { jsonPath: string; resumePath: string } {
   const outDir = options.outputDir ?? dirname(jsonPath);
   const theme = options.theme ?? DEFAULT_THEME;
   const base = pathBasename(jsonPath, '.json');
@@ -64,6 +62,6 @@ export function ensureResumePdfFromJsonFile(jsonPath, options = {}) {
     }
   } catch (_) {}
   const raw = readFileSync(jsonPath, 'utf8');
-  const resumeJson = JSON.parse(raw);
+  const resumeJson = JSON.parse(raw) as Record<string, unknown>;
   return exportResumeToPdf(resumeJson, { outputDir: outDir, resumeBasename: base, theme });
 }

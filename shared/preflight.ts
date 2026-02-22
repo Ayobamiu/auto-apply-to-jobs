@@ -1,6 +1,5 @@
 /**
  * Preflight: validate "ready to run pipeline/apply" before scrape or browser.
- * Single place that returns clear failures so CLI/UI can show them.
  */
 import { existsSync } from 'fs';
 import { join } from 'path';
@@ -11,20 +10,17 @@ import { getResumePathsForJob } from '../data/resumes.js';
 import { getJobIdFromUrl, getJobSiteFromUrl, toHandshakeJobDetailsUrl } from './job-from-url.js';
 import { AppError, CODES } from './errors.js';
 
-function ensureJobUrl(url) {
+function ensureJobUrl(url: string | undefined): string | null {
   return url ? toHandshakeJobDetailsUrl(url) : null;
 }
 
-function checkProfile(errors) {
+function checkProfile(errors: string[]): void {
   const profile = getProfile();
   if (!profile?.name?.trim()) errors.push('Profile name is required (data/profile.json)');
   if (!profile?.email?.trim()) errors.push('Profile email is required (data/profile.json)');
 }
 
-/**
- * Resolve whether we have a resume file for apply: RESUME_PATH env, job-specific path, or fixture.
- */
-function resumePathExistsForApply(jobUrl) {
+function resumePathExistsForApply(jobUrl: string): boolean {
   if (process.env.RESUME_PATH && existsSync(process.env.RESUME_PATH)) return true;
   const jobId = getJobIdFromUrl(jobUrl);
   const site = getJobSiteFromUrl(jobUrl);
@@ -36,13 +32,8 @@ function resumePathExistsForApply(jobUrl) {
   return existsSync(fixture);
 }
 
-/**
- * Preflight for apply flow: job URL, optional profile name/email, resume path or fixture must exist.
- * @param {string} [jobUrl] - Raw job URL (env or arg)
- * @throws {AppError} PREFLIGHT_FAILED with messages if validation fails
- */
-export function preflightForApply(jobUrl) {
-  const errors = [];
+export function preflightForApply(jobUrl: string | undefined): { ok: true } {
+  const errors: string[] = [];
   const resolvedUrl = ensureJobUrl(jobUrl);
   if (!resolvedUrl) {
     errors.push('Job URL required (JOB_URL or argument)');
@@ -57,14 +48,8 @@ export function preflightForApply(jobUrl) {
   return { ok: true };
 }
 
-/**
- * Preflight for pipeline: when jobUrl is provided, ensure it's present and optional profile.
- * When no jobUrl, pipeline still runs (resume from shared/job.json only).
- * @param {string} [jobUrl] - Raw job URL (env or arg)
- * @throws {AppError} PREFLIGHT_FAILED with messages if validation fails
- */
-export function preflightForPipeline(jobUrl) {
-  const errors = [];
+export function preflightForPipeline(jobUrl: string | undefined): { ok: true } {
+  const errors: string[] = [];
   if (jobUrl) {
     const resolvedUrl = ensureJobUrl(jobUrl);
     if (!resolvedUrl) {
