@@ -14,13 +14,14 @@ import { getJob, updateJob } from '../../data/jobs.js';
 import { getProfile } from '../../data/profile.js';
 import { resumeBasename } from '../../shared/filename-slugs.js';
 import { getResumePathsForJob } from '../../data/resumes.js';
-import { saveApplyFormSchema } from '../../data/apply-forms.js';
-import { attachSection, SECTION_CONFIG } from '../../shared/handshake-attach-helper.js';
+import { getApplyFormSchema, saveApplyFormSchema } from '../../data/apply-forms.js';
+import { attachSection, getPresentSectionConfigs, type PresentSectionConfig } from '../../shared/handshake-attach-helper.js';
 import { captureApplyFormSchema } from '../../shared/apply-form-capture.js';
 import { AppError, CODES } from '../../shared/errors.js';
 import { checkSessionValid } from '../../shared/session-check.js';
 import { preflightForApply } from '../../shared/preflight.js';
 import { getApplicationStatus } from '../job_scraper_agent/index.js';
+import { startPhase } from '../../shared/timing.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -89,24 +90,32 @@ function getJobUrl(): string | null {
 }
 
 export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApplyOptions = {}): Promise<RunHandshakeApplyResult> {
+  const endPreflight = startPhase('Apply: preflight');
   preflightForApply(jobUrl);
+  endPreflight();
 
+  const endAlready = startPhase('Apply: check already applied (store)');
   const { applicationSubmitted } = await getApplicationStatus(jobUrl, { fromStoreOnly: true });
+  endAlready();
   if (applicationSubmitted) {
     return { applied: true, skipped: true };
   }
 
+  const endSession = startPhase('Apply: session check (headless browser)');
   const session = await checkSessionValid();
+  endSession();
   if (!session.valid) {
     if (session.reason === 'no_session') throw new AppError(CODES.NO_SESSION);
     throw new AppError(CODES.SESSION_EXPIRED);
   }
 
+  const endFixtures = startPhase('Apply: resolve fixture paths');
   const files = await getFixtures(jobUrl, {
     resumePath: options.resumePath,
     transcriptPath: options.transcriptPath,
     coverPath: options.coverPath,
   });
+  endFixtures();
   const defaultResume = join(PATHS.fixtures, 'sample-resume.pdf');
   if (files.resume !== defaultResume) {
     console.log('Using resume:', files.resume);
@@ -114,13 +123,17 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
     console.log('Using fixture resume (no job-specific PDF found). Run pipeline with this URL first to use a tailored resume.');
   }
 
+  const endLaunch = startPhase('Apply: browser launch');
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext({ storageState: PATHS.authState });
   const page = await context.newPage();
+  endLaunch();
 
   try {
+    const endGoto = startPhase('Apply: goto job page + 2s settle');
     await page.goto(jobUrl, { waitUntil: 'load' });
     await new Promise((r) => setTimeout(r, 2000));
+    endGoto();
 
     const url = page.url();
     const host = new URL(url).hostname.toLowerCase();
@@ -148,24 +161,29 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
       return { applied: true, skipped: true };
     } catch (_) {}
 
+    const endClickApply = startPhase('Apply: click Apply button + 1.5s');
     const applyBtn = page.getByRole('button', { name: /apply/i }).first();
     await applyBtn.click({ timeout: 15000 }).catch(() =>
       page.getByRole('link', { name: /apply/i }).first().click({ timeout: 5000 })
     );
     await new Promise((r) => setTimeout(r, 1500));
+    endClickApply();
 
+    const endModal = startPhase('Apply: wait for apply modal');
     const applyModal = page.locator('[data-hook="apply-modal-content"]').first();
     await applyModal.waitFor({ state: 'visible', timeout: 15000 }).catch(() =>
       page.getByText('Attach your transcript').first().waitFor({ state: 'visible', timeout: 5000 })
     );
+    endModal();
 
     const jobId = getJobIdFromUrl(jobUrl);
-    if (jobId) {
-      try {
-        const schema = await captureApplyFormSchema(page, applyModal);
-        saveApplyFormSchema(jobId, schema as unknown as Record<string, unknown>);
-      } catch (_) {}
+    let schema: Record<string, unknown>;
+    try {
+      schema = (await captureApplyFormSchema(page, applyModal)) as unknown as Record<string, unknown>;
+    } catch (_) {
+      schema = { sections: [], capturedAt: new Date().toISOString() };
     }
+    const saved = jobId ? getApplyFormSchema(jobId) : null;
 
     const doSubmit =
       options.submit !== undefined
@@ -180,15 +198,40 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
       closeCount = await removePrePopulated.count();
     }
 
+    let presentSections: PresentSectionConfig[];
+    const savedSections =
+      saved && Array.isArray((saved as { presentSections?: unknown }).presentSections)
+        ? ((saved as { presentSections: PresentSectionConfig[] }).presentSections)
+        : null;
+    const usedCachedPresentSections = savedSections != null && savedSections.length > 0;
+    if (usedCachedPresentSections) {
+      presentSections = savedSections;
+      console.log('Using saved form sections:', presentSections.map((c) => c.key).join(', '));
+    } else {
+      presentSections = await getPresentSectionConfigs(page, applyModal);
+    }
+    if (jobId) {
+      saveApplyFormSchema(jobId, { ...schema, presentSections });
+    }
+
+    const endAttach = startPhase('Apply: attach transcript + resume + cover');
     const modal = applyModal;
-    for (const [key, config] of Object.entries(SECTION_CONFIG)) {
-      const filePath = files[key as keyof typeof files];
+    const toAttach = presentSections.filter((c) => {
+      const path = files[c.key];
+      return path && existsSync(path);
+    });
+    const toSkip = presentSections.filter((c) => !files[c.key] || !existsSync(files[c.key]));
+    if (toAttach.length) console.log('Will attach:', toAttach.map((c) => c.key).join(', '));
+    if (toSkip.length) console.log('Skipping (no file or not on form):', toSkip.map((c) => c.key).join(', '));
+
+    for (const config of presentSections) {
+      const filePath = files[config.key];
       if (!filePath || !existsSync(filePath)) continue;
       try {
         const result = await attachSection(page, modal, { ...config, filePath });
-        console.log(`${key}: ${result === 'selected' ? 'selected existing' : 'uploaded new'}`);
+        console.log(`${config.key}: ${result === 'selected' ? 'selected existing' : 'uploaded new'}`);
       } catch {
-        if (key === 'coverLetter') {
+        if (config.key === 'coverLetter') {
           try {
             const fallback = modal.locator(`input[name="file-Cover"], input[name="file-CoverLetter"]`).first();
             await fallback.setInputFiles(filePath, { timeout: 3000 });
@@ -197,13 +240,32 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
             console.log('Skipping cover letter (not required or section not found).');
           }
         } else {
-          console.log(`Skipping ${key} (not required or section not found).`);
+          if (usedCachedPresentSections && jobId) {
+            const fresh = await getPresentSectionConfigs(page, applyModal);
+            const current = getApplyFormSchema(jobId);
+            if (current) saveApplyFormSchema(jobId, { ...current, presentSections: fresh });
+            const retryConfig = fresh.find((f) => f.key === config.key);
+            if (retryConfig) {
+              try {
+                await attachSection(page, modal, { ...retryConfig, filePath });
+                console.log(`${config.key}: uploaded new (after re-detect)`);
+              } catch (_) {
+                console.log(`Skipping ${config.key} (not required or section not found).`);
+              }
+            } else {
+              console.log(`Skipping ${config.key} (not required or section not found).`);
+            }
+          } else {
+            console.log(`Skipping ${config.key} (not required or section not found).`);
+          }
         }
       }
     }
+    endAttach();
 
     let applied = false;
     if (doSubmit) {
+      const endSubmit = startPhase('Apply: 6s delay + submit click + wait confirmation');
       await new Promise((r) => setTimeout(r, 6000));
       const submitBtn = applyModal.getByRole('button', { name: /submit\s*application/i }).first();
       await submitBtn.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
@@ -246,6 +308,7 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
           });
         }
       }
+      endSubmit();
     } else {
       setApplicationState(jobUrl, { resumePath: files.resume });
       console.log('Stopped before submit. Set SUBMIT_APPLICATION=1 to submit. Close browser when done.');

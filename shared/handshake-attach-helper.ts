@@ -34,7 +34,7 @@ export async function attachSection(page: Page, modal: Locator, options: AttachS
     await option.waitFor({ state: 'visible', timeout: 2000 });
     await option.click();
     return 'selected';
-  } catch (_) {}
+  } catch (_) { }
 
   const upload = async (inputLocator: Locator) => {
     await inputLocator.setInputFiles(filePath, { timeout: 10000 });
@@ -55,7 +55,7 @@ export async function attachSection(page: Page, modal: Locator, options: AttachS
     await tryAll();
   } catch (_) {
     const uploadNewLabel = fieldset.getByText(/Upload\s+new/i).first();
-    await uploadNewLabel.click({ timeout: 3000 }).catch(() => {});
+    await uploadNewLabel.click({ timeout: 3000 }).catch(() => { });
     await new Promise((r) => setTimeout(r, 500));
     await tryAll();
   }
@@ -82,3 +82,38 @@ export const SECTION_CONFIG = {
     fileInputId: 'file-cover',
   },
 } as const;
+
+export type SectionKey = keyof typeof SECTION_CONFIG;
+
+export interface PresentSectionConfig {
+  key: SectionKey;
+  sectionHeading: string;
+  searchPlaceholder: string;
+  fileInputName: string;
+  fileInputId?: string;
+}
+
+export async function getPresentSectionConfigs(
+  page: Page,
+  modal: Locator,
+  options?: { timeout?: number }
+): Promise<PresentSectionConfig[]> {
+  const timeout = options?.timeout ?? 1500;
+  const result: PresentSectionConfig[] = [];
+  for (const key of Object.keys(SECTION_CONFIG) as SectionKey[]) {
+    const config = SECTION_CONFIG[key];
+    const fieldset = modal
+      .locator('fieldset')
+      .filter({
+        has: page.getByRole('heading', { name: new RegExp(config.sectionHeading, 'i') }),
+      })
+      .first();
+    try {
+      await fieldset.waitFor({ state: 'visible', timeout });
+      result.push({ key, ...config });
+    } catch (_) {
+      // section not present, skip
+    }
+  }
+  return result;
+}
