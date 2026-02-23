@@ -18,6 +18,24 @@ export interface UserJobState {
   appliedAt?: string;
 }
 
+/** One education entry in a profile. */
+export interface EducationEntry {
+  school?: string;
+  degree?: string;
+  year?: string;
+  [key: string]: unknown;
+}
+
+/** One experience entry in a profile. */
+export interface ExperienceEntry {
+  title?: string;
+  company?: string;
+  location?: string;
+  dates?: string;
+  bullets?: string[];
+  [key: string]: unknown;
+}
+
 /** Profile shape (data/profile.json). */
 export interface Profile {
   name?: string;
@@ -25,9 +43,10 @@ export interface Profile {
   phone?: string;
   linkedin?: string;
   summary?: string;
-  education?: unknown[];
-  experience?: unknown[];
-  skills?: unknown[];
+  education?: EducationEntry[];
+  experience?: ExperienceEntry[];
+  /** Array of strings, or object mapping category name to string[] (e.g. {"Backend": ["Node.js", ...]}) */
+  skills?: unknown[] | Record<string, string[]>;
   [key: string]: unknown;
 }
 

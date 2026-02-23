@@ -1,0 +1,102 @@
+{
+  "name": "profile_schema",
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "name": { "type": "string" },
+      "email": { "type": "string" },
+      "phone": { "type": "string" },
+      "linkedin": { "type": "string" },
+      "summary": { "type": "string" },
+      "location": { "type": "string" },
+      "title": { "type": "string" },
+      "github": { "type": "string" },
+      "contact": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "email": { "type": "string" },
+          "phone": { "type": "string" }
+        },
+        "required": ["email", "phone"]
+      },
+      "education": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "school": { "type": "string" },
+            "degree": { "type": "string" },
+            "year": { "type": "string" }
+          },
+          "required": ["school", "degree", "year"]
+        }
+      },
+      "experience": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "title": { "type": "string" },
+            "company": { "type": "string" },
+            "location": { "type": "string" },
+            "dates": { "type": "string" },
+            "bullets": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "required": ["title", "company", "location", "dates", "bullets"]
+        }
+      },
+      "projects": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string" },
+            "bullets": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "required": ["name", "bullets"]
+        }
+      },
+      "skills": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "category": { "type": "string" },
+            "keywords": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "required": ["category", "keywords"]
+        }
+      }
+    },
+    "required": [
+      "name",
+      "email",
+      "phone",
+      "linkedin",
+      "summary",
+      "location",
+      "title",
+      "github",
+      "contact",
+      "education",
+      "experience",
+      "projects",
+      "skills"
+    ]
+  }
+}

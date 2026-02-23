@@ -7,6 +7,7 @@ import { authMiddleware } from './middleware/auth.js';
 import { register, login } from './routes/auth.js';
 import { postPipeline } from './routes/pipeline.js';
 import { getJobs, getJobsStatus } from './routes/jobs.js';
+import { getProfileHandler, postProfileFromResume } from './routes/profile.js';
 
 if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
   console.error('JWT_SECRET is required in production');
@@ -24,6 +25,8 @@ app.post('/auth/login', login);
 app.post('/pipeline', authMiddleware, postPipeline);
 app.get('/jobs', authMiddleware, getJobs);
 app.get('/jobs/status', authMiddleware, getJobsStatus);
+app.get('/profile', authMiddleware, getProfileHandler);
+app.post('/profile/from-resume', authMiddleware, postProfileFromResume);
 
 // Error handler
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
