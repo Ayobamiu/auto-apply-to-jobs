@@ -74,6 +74,14 @@ const USER_JOB_STATE_TABLE_SQL = `
   )
 `;
 
+const HANDSHAKE_SESSIONS_TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS handshake_sessions (
+    user_id text PRIMARY KEY,
+    state_json jsonb NOT NULL,
+    updated_at timestamptz DEFAULT now()
+  )
+`;
+
 let usersTableInitialized = false;
 let dataTablesInitialized = false;
 
@@ -91,6 +99,7 @@ export async function ensureDataTables(): Promise<void> {
   await pool.query(PROFILES_TABLE_SQL);
   await pool.query(APPLY_STATE_TABLE_SQL);
   await pool.query(USER_JOB_STATE_TABLE_SQL);
+  await pool.query(HANDSHAKE_SESSIONS_TABLE_SQL);
   dataTablesInitialized = true;
 }
 

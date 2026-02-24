@@ -1,0 +1,4 @@
+put in apis
+account for many users, not just one (for the profile)
+x scrape from https://wmich.joinhandshake.com/jobs/<id>
+x dont generate resume for jobs that dont require it

@@ -117,18 +117,42 @@ If Handshake shows a bot-protection or blocking page when scraping, run with a v
 | `resume:edit` | Edit resume for a job by message (see “Editing a resume” below) |
 | `pipeline` | Scrape job (if URL given), generate resume, then run apply when `JOB_URL` set |
 
-**Env vars that change behavior:** `JOB_URL`, `SUBMIT_APPLICATION` (1 = submit after attach), `SCRAPE_HEADED` (1 = visible browser for scrape), `FORCE_SCRAPE` (1 = re-scrape even if job in store), `RESUME_PATH`, `TRANSCRIPT_PATH`, `COVER_PATH` (override fixture paths), `OPENAI_API_KEY` (for resume assistant / edit), `HANDSHAKE_JOBS_BASE_URL` (school Handshake base).
+**Env vars that change behavior:** `USER_ID` (user id for multi-user; default is `"default"`), `JOB_URL`, `SUBMIT_APPLICATION` (1 = submit after attach), `SCRAPE_HEADED` (1 = visible browser for scrape), `FORCE_SCRAPE` (1 = re-scrape even if job in store), `RESUME_PATH`, `TRANSCRIPT_PATH`, `COVER_PATH` (override fixture paths), `OPENAI_API_KEY` (for resume assistant / edit), `HANDSHAKE_JOBS_BASE_URL` (school Handshake base). **`PIPELINE_TIMING=1`** — log a phase-by-phase time breakdown. You can also pass **`--user <id>`** before the job URL in pipeline, apply, and other CLIs.
 
-### Where data is stored
+### Pipeline timing (what takes time)
 
-- `data/profile.json` — Your profile (name, email, education, experience, skills).
-- `data/jobs.json` — Scraped jobs keyed by site + job ID.
-- `data/apply-state.json` — Per-job apply state (resume path, submittedAt).
-- `data/resumes/` — Generated resume JSON and PDFs per job.
-- `data/apply-forms/` — Captured apply form schemas per job.
-- `data/job-cache/` — Cached job HTML by URL.
-- `output/` — Screenshots (e.g. scrape, apply); some legacy paths may still write here.
-- `.auth/` — Saved Handshake session (gitignored).
+Run with **`PIPELINE_TIMING=1`** to print `[timing]` lines for each phase. Typical time sinks:
+
+| Phase | What it does | Usually slow? |
+|-------|----------------|----------------|
+| **Step 0: Get job** | Scrape job page (or read from store/cache). If scraping: launch browser, load URL, wait for network, expand “More” sections, screenshot, save HTML. | **Yes** — 15–60+ s when scraping (page load + 2s settle + 6s networkidle + expand + screenshot). Skipped if job already in store and not `FORCE_SCRAPE`. |
+| **Step 1: Generate resume** | Build JSON from profile + job; optionally call LLM (if `USE_RESUME_ASSISTANT=1`). | **Can be** — LLM call ~5–30 s. If JSON already exists for this job, step is skipped. |
+| **Step 1b: Ensure PDF** | Generate PDF from JSON via `resumed` (Puppeteer). | **A few seconds** — only runs when PDF missing or older than JSON. |
+| **Apply: session check** | Headless browser: load Handshake, 2s settle, check for login redirect. | **~5–15 s** — one extra browser launch + navigation. |
+| **Apply: browser launch** | Launch visible Chromium, restore auth state, new page. | **1–3 s**. |
+| **Apply: goto job page + 2s settle** | Navigate to job URL, then fixed 2 s wait. | **3–10 s** (network + 2 s). |
+| **Apply: click Apply + 1.5s** | Click Apply button, then fixed 1.5 s. | **2–4 s**. |
+| **Apply: wait for apply modal** | Wait for modal (up to 15 s). | **1–5 s**. |
+| **Apply: attach transcript + resume + cover** | Search/upload for each of 3 files. | **5–20 s** — depends on search vs upload and network. |
+| **Apply: 6s delay + submit + wait confirmation** | Fixed 6 s delay, click Submit, 2 s, then wait for “Applied on” or “Withdraw” (up to 20 s). | **~10–30 s** — includes fixed 6 s + 2 s and server response. |
+
+**Summary:** Most of the time is browser work (scrape, session check, apply navigation, and the fixed sleeps: 2s after job page, 1.5s after opening modal, 6s before submit, 2s after submit). To speed up: avoid re-scraping when the job is already in store; skip session check if you’re sure the session is valid (would require a code change); and reduce or make configurable the fixed delays if the site is fast.
+
+### Where data is stored (multi-user)
+
+- `data/profiles.json` — All users’ profiles: `{ [userId]: Profile }`. Default user id is `"default"`.
+- `data/apply-state.json` — Per-user, per-job apply state: `{ [userId]: { [jobUrl]: ApplicationState } }`.
+- `data/jobs.json` — Canonical job metadata only (site + job ID). No per-user fields.
+- `data/user-job-state.json` — Per-user, per-job state: `{ [userId]: { [jobRef]: { resumeBasename?, applicationSubmitted?, appliedAt? } } }`.
+- `data/resumes/<userId>/` — Generated resume JSON and PDFs per user.
+- `data/apply-forms/` — Apply form schemas per job (global; shared by all users).
+- `data/job-cache/` — Cached job HTML (global).
+- `output/` — Screenshots (e.g. scrape, apply).
+- `.auth/<userId>/` — Saved Handshake session per user (gitignored).
+
+**User id:** Set `USER_ID` in the environment or pass `--user <id>` (e.g. `npm run pipeline -- --user alice 'https://...'`). If omitted, the user id `"default"` is used so existing single-user setups keep working.
+
+**Migration from single-user:** If you had `data/profile.json` or a flat `data/apply-state.json`, the first read will migrate them into `data/profiles.json` and `data/apply-state.json` under the `"default"` key. Move existing `data/resumes/*` into `data/resumes/default/` and `.auth/handshake-state.json` into `.auth/default/handshake-state.json` so the default user keeps using them.
 
 ### Editing a resume for a job
 

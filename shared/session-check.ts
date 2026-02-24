@@ -1,9 +1,8 @@
 /**
  * Check if Handshake session (saved auth state) is still valid without running the full apply flow.
  */
-import { existsSync } from 'fs';
 import { chromium } from 'playwright';
-import { getPathsForUser } from './config.js';
+import { getHandshakeSessionPath } from '../data/handshake-session.js';
 
 const SESSION_CHECK_TIMEOUT_MS = 15000;
 const STABLE_HANDSHAKE_URL = process.env.HANDSHAKE_JOBS_BASE_URL || 'https://app.joinhandshake.com';
@@ -13,14 +12,14 @@ export type SessionCheckResult =
   | { valid: false; reason: 'no_session' | 'session_expired' };
 
 export async function checkSessionValid(userId?: string): Promise<SessionCheckResult> {
-  const paths = getPathsForUser(userId ?? 'default');
-  if (!existsSync(paths.authState)) {
+  const storagePath = await getHandshakeSessionPath(userId ?? 'default');
+  if (!storagePath) {
     return { valid: false, reason: 'no_session' };
   }
 
   const browser = await chromium.launch({ headless: true });
   try {
-    const context = await browser.newContext({ storageState: paths.authState });
+    const context = await browser.newContext({ storageState: storagePath });
     const page = await context.newPage();
     await page.goto(STABLE_HANDSHAKE_URL, { waitUntil: 'domcontentloaded', timeout: SESSION_CHECK_TIMEOUT_MS });
     await new Promise((r) => setTimeout(r, 2000));

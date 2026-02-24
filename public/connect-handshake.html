@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Connect Handshake</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 900px;
+      margin: 1rem auto;
+      padding: 0 1rem;
+    }
+
+    label {
+      display: block;
+      margin-top: 1rem;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      max-width: 400px;
+      padding: 0.5rem;
+    }
+
+    button {
+      margin-top: 0.5rem;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+    }
+
+    #status {
+      margin-top: 1rem;
+      color: #666;
+    }
+
+    #streamContainer {
+      margin-top: 1rem;
+    }
+
+    canvas {
+      border: 1px solid #ccc;
+      cursor: pointer;
+      display: block;
+      max-width: 100%;
+    }
+
+    .connected {
+      color: green;
+      font-weight: bold;
+    }
+
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Connect Handshake</h1>
+  <p>Log in with your app account, then click Connect Handshake and complete login in the streamed view.</p>
+
+  <label>API URL (required when opening this file directly; use e.g. http://localhost:3000):</label>
+  <input type="text" id="apiBase" value="http://localhost:3000" placeholder="http://localhost:3000" style="width: 100%; max-width: 400px; padding: 0.5rem;" />
+
+  <label>JWT (or log in below and use the token):</label>
+  <input type="text" id="token" placeholder="Paste Bearer token here" />
+
+  <fieldset style="margin-top: 1rem;">
+    <legend>Or log in</legend>
+    <label>Email:</label>
+    <input type="text" id="email" />
+    <label>Password:</label>
+    <input type="password" id="password" />
+    <button type="button" id="loginBtn">Log in</button>
+  </fieldset>
+
+  <div style="margin-top: 1rem;">
+    <button type="button" id="connectBtn">Connect Handshake</button>
+  </div>
+
+  <div id="status"></div>
+  <div id="streamContainer"></div>
+
+  <script>
+    const apiBaseEl = document.getElementById('apiBase');
+    const tokenEl = document.getElementById('token');
+    const emailEl = document.getElementById('email');
+    const passwordEl = document.getElementById('password');
+    const loginBtn = document.getElementById('loginBtn');
+    const connectBtn = document.getElementById('connectBtn');
+    const statusEl = document.getElementById('status');
+    const streamContainer = document.getElementById('streamContainer');
+
+    function getApiBase() {
+      const raw = apiBaseEl.value.trim();
+      if (raw) return raw.replace(/\/$/, '');
+      if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+        return window.location.origin;
+      }
+      return 'http://localhost:3000';
+    }
+
+    function setStatus(msg, className = '') {
+      statusEl.textContent = msg;
+      statusEl.className = className;
+    }
+
+    loginBtn.addEventListener('click', async () => {
+      const email = emailEl.value.trim();
+      const password = passwordEl.value;
+      if (!email || !password) {
+        setStatus('Enter email and password', 'error');
+        return;
+      }
+      setStatus('Logging in...');
+      const apiBase = getApiBase();
+      try {
+        const res = await fetch(apiBase + '/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setStatus(data.error || 'Login failed', 'error');
+          return;
+        }
+        tokenEl.value = data.token;
+        setStatus('Logged in. Click Connect Handshake.');
+      } catch (e) {
+        setStatus('Request failed: ' + e.message, 'error');
+      }
+    });
+
+    connectBtn.addEventListener('click', async () => {
+      const token = tokenEl.value.trim();
+      if (!token) {
+        setStatus('Enter a token or log in first', 'error');
+        return;
+      }
+      setStatus('Starting Handshake login...');
+      streamContainer.innerHTML = '';
+      const apiBase = getApiBase();
+      try {
+        const res = await fetch(apiBase + '/handshake/login/start', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setStatus(data.error || 'Failed to start', 'error');
+          return;
+        }
+        const { streamWsUrl } = data;
+        setStatus('Connecting stream... Click and type in the view below to log in.');
+        connectStream(streamWsUrl);
+      } catch (e) {
+        setStatus('Request failed: ' + e.message, 'error');
+      }
+    });
+
+    function connectStream(streamWsUrl) {
+      const ws = new WebSocket(streamWsUrl);
+      let canvas;
+      let streamWidth = 1280;
+      let streamHeight = 720;
+
+      ws.onopen = () => {
+        canvas = document.createElement('canvas');
+        canvas.width = streamWidth;
+        canvas.height = streamHeight;
+        canvas.tabIndex = 0;
+        streamContainer.appendChild(canvas);
+        canvas.focus();
+
+        canvas.addEventListener('click', (e) => {
+          const rect = canvas.getBoundingClientRect();
+          const scaleX = streamWidth / rect.width;
+          const scaleY = streamHeight / rect.height;
+          const x = (e.clientX - rect.left) * scaleX;
+          const y = (e.clientY - rect.top) * scaleY;
+          ws.send(JSON.stringify({ type: 'click', x, y }));
+        });
+
+        canvas.addEventListener('keydown', (e) => {
+          ws.send(JSON.stringify({ type: 'key', key: e.key }));
+          e.preventDefault();
+        });
+      };
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'frame') {
+          streamWidth = msg.width || 1280;
+          streamHeight = msg.height || 720;
+          if (canvas) {
+            const img = new Image();
+            img.onload = () => {
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                canvas.width = streamWidth;
+                canvas.height = streamHeight;
+                ctx.drawImage(img, 0, 0);
+              }
+            };
+            img.src = 'data:image/jpeg;base64,' + msg.image;
+          }
+        } else if (msg.type === 'connected') {
+          setStatus('Handshake connected.', 'connected');
+          ws.close();
+          streamContainer.innerHTML = '';
+        }
+      };
+
+      ws.onerror = () => setStatus('WebSocket error', 'error');
+      ws.onclose = () => { };
+    }
+  </script>
+</body>
+
+</html>

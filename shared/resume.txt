@@ -1,0 +1,53 @@
+Usman Ayobami
+San Mateo, CA | ayobamiu@gmail.com | (269) 220-1205 | github.com/ayobamiu | linkedin.com/in/usmanayobami 
+
+SUMMARY
+Master’s-level Software Engineer with strong foundations in distributed systems, networking, and secure software design. Experienced building scalable backend systems in Python and C++, designing cloud-native services, and leveraging AI-assisted development tools to accelerate high-quality code delivery. Passionate about cybersecurity, resilient infrastructure, and solving complex real-world problems at scale.
+
+EDUCATION
+Western Michigan University – Kalamazoo, MI | Master of Science, Computer Science - 2025
+Relevant Coursework:Distributed Systems, Computer Networks, Advanced Operating Systems, Applied Cryptography, Machine Learning Systems, Secure Software Engineering
+
+University of Ibadan – Nigeria | Bachelor of Science, Engineering - 2020
+
+TECHNICAL SKILLS
+Languages: Python, C++, Java, Rust, SQL
+Systems: Data Structures, Algorithms, Multithreading, Concurrency, Memory Management
+Networking: TCP/IP, HTTP, DNS, TLS, Socket Programming
+Security: Secure coding, RBAC, OAuth2, JWT, encryption fundamentals, input validation, OWASP awareness
+Cloud & DevOps: AWS, GCP, Docker, Kubernetes, CI/CD, Infrastructure-as-Code
+Databases: PostgreSQL, Redis, NoSQL systems
+AI Tooling: LLM APIs, AI-assisted code generation (Cursor, Copilot), automated test generation
+
+EXPERIENCE
+Software Engineering Intern - Cloud Security Team | Daylight Health | 2025
+Developed backend microservices in Python and C++ to process high-volume telemetry data (millions of events/day).
+Implemented secure API endpoints with authentication, role-based access control, and structured logging.
+Optimized distributed data processing pipelines, reducing latency by 35%.
+Integrated AI-assisted code review workflows to improve defect detection and development velocity.
+Contributed to production CI/CD pipelines and containerized deployments using Docker and Kubernetes.
+
+Graduate Research Assistant - Distributed Systems Lab | Western Michigan University | 2023 – 2025
+Designed and implemented a fault-tolerant distributed key-value store using Raft consensus.
+Built networked services handling concurrent client connections with performance benchmarking.
+Conducted performance profiling and memory analysis to improve throughput by 40%.
+Implemented secure inter-node communication using TLS and certificate validation.
+
+SELECTED PROJECTS
+High-Performance Network Packet Analyzer
+Built a multi-threaded packet inspection engine in C++ for real-time traffic analysis.
+Implemented efficient parsing of TCP/IP headers and anomaly detection logic.
+Achieved 2x performance improvement over baseline implementation via memory optimization.
+Secure API Gateway
+Designed and deployed a production-ready API gateway using Python and FastAPI.
+Implemented JWT-based authentication, rate limiting, and request validation.
+Deployed to AWS with autoscaling and monitoring dashboards.
+LLM-Powered Security Log Assistant
+Built a tool that uses LLM APIs to summarize and classify security logs.
+Designed structured prompt pipelines and validation layers to prevent hallucinated outputs.
+Reduced triage time for simulated security alerts by 30%.
+
+LEADERSHIP & COLLABORATION
+Led 4-person engineering team in capstone project building a cloud-native distributed system.
+Conducted peer code reviews and drove adoption of testing standards (unit + integration tests).
+Collaborated cross-functionally with product and research teams to translate requirements into technical designs.
