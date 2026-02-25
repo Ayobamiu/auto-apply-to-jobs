@@ -9,6 +9,7 @@ import { postPipeline } from './routes/pipeline.js';
 import { getJobs, getJobsStatus } from './routes/jobs.js';
 import { getProfileHandler, putProfile, postProfileFromResume } from './routes/profile.js';
 import { postHandshakeSessionUpload } from './routes/handshake-session.js';
+import { getPipelineJobStatus, getPipelineJobList } from './routes/pipeline-jobs.js';
 
 if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
   console.error('JWT_SECRET is required in production');
@@ -18,17 +19,16 @@ if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
 const app = express();
 app.use(express.json());
 
-// CORS for Chrome extension (and other origins)
-// app.use((req, res, next) => {
-//   res.setHeader('Access-Control-Allow-Origin', '*');
-//   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
-//   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-//   if (req.method === 'OPTIONS') {
-//     res.sendStatus(204);
-//     return;
-//   }
-//   next();
-// });
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
 
 // Auth (no JWT required)
 app.post('/auth/register', register);
@@ -41,6 +41,8 @@ app.get('/jobs/status', authMiddleware, getJobsStatus);
 app.get('/profile', authMiddleware, getProfileHandler);
 app.put('/profile', authMiddleware, putProfile);
 app.post('/profile/from-resume', authMiddleware, postProfileFromResume);
+app.get('/pipeline/jobs', authMiddleware, getPipelineJobList);
+app.get('/pipeline/jobs/:jobId', authMiddleware, getPipelineJobStatus);
 app.post('/handshake/session/upload', authMiddleware, postHandshakeSessionUpload);
 
 // Error handler
@@ -49,7 +51,11 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
   res.status(500).json({ error: message });
 });
 
-const port = Number(process.env.API_PORT || process.env.PORT || 3000);
-app.listen(port, () => {
-  console.log(`API listening on port ${port}`);
-});
+export { app };
+
+if (process.env.NODE_ENV !== 'test') {
+  const port = Number(process.env.API_PORT || process.env.PORT || 3000);
+  app.listen(port, () => {
+    console.log(`API listening on port ${port}`);
+  });
+}

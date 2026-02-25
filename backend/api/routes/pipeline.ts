@@ -1,8 +1,10 @@
 /**
- * POST /pipeline — run pipeline for a job (auth required).
+ * POST /pipeline — create async pipeline job (auth required).
+ * Always pass userId from request; do not rely on env or resolveUserId in API path.
  */
 import type { Request, Response } from 'express';
-import { runPipelineForJob } from '../../orchestration/run-pipeline.js';
+import { createPipelineJob } from '../../data/pipeline-jobs.js';
+import { runPipelineInBackground } from '../../orchestration/run-pipeline-background.js';
 
 export async function postPipeline(req: Request, res: Response): Promise<void> {
   const userId = req.userId;
@@ -16,14 +18,14 @@ export async function postPipeline(req: Request, res: Response): Promise<void> {
     return;
   }
   try {
-    const result = await runPipelineForJob(jobUrl.trim(), {
-      userId,
+    const { id: jobId } = await createPipelineJob(userId, jobUrl.trim(), {
       submit: Boolean(submit),
       forceScrape: Boolean(forceScrape),
     });
-    res.status(200).json(result);
+    setImmediate(() => void runPipelineInBackground(jobId));
+    res.status(202).json({ jobId, message: 'Pipeline started. Check status with GET /pipeline/jobs/:jobId' });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Pipeline failed';
+    const message = err instanceof Error ? err.message : 'Failed to create pipeline job';
     res.status(500).json({ error: message });
   }
 }

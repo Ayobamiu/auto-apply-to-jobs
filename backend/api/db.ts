@@ -82,6 +82,21 @@ const HANDSHAKE_SESSIONS_TABLE_SQL = `
   )
 `;
 
+const PIPELINE_JOBS_TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS pipeline_jobs (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id text NOT NULL,
+    job_url text NOT NULL,
+    status text NOT NULL DEFAULT 'pending',
+    submit boolean NOT NULL DEFAULT false,
+    force_scrape boolean NOT NULL DEFAULT false,
+    result jsonb,
+    error text,
+    created_at timestamptz DEFAULT now(),
+    updated_at timestamptz DEFAULT now()
+  )
+`;
+
 let usersTableInitialized = false;
 let dataTablesInitialized = false;
 
@@ -100,6 +115,7 @@ export async function ensureDataTables(): Promise<void> {
   await pool.query(APPLY_STATE_TABLE_SQL);
   await pool.query(USER_JOB_STATE_TABLE_SQL);
   await pool.query(HANDSHAKE_SESSIONS_TABLE_SQL);
+  await pool.query(PIPELINE_JOBS_TABLE_SQL);
   dataTablesInitialized = true;
 }
 
