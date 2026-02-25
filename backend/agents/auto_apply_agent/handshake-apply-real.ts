@@ -19,6 +19,7 @@ import { getApplyFormSchema, saveApplyFormSchema } from '../../data/apply-forms.
 import { attachSection, getPresentSectionConfigs, type PresentSectionConfig } from '../../shared/handshake-attach-helper.js';
 import { captureApplyFormSchema } from '../../shared/apply-form-capture.js';
 import { AppError, CODES } from '../../shared/errors.js';
+import { getHandshakeSessionPath } from '../../data/handshake-session.js';
 import { checkSessionValid } from '../../shared/session-check.js';
 import { preflightForApply } from '../../shared/preflight.js';
 import { getApplicationStatus } from '../job_scraper_agent/index.js';
@@ -95,7 +96,6 @@ function getJobUrl(): string | null {
 
 export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApplyOptions = {}): Promise<RunHandshakeApplyResult> {
   const userId = options.userId ?? resolveUserId({ envUserId: process.env.USER_ID, argv: process.argv });
-  const userPaths = getPathsForUser(userId);
 
   const endPreflight = startPhase('Apply: preflight');
   await preflightForApply(jobUrl, userId);
@@ -132,8 +132,12 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
   }
 
   const endLaunch = startPhase('Apply: browser launch');
+  const storagePath = await getHandshakeSessionPath(userId);
+  if (!storagePath) {
+    throw new AppError(CODES.NO_SESSION);
+  }
   const browser = await chromium.launch({ headless: false });
-  const context = await browser.newContext({ storageState: userPaths.authState });
+  const context = await browser.newContext({ storageState: storagePath });
   const page = await context.newPage();
   endLaunch();
 

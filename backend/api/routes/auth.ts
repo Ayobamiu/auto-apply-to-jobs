@@ -52,7 +52,10 @@ export function register(req: Request, res: Response): void {
 }
 
 export function login(req: Request, res: Response): void {
+  console.log('req.body', req.body);
   const { email: rawEmail, password: rawPassword } = req.body ?? {};
+  console.log('rawEmail', rawEmail);
+  console.log('rawPassword', rawPassword);
   if (!validateEmail(rawEmail)) {
     res.status(400).json({ error: 'Invalid or missing email' });
     return;

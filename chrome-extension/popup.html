@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Handshake session</title>
+  <style>
+    body { width: 320px; padding: 12px; font-family: system-ui, sans-serif; font-size: 13px; }
+    label { display: block; margin-top: 10px; margin-bottom: 2px; }
+    input, button { width: 100%; box-sizing: border-box; padding: 6px 8px; }
+    button { margin-top: 12px; cursor: pointer; background: #2563eb; color: white; border: none; border-radius: 6px; }
+    button:hover { background: #1d4ed8; }
+    #status { margin-top: 10px; font-size: 12px; color: #666; }
+    #status.error { color: #b91c1c; }
+    #status.success { color: #15803d; }
+  </style>
+</head>
+<body>
+  <label for="apiBase">API base URL</label>
+  <input id="apiBase" type="text" placeholder="http://localhost:3000" />
+  <label for="token">JWT token</label>
+  <input id="token" type="password" placeholder="Paste token from app" />
+  <button id="send">Send Handshake session to app</button>
+  <div id="status"></div>
+  <script src="popup.js"></script>
+</body>
+</html>

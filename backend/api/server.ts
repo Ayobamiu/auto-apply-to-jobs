@@ -8,6 +8,7 @@ import { register, login } from './routes/auth.js';
 import { postPipeline } from './routes/pipeline.js';
 import { getJobs, getJobsStatus } from './routes/jobs.js';
 import { getProfileHandler, putProfile, postProfileFromResume } from './routes/profile.js';
+import { postHandshakeSessionUpload } from './routes/handshake-session.js';
 
 if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
   console.error('JWT_SECRET is required in production');
@@ -16,6 +17,18 @@ if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
 
 const app = express();
 app.use(express.json());
+
+// CORS for Chrome extension (and other origins)
+// app.use((req, res, next) => {
+//   res.setHeader('Access-Control-Allow-Origin', '*');
+//   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
+//   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+//   if (req.method === 'OPTIONS') {
+//     res.sendStatus(204);
+//     return;
+//   }
+//   next();
+// });
 
 // Auth (no JWT required)
 app.post('/auth/register', register);
@@ -28,6 +41,7 @@ app.get('/jobs/status', authMiddleware, getJobsStatus);
 app.get('/profile', authMiddleware, getProfileHandler);
 app.put('/profile', authMiddleware, putProfile);
 app.post('/profile/from-resume', authMiddleware, postProfileFromResume);
+app.post('/handshake/session/upload', authMiddleware, postHandshakeSessionUpload);
 
 // Error handler
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
