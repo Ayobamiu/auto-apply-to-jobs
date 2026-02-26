@@ -27,6 +27,9 @@ export const MANUAL_LOGIN_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 // ── Apply flow ──────────────────────────────────────────────────────
 
+/** Use headed browser for apply (default: headless). Set APPLY_HEADED=1 to debug. */
+export const APPLY_HEADED = process.env.APPLY_HEADED === '1' || process.env.APPLY_HEADED === 'true';
+
 export const APPLY_BUTTON_TIMEOUT_MS = 15_000;
 export const APPLY_MODAL_TIMEOUT_MS = 15_000;
 export const SUBMIT_CONFIRM_TIMEOUT_MS = 20_000;

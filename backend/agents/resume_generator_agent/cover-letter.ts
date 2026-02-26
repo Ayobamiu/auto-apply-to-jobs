@@ -11,6 +11,7 @@ import { getCoverLetterForJob, saveCoverLetterForJob } from '../../data/job-arti
 import { coverLetterBasename } from '../../shared/filename-slugs.js';
 import { PATHS } from '../../shared/config.js';
 import { AppError, CODES } from '../../shared/errors.js';
+import { chromium } from 'playwright';
 import type { Profile, Job } from '../../shared/types.js';
 
 const DEFAULT_MODEL = 'gpt-4o-mini';
@@ -101,7 +102,7 @@ export async function generateCoverLetter(options: GenerateCoverLetterOptions): 
   p { margin: 0 0 1em; }
 </style></head><body>${paragraphs}</body></html>`;
 
-  const { chromium } = await import('playwright');
+  // PDF generation requires Chromium (Camoufox/Firefox don't support page.pdf)
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage();
@@ -154,7 +155,7 @@ export async function ensureCoverLetterPdfFromDb(
   p { margin: 0 0 1em; }
 </style></head><body>${paragraphs}</body></html>`;
 
-  const { chromium } = await import('playwright');
+  // PDF generation requires Chromium (Camoufox/Firefox don't support page.pdf)
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage();

@@ -23,6 +23,7 @@ import { getHandshakeSessionPath } from '../../data/handshake-session.js';
 import { checkSessionValid } from '../../shared/session-check.js';
 import { launchBrowser } from '../../shared/browser.js';
 import {
+  APPLY_HEADED,
   APPLY_BUTTON_TIMEOUT_MS,
   APPLY_MODAL_TIMEOUT_MS,
   SUBMIT_CONFIRM_TIMEOUT_MS,
@@ -158,7 +159,7 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
   if (!storagePath) {
     throw new AppError(CODES.NO_SESSION);
   }
-  const browser = await launchBrowser({ headless: false });
+  const browser = await launchBrowser({ headless: !APPLY_HEADED });
   const context = await browser.newContext({ storageState: storagePath });
   const page = await context.newPage();
   endLaunch();

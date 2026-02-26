@@ -74,17 +74,21 @@ If you haven’t run `handshake:login` yet, `handshake:apply` will tell you to d
 ## Beta: one-job flow (quick start)
 
 1. **Setup**
+
    ```bash
    npm install
    npx playwright install chromium
    cp .env.example .env
    ```
+
    Edit `.env`: set `OPENAI_API_KEY` if you want LLM resume tailoring (`USE_RESUME_ASSISTANT=1`).
 
 2. **Login once**
+
    ```bash
    npm run handshake:login
    ```
+
    Log in in the browser; session is saved to `.auth/`. Close the browser when done.
 
 3. **Put your files in `fixtures/`**  
@@ -106,35 +110,35 @@ If Handshake shows a bot-protection or blocking page when scraping, run with a v
 
 ### Commands reference
 
-| Script | Description |
-|--------|-------------|
-| `handshake:login` | One-time login; saves session to `.auth/` |
-| `handshake:login:record` | Record navigation during login (for tuning login detection) |
-| `handshake:apply` | Apply to one job (session + job URL); stops before submit unless `SUBMIT_APPLICATION=1` |
-| `job:scrape` | Scrape job from URL into `data/jobs.json` |
-| `job:status` | Show application status for a job URL |
-| `resume:generate` | Generate resume from profile + `shared/job.json` (no URL) |
-| `resume:edit` | Edit resume for a job by message (see “Editing a resume” below) |
-| `pipeline` | Scrape job (if URL given), generate resume, then run apply when `JOB_URL` set |
+| Script                   | Description                                                                             |
+| ------------------------ | --------------------------------------------------------------------------------------- |
+| `handshake:login`        | One-time login; saves session to `.auth/`                                               |
+| `handshake:login:record` | Record navigation during login (for tuning login detection)                             |
+| `handshake:apply`        | Apply to one job (session + job URL); stops before submit unless `SUBMIT_APPLICATION=1` |
+| `job:scrape`             | Scrape job from URL into `data/jobs.json`                                               |
+| `job:status`             | Show application status for a job URL                                                   |
+| `resume:generate`        | Generate resume from profile + `shared/job.json` (no URL)                               |
+| `resume:edit`            | Edit resume for a job by message (see “Editing a resume” below)                         |
+| `pipeline`               | Scrape job (if URL given), generate resume, then run apply when `JOB_URL` set           |
 
-**Env vars that change behavior:** `USER_ID` (user id for multi-user; default is `"default"`), `JOB_URL`, `SUBMIT_APPLICATION` (1 = submit after attach), `SCRAPE_HEADED` (1 = visible browser for scrape), `FORCE_SCRAPE` (1 = re-scrape even if job in store), `RESUME_PATH`, `TRANSCRIPT_PATH`, `COVER_PATH` (override fixture paths), `OPENAI_API_KEY` (for resume assistant / edit), `HANDSHAKE_JOBS_BASE_URL` (school Handshake base). **`PIPELINE_TIMING=1`** — log a phase-by-phase time breakdown. You can also pass **`--user <id>`** before the job URL in pipeline, apply, and other CLIs.
+**Env vars that change behavior:** `USER_ID` (user id for multi-user; default is `"default"`), `JOB_URL`, `SUBMIT_APPLICATION` (1 = submit after attach), `SCRAPE_HEADED` (1 = visible browser for scrape), `APPLY_HEADED` (1 = visible browser for apply; default is headless), `BROWSER_ENGINE` (`camoufox` | `chromium` to force), `FORCE_SCRAPE` (1 = re-scrape even if job in store), `RESUME_PATH`, `TRANSCRIPT_PATH`, `COVER_PATH` (override fixture paths), `OPENAI_API_KEY` (for resume assistant / edit), `HANDSHAKE_JOBS_BASE_URL` (school Handshake base). **`PIPELINE_TIMING=1`** — log a phase-by-phase time breakdown. You can also pass **`--user <id>`** before the job URL in pipeline, apply, and other CLIs.
 
 ### Pipeline timing (what takes time)
 
 Run with **`PIPELINE_TIMING=1`** to print `[timing]` lines for each phase. Typical time sinks:
 
-| Phase | What it does | Usually slow? |
-|-------|----------------|----------------|
-| **Step 0: Get job** | Scrape job page (or read from store/cache). If scraping: launch browser, load URL, wait for network, expand “More” sections, screenshot, save HTML. | **Yes** — 15–60+ s when scraping (page load + 2s settle + 6s networkidle + expand + screenshot). Skipped if job already in store and not `FORCE_SCRAPE`. |
-| **Step 1: Generate resume** | Build JSON from profile + job; optionally call LLM (if `USE_RESUME_ASSISTANT=1`). | **Can be** — LLM call ~5–30 s. If JSON already exists for this job, step is skipped. |
-| **Step 1b: Ensure PDF** | Generate PDF from JSON via `resumed` (Puppeteer). | **A few seconds** — only runs when PDF missing or older than JSON. |
-| **Apply: session check** | Headless browser: load Handshake, 2s settle, check for login redirect. | **~5–15 s** — one extra browser launch + navigation. |
-| **Apply: browser launch** | Launch visible Chromium, restore auth state, new page. | **1–3 s**. |
-| **Apply: goto job page + 2s settle** | Navigate to job URL, then fixed 2 s wait. | **3–10 s** (network + 2 s). |
-| **Apply: click Apply + 1.5s** | Click Apply button, then fixed 1.5 s. | **2–4 s**. |
-| **Apply: wait for apply modal** | Wait for modal (up to 15 s). | **1–5 s**. |
-| **Apply: attach transcript + resume + cover** | Search/upload for each of 3 files. | **5–20 s** — depends on search vs upload and network. |
-| **Apply: 6s delay + submit + wait confirmation** | Fixed 6 s delay, click Submit, 2 s, then wait for “Applied on” or “Withdraw” (up to 20 s). | **~10–30 s** — includes fixed 6 s + 2 s and server response. |
+| Phase                                            | What it does                                                                                                                                        | Usually slow?                                                                                                                                            |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Step 0: Get job**                              | Scrape job page (or read from store/cache). If scraping: launch browser, load URL, wait for network, expand “More” sections, screenshot, save HTML. | **Yes** — 15–60+ s when scraping (page load + 2s settle + 6s networkidle + expand + screenshot). Skipped if job already in store and not `FORCE_SCRAPE`. |
+| **Step 1: Generate resume**                      | Build JSON from profile + job; optionally call LLM (if `USE_RESUME_ASSISTANT=1`).                                                                   | **Can be** — LLM call ~5–30 s. If JSON already exists for this job, step is skipped.                                                                     |
+| **Step 1b: Ensure PDF**                          | Generate PDF from JSON via `resumed` (Puppeteer).                                                                                                   | **A few seconds** — only runs when PDF missing or older than JSON.                                                                                       |
+| **Apply: session check**                         | Headless browser: load Handshake, 2s settle, check for login redirect.                                                                              | **~5–15 s** — one extra browser launch + navigation.                                                                                                     |
+| **Apply: browser launch**                        | Launch visible Chromium, restore auth state, new page.                                                                                              | **1–3 s**.                                                                                                                                               |
+| **Apply: goto job page + 2s settle**             | Navigate to job URL, then fixed 2 s wait.                                                                                                           | **3–10 s** (network + 2 s).                                                                                                                              |
+| **Apply: click Apply + 1.5s**                    | Click Apply button, then fixed 1.5 s.                                                                                                               | **2–4 s**.                                                                                                                                               |
+| **Apply: wait for apply modal**                  | Wait for modal (up to 15 s).                                                                                                                        | **1–5 s**.                                                                                                                                               |
+| **Apply: attach transcript + resume + cover**    | Search/upload for each of 3 files.                                                                                                                  | **5–20 s** — depends on search vs upload and network.                                                                                                    |
+| **Apply: 6s delay + submit + wait confirmation** | Fixed 6 s delay, click Submit, 2 s, then wait for “Applied on” or “Withdraw” (up to 20 s).                                                          | **~10–30 s** — includes fixed 6 s + 2 s and server response.                                                                                             |
 
 **Summary:** Most of the time is browser work (scrape, session check, apply navigation, and the fixed sleeps: 2s after job page, 1.5s after opening modal, 6s before submit, 2s after submit). To speed up: avoid re-scraping when the job is already in store; skip session check if you’re sure the session is valid (would require a code change); and reduce or make configurable the fixed delays if the site is fast.
 
@@ -171,20 +175,20 @@ The job must already have a resume linked (run the pipeline with that job URL fi
 The repo is structured for multiple agents (each with a clear input/output):
 
 - **Resume generator** — `data/profile.json` + job (file or from URL) → JSON Resume → PDF in `data/resumes/` (or legacy `output/`).
-  - `npm run resume:generate` — uses `shared/job.json`; writes resume JSON and PDF (e.g. in `data/resumes/`). (via [resumed](https://github.com/rbardini/resumed) + theme).  
+  - `npm run resume:generate` — uses `shared/job.json`; writes resume JSON and PDF (e.g. in `data/resumes/`). (via [resumed](https://github.com/rbardini/resumed) + theme).
   - **Resume assistant (LLM):** set `USE_RESUME_ASSISTANT=1` and `OPENAI_API_KEY` to use the LLM to tailor the resume to the job; otherwise a direct profile→JSON mapping is used. The assistant is in `assistant.js` (separate from the JSON→PDF step in `export-pdf.js`) so we can add conversational editing later.
 
 - **Job from URL** — Handshake job URL → scrape title, company, description; cache by URL in `data/job-cache/` (24h). Used automatically by the pipeline when `JOB_URL` is set. If the site shows a bot-protection page in headless mode, run with `SCRAPE_HEADED=1` to use a visible browser (e.g. `SCRAPE_HEADED=1 npm run pipeline -- 'https://...'`).
 
 - **Apply state** — Per-job state in `data/apply-state.json` (keyed by job URL). Records when a job has been uploaded (resume path, timestamp). If you run apply again for the same job, uploads are skipped and the modal opens in "ready to submit" mode. On successful submit, `data/jobs.json` is also updated so that job’s `applicationSubmitted` and `appliedAt` stay in sync.
 
-- **Auto-apply (Handshake)** — session + job URL + PDFs → apply flow (stops before submit).  
-  - `npm run handshake:login` | `handshake:login:record` | `handshake:apply` (see Real Handshake above).  
-  - Optional env: `RESUME_PATH`, `TRANSCRIPT_PATH`, `COVER_PATH` to override fixture PDFs.  
+- **Auto-apply (Handshake)** — session + job URL + PDFs → apply flow (stops before submit).
+  - `npm run handshake:login` | `handshake:login:record` | `handshake:apply` (see Real Handshake above).
+  - Optional env: `RESUME_PATH`, `TRANSCRIPT_PATH`, `COVER_PATH` to override fixture PDFs.
   - First time for a job URL: clears pre-populated files, uploads transcript + resume + cover, then saves state. Next time for same URL: opens modal only (no upload).
 
-- **Pipeline** — get job (from URL scrape/cache or `shared/job.json`), generate resume PDF, then run Handshake apply when `JOB_URL` is set.  
-  - `npm run pipeline` — job from file; generates resume only (no apply).  
+- **Pipeline** — get job (from URL scrape/cache or `shared/job.json`), generate resume PDF, then run Handshake apply when `JOB_URL` is set.
+  - `npm run pipeline` — job from file; generates resume only (no apply).
   - `npm run pipeline -- 'https://...'` — scrapes/caches job from URL, generates resume from it, then runs apply with that PDF.
 
 ## Project layout
