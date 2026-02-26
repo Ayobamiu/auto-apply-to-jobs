@@ -1,8 +1,15 @@
 /**
  * Express API: auth, pipeline, jobs. JWT-protected routes use req.userId.
+ * Also serves the frontend SPA from frontend/dist when built.
  */
 import './bootstrap.js';
+import { existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import express from 'express';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const FRONTEND_DIST = join(__dirname, '..', '..', 'frontend', 'dist');
 import { authMiddleware } from './middleware/auth.js';
 import { register, login } from './routes/auth.js';
 import { postPipeline } from './routes/pipeline.js';
@@ -10,6 +17,7 @@ import { getJobs, getJobsStatus } from './routes/jobs.js';
 import { getProfileHandler, putProfile, postProfileFromResume } from './routes/profile.js';
 import { postHandshakeSessionUpload } from './routes/handshake-session.js';
 import { getPipelineJobStatus, getPipelineJobList } from './routes/pipeline-jobs.js';
+import { postChat } from './routes/chat.js';
 
 if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
   console.error('JWT_SECRET is required in production');
@@ -44,6 +52,19 @@ app.post('/profile/from-resume', authMiddleware, postProfileFromResume);
 app.get('/pipeline/jobs', authMiddleware, getPipelineJobList);
 app.get('/pipeline/jobs/:jobId', authMiddleware, getPipelineJobStatus);
 app.post('/handshake/session/upload', authMiddleware, postHandshakeSessionUpload);
+app.post('/chat', authMiddleware, postChat);
+
+// Serve frontend SPA (after API routes so API paths take priority)
+if (existsSync(FRONTEND_DIST)) {
+  app.use(express.static(FRONTEND_DIST));
+  app.use((_req, res, next) => {
+    if (_req.method === 'GET' && _req.accepts('html')) {
+      res.sendFile(join(FRONTEND_DIST, 'index.html'));
+    } else {
+      next();
+    }
+  });
+}
 
 // Error handler
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

@@ -13,6 +13,9 @@
     "job:scrape": "cd backend && npm run job:scrape",
     "job:status": "cd backend && npm run job:status",
     "resume:generate": "cd backend && npm run resume:generate",
-    "resume:edit": "cd backend && npm run resume:edit"
+    "resume:edit": "cd backend && npm run resume:edit",
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build",
+    "dev": "cd frontend && npm run build && cd ../backend && npm run api"
   }
 }
