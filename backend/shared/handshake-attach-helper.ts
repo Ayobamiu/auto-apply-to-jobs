@@ -3,6 +3,15 @@
  */
 import { basename } from 'path';
 import type { Page, Locator } from 'playwright';
+import {
+  SEARCH_INPUT_TIMEOUT_MS,
+  SEARCH_RESULT_TIMEOUT_MS,
+  FILE_UPLOAD_TIMEOUT_MS,
+  UPLOAD_NEW_LABEL_TIMEOUT_MS,
+  SECTION_DETECT_TIMEOUT_MS,
+  POST_SEARCH_FILL_DELAY_MS,
+  POST_UPLOAD_CLICK_DELAY_MS,
+} from './constants.js';
 
 export interface AttachSectionOptions {
   sectionHeading: string;
@@ -25,19 +34,19 @@ export async function attachSection(page: Page, modal: Locator, options: AttachS
 
   try {
     const searchInput = fieldset.getByPlaceholder(new RegExp(searchPlaceholder, 'i'));
-    await searchInput.click({ timeout: 5000 });
+    await searchInput.click({ timeout: SEARCH_INPUT_TIMEOUT_MS });
     await searchInput.fill(fileNameForSearch);
-    await new Promise((r) => setTimeout(r, 800));
+    await new Promise((r) => setTimeout(r, POST_SEARCH_FILL_DELAY_MS));
 
     const listbox = page.getByRole('listbox').first();
     const option = listbox.getByRole('option').filter({ hasText: fileNameForSearch }).first();
-    await option.waitFor({ state: 'visible', timeout: 2000 });
+    await option.waitFor({ state: 'visible', timeout: SEARCH_RESULT_TIMEOUT_MS });
     await option.click();
     return 'selected';
   } catch (_) { }
 
   const upload = async (inputLocator: Locator) => {
-    await inputLocator.setInputFiles(filePath, { timeout: 10000 });
+    await inputLocator.setInputFiles(filePath, { timeout: FILE_UPLOAD_TIMEOUT_MS });
   };
 
   const withinSection = fieldset.locator(`input[name="${fileInputName}"], input[type="file"]`).first();
@@ -55,8 +64,8 @@ export async function attachSection(page: Page, modal: Locator, options: AttachS
     await tryAll();
   } catch (_) {
     const uploadNewLabel = fieldset.getByText(/Upload\s+new/i).first();
-    await uploadNewLabel.click({ timeout: 3000 }).catch(() => { });
-    await new Promise((r) => setTimeout(r, 500));
+    await uploadNewLabel.click({ timeout: UPLOAD_NEW_LABEL_TIMEOUT_MS }).catch(() => { });
+    await new Promise((r) => setTimeout(r, POST_UPLOAD_CLICK_DELAY_MS));
     await tryAll();
   }
   return 'uploaded';
@@ -98,7 +107,7 @@ export async function getPresentSectionConfigs(
   modal: Locator,
   options?: { timeout?: number }
 ): Promise<PresentSectionConfig[]> {
-  const timeout = options?.timeout ?? 1500;
+  const timeout = options?.timeout ?? SECTION_DETECT_TIMEOUT_MS;
   const result: PresentSectionConfig[] = [];
   for (const key of Object.keys(SECTION_CONFIG) as SectionKey[]) {
     const config = SECTION_CONFIG[key];

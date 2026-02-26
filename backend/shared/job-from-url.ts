@@ -5,10 +5,19 @@
 import { createHash } from 'crypto';
 import { mkdirSync, readFileSync, writeFileSync, existsSync, statSync } from 'fs';
 import { join } from 'path';
-import { chromium } from 'playwright';
 import type { Page } from 'playwright';
 import TurndownService from 'turndown';
+import { launchBrowser } from './browser.js';
 import { PATHS, getPathsForUser } from './config.js';
+import {
+  JOB_CACHE_MAX_AGE_MS,
+  EXPAND_DESCRIPTION_MAX_CLICKS,
+  SCRAPE_TIMEOUT_HEADLESS_MS,
+  SCRAPE_TIMEOUT_HEADED_MS,
+  PAGE_GOTO_TIMEOUT_MS,
+  NETWORK_IDLE_TIMEOUT_MS,
+  POST_NAVIGATE_DELAY_MS,
+} from './constants.js';
 import { setCachedJobHtml } from '../data/job-cache.js';
 import type { Job } from './types.js';
 
@@ -25,7 +34,6 @@ function htmlToMarkdown(html: string): string {
   }
 }
 
-const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export function normalizeUrl(url: string): string {
   try {
@@ -90,7 +98,7 @@ export interface ScrapedJob {
 async function expandDescriptionSections(page: Page): Promise<void> {
   const moreButton = page.locator('button.view-more-button').filter({ hasText: 'More' });
   let clicked = 0;
-  const maxClicks = 20;
+  const maxClicks = EXPAND_DESCRIPTION_MAX_CLICKS;
   while (clicked < maxClicks) {
     const count = await moreButton.count();
     if (count === 0) break;
@@ -225,7 +233,7 @@ export async function getJobFromUrl(jobUrl: string, options: GetJobFromUrlOption
   const jobId = getJobIdFromUrl(jobUrl);
   const fileKey = jobId || hashKey;
   const cacheDir = options.cacheDir ?? PATHS.jobCache;
-  const maxAgeMs = options.maxAgeMs ?? CACHE_MAX_AGE_MS;
+  const maxAgeMs = options.maxAgeMs ?? JOB_CACHE_MAX_AGE_MS;
   const cachePath = join(cacheDir, `${fileKey}.json`);
 
   const headless = options.headless ?? !(process.env.SCRAPE_HEADED === '1' || process.env.SCRAPE_HEADED === 'true');
@@ -241,22 +249,22 @@ export async function getJobFromUrl(jobUrl: string, options: GetJobFromUrlOption
     } catch (_) {}
   }
 
-  const SCRAPE_TIMEOUT_MS = headless ? 45000 : 90000;
+  const SCRAPE_TIMEOUT_MS = headless ? SCRAPE_TIMEOUT_HEADLESS_MS : SCRAPE_TIMEOUT_HEADED_MS;
   if (!headless) {
     console.log('Job scrape: using visible browser (SCRAPE_HEADED=1). A window will open; it will close after scraping.');
   }
 
   const useAuth = options.useAuth !== false;
-  const browser = await chromium.launch({ headless });
+  const browser = await launchBrowser({ headless });
   const context = await browser.newContext(
     useAuth && existsSync(getPathsForUser('default').authState) ? { storageState: getPathsForUser('default').authState } : {}
   );
   const page = await context.newPage();
 
   const doScrape = async (): Promise<Job & { url: string }> => {
-    await page.goto(normalized, { waitUntil: 'domcontentloaded', timeout: 20000 });
-    await page.waitForLoadState('networkidle', { timeout: 6000 }).catch(() => {});
-    await new Promise((r) => setTimeout(r, 2000));
+    await page.goto(normalized, { waitUntil: 'domcontentloaded', timeout: PAGE_GOTO_TIMEOUT_MS });
+    await page.waitForLoadState('networkidle', { timeout: NETWORK_IDLE_TIMEOUT_MS }).catch(() => {});
+    await new Promise((r) => setTimeout(r, POST_NAVIGATE_DELAY_MS));
 
     const jobIdMatch = normalized.match(/job-search\/(\d+)/) || normalized.match(/\/jobs\/(\d+)/);
     const jid = jobIdMatch ? jobIdMatch[1] : null;
@@ -334,14 +342,14 @@ export async function getApplicationStatusFromUrl(
   const normalized = normalizeUrl(jobUrl);
   const headless = options.headless ?? !(process.env.SCRAPE_HEADED === '1' || process.env.SCRAPE_HEADED === 'true');
   const useAuth = options.useAuth !== false;
-  const browser = await chromium.launch({ headless });
+  const browser = await launchBrowser({ headless });
   const context = await browser.newContext(
     useAuth && existsSync(getPathsForUser('default').authState) ? { storageState: getPathsForUser('default').authState } : {}
   );
   const page = await context.newPage();
   try {
-    await page.goto(normalized, { waitUntil: 'domcontentloaded', timeout: 20000 });
-    await new Promise((r) => setTimeout(r, 3000));
+    await page.goto(normalized, { waitUntil: 'domcontentloaded', timeout: PAGE_GOTO_TIMEOUT_MS });
+    await new Promise((r) => setTimeout(r, POST_NAVIGATE_DELAY_MS));
     const appliedBanner = page.getByText(/Applied on .+/i).first();
     let applicationSubmitted = false;
     let appliedAt: string | undefined;

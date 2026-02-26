@@ -18,7 +18,7 @@
     "resume:generate": "tsx agents/resume_generator_agent/index.ts",
     "resume:edit": "tsx agents/resume_generator_agent/resume-edit-cli.ts",
     "pipeline": "tsx orchestration/run-pipeline.ts",
-    "api": "nodemon --exec tsx api/server.ts --watch api --ext ts",
+    "api": "nodemon --exec tsx api/server.ts --watch api --watch shared --watch orchestration --watch agents --watch data --ext ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
@@ -39,6 +39,7 @@
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "camoufox-js": "^0.9.1",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",

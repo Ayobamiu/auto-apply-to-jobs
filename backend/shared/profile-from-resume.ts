@@ -9,8 +9,9 @@ import PROFILE_SCHEMA_JSON from './profile_schema.json' with { type: "json" };
 const PROFILE_SCHEMA = (PROFILE_SCHEMA_JSON as { name: string; schema: Record<string, unknown> })
   .schema;
 
+import { MAX_RESUME_CHARS } from './constants.js';
+
 const DEFAULT_MODEL = 'gpt-4o-mini';
-const MAX_RESUME_CHARS = 20_000;
 
 const SYSTEM_PROMPT = `You are a precise resume parser.
 

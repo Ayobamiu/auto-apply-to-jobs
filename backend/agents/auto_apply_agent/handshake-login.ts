@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { mkdirSync } from 'fs';
 import { getPathsForUser, resolveUserId, ROOT } from '../../shared/config.js';
+import { MANUAL_LOGIN_TIMEOUT_MS } from '../../shared/constants.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -24,8 +25,7 @@ async function main(): Promise<void> {
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  const FIVE_MINUTES_MS = 5 * 60 * 1000;
-  page.setDefaultTimeout(FIVE_MINUTES_MS);
+  page.setDefaultTimeout(MANUAL_LOGIN_TIMEOUT_MS);
 
   console.log('Opening Handshake login...');
   await page.goto('https://app.joinhandshake.com/login', { waitUntil: 'load' });
@@ -39,7 +39,7 @@ async function main(): Promise<void> {
       const isLoginPath = path.includes('login') || path.includes('configure_auth') || path.includes('sign_in');
       return isHandshakeApp && !isLoginPath;
     },
-    { timeout: FIVE_MINUTES_MS }
+    { timeout: MANUAL_LOGIN_TIMEOUT_MS }
   );
 
   await new Promise((r) => setTimeout(r, 1500));

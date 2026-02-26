@@ -1,10 +1,10 @@
 /**
  * Check if Handshake session (saved auth state) is still valid without running the full apply flow.
  */
-import { chromium } from 'playwright';
+import { launchBrowser } from './browser.js';
 import { getHandshakeSessionPath } from '../data/handshake-session.js';
+import { SESSION_CHECK_TIMEOUT_MS, POST_NAVIGATE_DELAY_MS } from './constants.js';
 
-const SESSION_CHECK_TIMEOUT_MS = 15000;
 const STABLE_HANDSHAKE_URL = process.env.HANDSHAKE_JOBS_BASE_URL || 'https://app.joinhandshake.com';
 
 export type SessionCheckResult =
@@ -17,12 +17,12 @@ export async function checkSessionValid(userId?: string): Promise<SessionCheckRe
     return { valid: false, reason: 'no_session' };
   }
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchBrowser({ headless: true });
   try {
     const context = await browser.newContext({ storageState: storagePath });
     const page = await context.newPage();
     await page.goto(STABLE_HANDSHAKE_URL, { waitUntil: 'domcontentloaded', timeout: SESSION_CHECK_TIMEOUT_MS });
-    await new Promise((r) => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, POST_NAVIGATE_DELAY_MS));
 
     const url = page.url();
     const host = new URL(url).hostname.toLowerCase();

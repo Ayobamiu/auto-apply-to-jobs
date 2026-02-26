@@ -3,7 +3,6 @@
  * Set SUBMIT_APPLICATION=1 to click Submit after uploads; otherwise stops before submit.
  */
 import 'dotenv/config';
-import { chromium } from 'playwright';
 import { fileURLToPath } from 'url';
 import { join, dirname } from 'path';
 import { existsSync, mkdirSync } from 'fs';
@@ -21,6 +20,16 @@ import { captureApplyFormSchema } from '../../shared/apply-form-capture.js';
 import { AppError, CODES } from '../../shared/errors.js';
 import { getHandshakeSessionPath } from '../../data/handshake-session.js';
 import { checkSessionValid } from '../../shared/session-check.js';
+import { launchBrowser } from '../../shared/browser.js';
+import {
+  APPLY_BUTTON_TIMEOUT_MS,
+  APPLY_MODAL_TIMEOUT_MS,
+  SUBMIT_CONFIRM_TIMEOUT_MS,
+  POST_NAVIGATE_DELAY_MS,
+  POST_APPLY_CLICK_DELAY_MS,
+  PRE_SUBMIT_DELAY_MS,
+  POST_SUBMIT_DELAY_MS,
+} from '../../shared/constants.js';
 import { preflightForApply } from '../../shared/preflight.js';
 import { getApplicationStatus } from '../job_scraper_agent/index.js';
 import { startPhase } from '../../shared/timing.js';
@@ -136,7 +145,7 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
   if (!storagePath) {
     throw new AppError(CODES.NO_SESSION);
   }
-  const browser = await chromium.launch({ headless: false });
+  const browser = await launchBrowser({ headless: false });
   const context = await browser.newContext({ storageState: storagePath });
   const page = await context.newPage();
   endLaunch();
@@ -144,7 +153,7 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
   try {
     const endGoto = startPhase('Apply: goto job page + 2s settle');
     await page.goto(jobUrl, { waitUntil: 'load' });
-    await new Promise((r) => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, POST_NAVIGATE_DELAY_MS));
     endGoto();
 
     const url = page.url();
@@ -175,15 +184,15 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
 
     const endClickApply = startPhase('Apply: click Apply button + 1.5s');
     const applyBtn = page.getByRole('button', { name: /apply/i }).first();
-    await applyBtn.click({ timeout: 15000 }).catch(() =>
+    await applyBtn.click({ timeout: APPLY_BUTTON_TIMEOUT_MS }).catch(() =>
       page.getByRole('link', { name: /apply/i }).first().click({ timeout: 5000 })
     );
-    await new Promise((r) => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, POST_APPLY_CLICK_DELAY_MS));
     endClickApply();
 
     const endModal = startPhase('Apply: wait for apply modal');
     const applyModal = page.locator('[data-hook="apply-modal-content"]').first();
-    await applyModal.waitFor({ state: 'visible', timeout: 15000 }).catch(() =>
+    await applyModal.waitFor({ state: 'visible', timeout: APPLY_MODAL_TIMEOUT_MS }).catch(() =>
       page.getByText('Attach your transcript').first().waitFor({ state: 'visible', timeout: 5000 })
     );
     endModal();
@@ -278,7 +287,7 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
     let applied = false;
     if (doSubmit) {
       const endSubmit = startPhase('Apply: 6s delay + submit click + wait confirmation');
-      await new Promise((r) => setTimeout(r, 6000));
+      await new Promise((r) => setTimeout(r, PRE_SUBMIT_DELAY_MS));
       const submitBtn = applyModal.getByRole('button', { name: /submit\s*application/i }).first();
       await submitBtn.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
       await submitBtn.click({ force: true, timeout: 5000 }).catch(() =>
@@ -287,10 +296,10 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
           if (b && /submit/i.test(b.textContent || '')) (b as HTMLElement).click();
         })
       );
-      await new Promise((r) => setTimeout(r, 2000));
+      await new Promise((r) => setTimeout(r, POST_SUBMIT_DELAY_MS));
       let submitted = false;
       try {
-        await page.getByText(/Applied on .+/i).first().waitFor({ state: 'visible', timeout: 20000 });
+        await page.getByText(/Applied on .+/i).first().waitFor({ state: 'visible', timeout: SUBMIT_CONFIRM_TIMEOUT_MS });
         console.log('Application submitted successfully.');
         submitted = true;
       } catch (_) {

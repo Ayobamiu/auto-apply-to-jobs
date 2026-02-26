@@ -1,5 +1,5 @@
-put in apis
-account for many users, not just one (for the profile)
+x put in apis
+x account for many users, not just one (for the profile)
 x scrape from https://wmich.joinhandshake.com/jobs/<id>
 x dont generate resume for jobs that dont require it
 store saome state to know users that are onboarding for the first time. Tell them what you can do first.

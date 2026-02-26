@@ -9,9 +9,8 @@ import { createPipelineJob, listPipelineJobs, getPipelineJob } from '../data/pip
 import { runPipelineInBackground } from './run-pipeline-background.js';
 import { listJobsWithStatus } from './list-jobs-with-status.js';
 import { isAppError, CODES } from '../shared/errors.js';
+import { SESSION_STALE_THRESHOLD_MS } from '../shared/constants.js';
 import type { Profile } from '../shared/types.js';
-
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -138,7 +137,7 @@ async function checkPrerequisites(userId: string): Promise<{ hasProfile: boolean
   const hasProfile = !!(profile?.name?.trim());
   const sessionAge = await getSessionAge(userId);
   const hasSession = sessionAge !== null;
-  const sessionStale = hasSession && sessionAge! > SEVEN_DAYS_MS;
+  const sessionStale = hasSession && sessionAge! > SESSION_STALE_THRESHOLD_MS;
   return { hasProfile, hasSession, sessionStale };
 }
 

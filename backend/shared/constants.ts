@@ -1,0 +1,62 @@
+/**
+ * Centralized constants for the entire backend.
+ * Grouped by domain — change values here instead of hunting through files.
+ */
+
+// ── Browser & Scraping ──────────────────────────────────────────────
+
+export const SCRAPE_TIMEOUT_HEADLESS_MS = 90_000;
+export const SCRAPE_TIMEOUT_HEADED_MS = 120_000;
+export const JOB_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
+export const EXPAND_DESCRIPTION_MAX_CLICKS = 20;
+
+/** Page.goto timeout for most navigations. */
+export const PAGE_GOTO_TIMEOUT_MS = 20_000;
+/** waitForLoadState('networkidle') timeout. */
+export const NETWORK_IDLE_TIMEOUT_MS = 6_000;
+
+// ── Session ─────────────────────────────────────────────────────────
+
+export const SESSION_CHECK_TIMEOUT_MS = 15_000;
+/** Sessions older than this are considered stale in the orchestrator. */
+export const SESSION_STALE_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+// ── Login ───────────────────────────────────────────────────────────
+
+export const MANUAL_LOGIN_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+// ── Apply flow ──────────────────────────────────────────────────────
+
+export const APPLY_BUTTON_TIMEOUT_MS = 15_000;
+export const APPLY_MODAL_TIMEOUT_MS = 15_000;
+export const SUBMIT_CONFIRM_TIMEOUT_MS = 20_000;
+export const FILE_UPLOAD_TIMEOUT_MS = 10_000;
+
+/** Delay after navigating to the job page before inspecting it. */
+export const POST_NAVIGATE_DELAY_MS = 2_000;
+/** Delay after clicking the Apply button. */
+export const POST_APPLY_CLICK_DELAY_MS = 1_500;
+/** Delay before clicking Submit (allows uploads to finalize). */
+export const PRE_SUBMIT_DELAY_MS = 6_000;
+/** Delay after clicking Submit before checking for confirmation. */
+export const POST_SUBMIT_DELAY_MS = 2_000;
+
+// ── Attach helper (search / upload) ─────────────────────────────────
+
+export const SEARCH_INPUT_TIMEOUT_MS = 5_000;
+export const SEARCH_RESULT_TIMEOUT_MS = 2_000;
+export const UPLOAD_NEW_LABEL_TIMEOUT_MS = 3_000;
+export const SECTION_DETECT_TIMEOUT_MS = 1_500;
+
+/** Delay after filling the search input to let the dropdown populate. */
+export const POST_SEARCH_FILL_DELAY_MS = 800;
+/** Delay after clicking "Upload new" before setting the file input. */
+export const POST_UPLOAD_CLICK_DELAY_MS = 500;
+
+// ── Resume / Profile ────────────────────────────────────────────────
+
+export const MAX_RESUME_CHARS = 20_000;
+
+// ── Server ──────────────────────────────────────────────────────────
+
+export const DEFAULT_API_PORT = 3000;
