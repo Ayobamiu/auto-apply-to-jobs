@@ -3,7 +3,7 @@
  * Loads a pipeline_jobs row, runs the pipeline, updates the row with result or error.
  * Always pass userId from the job row; do not rely on env or resolveUserId in API path.
  */
-import { getPipelineJobById, updatePipelineJobStatus } from '../data/pipeline-jobs.js';
+import { getPipelineJobById, updatePipelineJobStatus, updatePipelineJobPhase } from '../data/pipeline-jobs.js';
 import { runPipelineForJob } from './run-pipeline.js';
 
 export type RunPipelineFn = typeof runPipelineForJob;
@@ -22,6 +22,7 @@ export async function runPipelineInBackground(
       userId: job.user_id,
       submit: job.submit,
       forceScrape: job.force_scrape,
+      onPhaseChange: (phase) => void updatePipelineJobPhase(jobId, phase),
     });
     await updatePipelineJobStatus(jobId, 'done', result);
   } catch (err) {

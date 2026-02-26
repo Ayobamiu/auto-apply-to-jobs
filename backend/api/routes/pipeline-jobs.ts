@@ -19,6 +19,7 @@ export async function getPipelineJobStatus(req: Request, res: Response): Promise
   }
   res.status(200).json({
     status: job.status,
+    phase: job.phase ?? null,
     jobUrl: job.job_url,
     submit: job.submit,
     result: job.result,
@@ -39,6 +40,7 @@ export async function getPipelineJobList(req: Request, res: Response): Promise<v
     jobs.map((j) => ({
       id: j.id,
       status: j.status,
+      phase: j.phase ?? null,
       jobUrl: j.job_url,
       submit: j.submit,
       result: j.result,

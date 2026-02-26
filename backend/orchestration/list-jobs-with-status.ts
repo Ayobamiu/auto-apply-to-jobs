@@ -1,10 +1,9 @@
 /**
  * List jobs enriched with application state and resume presence for UI/CLI.
  */
-import { existsSync } from 'fs';
 import { listJobs } from '../data/jobs.js';
 import { getApplicationState } from '../data/apply-state.js';
-import { getResumePathsForJob } from '../data/resumes.js';
+import { getResumeForJob } from '../data/job-artifacts.js';
 import { getUserJobState, toJobRef } from '../data/user-job-state.js';
 import { normalizeUrl, toHandshakeJobDetailsUrl } from '../shared/job-from-url.js';
 import type { Job } from '../shared/types.js';
@@ -41,8 +40,8 @@ export async function listJobsWithStatus(userId?: string): Promise<JobWithStatus
       const j = job as Job;
       const jobUrl = jobUrlFor(site, jobId, j);
       const applicationState = jobUrl ? await getApplicationState(jobUrl, uid) : null;
-      const { jsonPath, pdfPath } = await getResumePathsForJob(site, jobId, uid);
-      const hasResume = !!(jsonPath && existsSync(jsonPath)) || !!(pdfPath && existsSync(pdfPath));
+      const resume = await getResumeForJob(uid, site, jobId);
+      const hasResume = !!resume;
       const userState = await getUserJobState(uid, toJobRef(site, jobId));
       const appliedAt: string | undefined = userState?.appliedAt ?? applicationState?.submittedAt ?? undefined;
       result.push({

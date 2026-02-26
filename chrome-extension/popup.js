@@ -15,9 +15,22 @@
     chrome.storage.local.set({ [STORAGE_KEY]: apiBaseEl.value || DEFAULT_API });
   });
 
-  function setStatus(text, type) {
-    statusEl.textContent = text;
+  function setStatus(text, type, linkUrl) {
+    statusEl.textContent = '';
     statusEl.className = type || '';
+    statusEl.appendChild(document.createTextNode(text));
+    if (linkUrl) {
+      statusEl.appendChild(document.createElement('br'));
+      const link = document.createElement('a');
+      link.href = linkUrl;
+      link.textContent = 'Open app';
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.style.display = 'inline-block';
+      link.style.marginTop = '8px';
+      link.style.color = '#2563eb';
+      statusEl.appendChild(link);
+    }
   }
 
   sendBtn.addEventListener('click', function () {
@@ -39,7 +52,7 @@
           return;
         }
         if (response && response.ok) {
-          setStatus('Session sent.', 'success');
+          setStatus('Handshake connected! Open the app to continue.', 'success', apiBase + '/?session=uploaded');
         } else {
           const msg = (response && response.error) || 'Request failed';
           setStatus(msg, 'error');

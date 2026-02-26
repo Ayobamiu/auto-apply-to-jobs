@@ -1,8 +1,8 @@
-import { sendChat, getUserIdFromToken, type ChatMessage, type ChatResponse } from './api.js';
+import { sendChat, getPipelineJobStatus, getHandshakeSessionStatus, getUserIdFromToken, type ChatMessage } from './api.js';
 
 const MAX_MESSAGES_TO_BACKEND = 50;
-const POLL_INTERVAL_MS = 15_000;
-const MAX_POLL_ATTEMPTS = 10;
+const POLL_INTERVAL_MS = 3_000;
+const MAX_POLL_ATTEMPTS = 100;
 
 function storageKey(): string {
   const uid = getUserIdFromToken() ?? 'unknown';
@@ -51,6 +51,7 @@ export function renderChat(
       <header class="chat-header">
         <h1 class="chat-header-title">Auto Apply</h1>
         <div class="chat-header-actions">
+          <button id="check-connection-btn" class="header-btn" title="Check Handshake connection">Check connection</button>
           <button id="copy-token-btn" class="header-btn" title="Copy API token for extension">Copy Token</button>
           <button id="logout-btn" class="header-btn header-btn-secondary">Sign Out</button>
         </div>
@@ -76,6 +77,7 @@ export function renderChat(
   const form = document.getElementById('chat-form') as HTMLFormElement;
   const input = document.getElementById('chat-input') as HTMLTextAreaElement;
   const sendBtn = document.getElementById('chat-send') as HTMLButtonElement;
+  const checkConnectionBtn = document.getElementById('check-connection-btn')!;
   const copyTokenBtn = document.getElementById('copy-token-btn')!;
   const logoutBtn = document.getElementById('logout-btn')!;
 
@@ -102,11 +104,24 @@ export function renderChat(
     renderMessages();
   }
 
-  function showTypingIndicator(): void {
+  function showTypingIndicator(phase?: string | null): void {
+    const existing = document.getElementById('typing-indicator');
+    if (existing) {
+      const content = existing.querySelector('.chat-bubble-content');
+      if (content) {
+        content.innerHTML = phase
+          ? `<span class="chat-phase">${escapeHtml(phase)}</span>`
+          : '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+      }
+      scrollToBottom();
+      return;
+    }
     const indicator = document.createElement('div');
     indicator.className = 'chat-bubble chat-bubble-assistant chat-typing';
     indicator.id = 'typing-indicator';
-    indicator.innerHTML = '<div class="chat-bubble-content"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
+    indicator.innerHTML = phase
+      ? `<div class="chat-bubble-content"><span class="chat-phase">${escapeHtml(phase)}</span></div>`
+      : '<div class="chat-bubble-content"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
     messagesEl.appendChild(indicator);
     scrollToBottom();
   }
@@ -128,28 +143,42 @@ export function renderChat(
     stopPolling();
     currentPollJobId = jobId;
     pollAttempts = 0;
+    showTypingIndicator('Starting...');
 
     function poll(): void {
       if (!currentPollJobId || pollAttempts >= MAX_POLL_ATTEMPTS) {
         if (pollAttempts >= MAX_POLL_ATTEMPTS) {
           addMessage('assistant', 'I\'ve been checking for a while. You can ask "check status" anytime to get an update.');
         }
+        hideTypingIndicator();
         stopPolling();
         return;
       }
       pollAttempts++;
 
-      const historySlice = messages.slice(-MAX_MESSAGES_TO_BACKEND);
-      sendChat(`check status for ${currentPollJobId}`, historySlice)
-        .then((res: ChatResponse) => {
-          if (!res.meta?.pollStatus) {
-            addMessage('assistant', res.reply);
+      getPipelineJobStatus(currentPollJobId)
+        .then((job) => {
+          showTypingIndicator(job.phase ?? 'Processing...');
+          if (job.status === 'done') {
+            hideTypingIndicator();
+            const result = job.result as { applied?: boolean; skipped?: boolean } | undefined;
+            const msg = result?.skipped
+              ? "You've already applied to this job. No new application was submitted."
+              : result?.applied
+                ? 'Application submitted successfully!'
+                : 'Pipeline completed.';
+            addMessage('assistant', msg);
+            stopPolling();
+          } else if (job.status === 'failed') {
+            hideTypingIndicator();
+            addMessage('assistant', `Failed: ${job.error ?? 'Unknown error'}`);
             stopPolling();
           } else {
             pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
           }
         })
         .catch(() => {
+          hideTypingIndicator();
           stopPolling();
         });
     }
@@ -204,6 +233,25 @@ export function renderChat(
     input.style.height = Math.min(input.scrollHeight, 200) + 'px';
   });
 
+  checkConnectionBtn.addEventListener('click', async () => {
+    const prevText = checkConnectionBtn.textContent;
+    checkConnectionBtn.textContent = 'Checking…';
+    checkConnectionBtn.disabled = true;
+    try {
+      const status = await getHandshakeSessionStatus();
+      if (status.connected) {
+        addMessage('assistant', 'Handshake connected successfully.');
+      } else {
+        addMessage('assistant', 'Handshake is not connected. Use the browser extension to upload your session.');
+      }
+    } catch {
+      addMessage('assistant', 'Could not verify connection. Please try again.');
+    } finally {
+      checkConnectionBtn.textContent = prevText;
+      checkConnectionBtn.disabled = false;
+    }
+  });
+
   copyTokenBtn.addEventListener('click', () => {
     navigator.clipboard.writeText(token).then(
       () => {
@@ -228,4 +276,53 @@ export function renderChat(
 
   renderMessages();
   input.focus();
+
+  // Handle ?session=uploaded from extension redirect
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('session') === 'uploaded') {
+    const cleanUrl = window.location.pathname + (window.location.hash || '');
+    window.history.replaceState({}, '', cleanUrl);
+    getHandshakeSessionStatus()
+      .then((status) => {
+        if (status.connected) {
+          addMessage('assistant', 'Handshake connected successfully.');
+        } else {
+          addMessage('assistant', 'Could not verify connection. Try the "Check connection" button.');
+        }
+      })
+      .catch(() => {
+        addMessage('assistant', 'Could not verify connection. Try the "Check connection" button.');
+      });
+  }
+
+  // Optional: poll session status when tab is focused (for users who upload from extension while chat is open)
+  let sessionPollTimer: ReturnType<typeof setTimeout> | null = null;
+  let lastSessionUpdatedAt: string | null = null;
+  function pollSessionStatus(): void {
+    getHandshakeSessionStatus()
+      .then((status) => {
+        if (status.connected && status.updatedAt) {
+          if (lastSessionUpdatedAt !== null && status.updatedAt !== lastSessionUpdatedAt) {
+            addMessage('assistant', 'Handshake connected successfully.');
+          }
+          lastSessionUpdatedAt = status.updatedAt;
+        }
+      })
+      .catch(() => {});
+  }
+  function startSessionPoll(): void {
+    if (sessionPollTimer) return;
+    sessionPollTimer = setInterval(pollSessionStatus, 60_000);
+  }
+  function stopSessionPoll(): void {
+    if (sessionPollTimer) {
+      clearInterval(sessionPollTimer);
+      sessionPollTimer = null;
+    }
+  }
+  if (document.visibilityState === 'visible') startSessionPoll();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') startSessionPoll();
+    else stopSessionPoll();
+  });
 }

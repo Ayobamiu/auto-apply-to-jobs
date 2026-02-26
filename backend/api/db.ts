@@ -82,6 +82,26 @@ const HANDSHAKE_SESSIONS_TABLE_SQL = `
   )
 `;
 
+const JOB_ARTIFACTS_TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS job_artifacts (
+    user_id text NOT NULL,
+    job_ref text NOT NULL,
+    artifact_type text NOT NULL,
+    content jsonb NOT NULL,
+    updated_at timestamptz DEFAULT now(),
+    PRIMARY KEY (user_id, job_ref, artifact_type),
+    CONSTRAINT job_artifacts_type_check CHECK (artifact_type IN ('resume', 'cover_letter'))
+  )
+`;
+
+const USER_PREFERENCES_TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS user_preferences (
+    user_id text PRIMARY KEY,
+    onboarding_complete boolean DEFAULT false,
+    updated_at timestamptz DEFAULT now()
+  )
+`;
+
 const PIPELINE_JOBS_TABLE_SQL = `
   CREATE TABLE IF NOT EXISTS pipeline_jobs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -115,7 +135,10 @@ export async function ensureDataTables(): Promise<void> {
   await pool.query(APPLY_STATE_TABLE_SQL);
   await pool.query(USER_JOB_STATE_TABLE_SQL);
   await pool.query(HANDSHAKE_SESSIONS_TABLE_SQL);
+  await pool.query(JOB_ARTIFACTS_TABLE_SQL);
+  await pool.query(USER_PREFERENCES_TABLE_SQL);
   await pool.query(PIPELINE_JOBS_TABLE_SQL);
+  await pool.query('ALTER TABLE pipeline_jobs ADD COLUMN IF NOT EXISTS phase text DEFAULT NULL');
   dataTablesInitialized = true;
 }
 

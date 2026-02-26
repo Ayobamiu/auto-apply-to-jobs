@@ -15,7 +15,7 @@ import { register, login } from './routes/auth.js';
 import { postPipeline } from './routes/pipeline.js';
 import { getJobs, getJobsStatus } from './routes/jobs.js';
 import { getProfileHandler, putProfile, postProfileFromResume } from './routes/profile.js';
-import { postHandshakeSessionUpload } from './routes/handshake-session.js';
+import { postHandshakeSessionUpload, getHandshakeSessionStatusHandler } from './routes/handshake-session.js';
 import { getPipelineJobStatus, getPipelineJobList } from './routes/pipeline-jobs.js';
 import { postChat } from './routes/chat.js';
 
@@ -52,6 +52,7 @@ app.post('/profile/from-resume', authMiddleware, postProfileFromResume);
 app.get('/pipeline/jobs', authMiddleware, getPipelineJobList);
 app.get('/pipeline/jobs/:jobId', authMiddleware, getPipelineJobStatus);
 app.post('/handshake/session/upload', authMiddleware, postHandshakeSessionUpload);
+app.get('/handshake/session/status', authMiddleware, getHandshakeSessionStatusHandler);
 app.post('/chat', authMiddleware, postChat);
 
 // Serve frontend SPA (after API routes so API paths take priority)

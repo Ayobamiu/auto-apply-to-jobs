@@ -109,3 +109,27 @@ export async function sendChat(
     body: JSON.stringify({ message, messages }),
   });
 }
+
+export interface PipelineJobStatus {
+  status: string;
+  phase: string | null;
+  jobUrl?: string;
+  submit?: boolean;
+  result?: unknown;
+  error?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export async function getPipelineJobStatus(jobId: string): Promise<PipelineJobStatus> {
+  return request<PipelineJobStatus>(`/pipeline/jobs/${encodeURIComponent(jobId)}`);
+}
+
+export interface HandshakeSessionStatus {
+  connected: boolean;
+  updatedAt: string | null;
+}
+
+export async function getHandshakeSessionStatus(): Promise<HandshakeSessionStatus> {
+  return request<HandshakeSessionStatus>('/handshake/session/status');
+}

@@ -3,9 +3,13 @@
  * Always uses the provided userId from JWT — never falls back to 'default'.
  */
 import { getProfile, updateProfile } from '../data/profile.js';
+import { getOnboardingComplete, setOnboardingComplete } from '../data/user-preferences.js';
 import { extractProfileFromResumeText } from '../shared/profile-from-resume.js';
 import { getSessionAge } from '../data/handshake-session.js';
 import { createPipelineJob, listPipelineJobs, getPipelineJob } from '../data/pipeline-jobs.js';
+import { runJobScraper } from '../agents/job_scraper_agent/index.js';
+import { checkJobProfileMismatch } from '../shared/job-profile-mismatch.js';
+import { extractProfileUpdateFromMessage } from '../shared/profile-update-from-chat.js';
 import { runPipelineInBackground } from './run-pipeline-background.js';
 import { listJobsWithStatus } from './list-jobs-with-status.js';
 import { isAppError, CODES } from '../shared/errors.js';
@@ -208,15 +212,24 @@ async function handleUpdateProfile(userId: string, message: string): Promise<Orc
   if (!profile?.name?.trim()) {
     return { reply: "I don't have your profile yet. Please paste your resume text first so I can set it up." };
   }
-  return {
-    reply:
-      "To update your profile, please tell me what you'd like to change. For example:\n" +
-      '- "Change my email to john@example.com"\n' +
-      '- "Add Python to my skills"\n' +
-      '- "Update my summary to ..."\n\n' +
-      'For now, please use the API directly (PUT /profile) to make changes. ' +
-      'Conversational profile editing is coming soon.',
-  };
+
+  const update = await extractProfileUpdateFromMessage(profile, message);
+  const keys = Object.keys(update);
+  if (keys.length === 0) {
+    return {
+      reply:
+        "I couldn't understand what to add. Try: 'Add my army status: veteran' or 'Change my email to x@example.com'.",
+    };
+  }
+
+  try {
+    await updateProfile(update, userId);
+    const fieldNames = keys.join(', ');
+    return { reply: `I've updated your profile (${fieldNames}).` };
+  } catch (err) {
+    console.error('Profile update failed:', err);
+    return { reply: 'I had trouble saving your profile. Please try again.' };
+  }
 }
 
 async function handleApply(userId: string, message: string): Promise<OrchestratorResult> {
@@ -251,11 +264,24 @@ async function handleApply(userId: string, message: string): Promise<Orchestrato
     };
   }
 
+  let mismatchWarning = '';
+  try {
+    const profile = await getProfile(userId);
+    const { job } = await runJobScraper(url, { forceScrape: false });
+    const mismatch = await checkJobProfileMismatch(profile ?? {}, job);
+    if (mismatch.hasMismatch && mismatch.reason) {
+      mismatchWarning = `Note: ${mismatch.reason} Proceeding anyway.\n\n`;
+    }
+  } catch {
+    // Ignore; proceed with apply
+  }
+
   try {
     const { id: jobId } = await createPipelineJob(userId, url, { submit: true });
     setImmediate(() => void runPipelineInBackground(jobId));
     return {
       reply:
+        mismatchWarning +
         `I've started applying to this job. This usually takes 1-2 minutes. ` +
         `I'll keep you posted — you can also ask "check status" anytime.`,
       meta: { jobId, pollStatus: true },
@@ -294,8 +320,12 @@ function formatJobStatus(job: {
 
   if (job.status === 'done') {
     const result = job.result as Record<string, unknown> | null;
-    const applied = result?.applied || result?.skipped;
+    const skipped = result?.skipped === true;
+    const applied = result?.applied === true && !skipped;
     const jobTitle = (result?.job as Record<string, unknown>)?.title ?? job.job_url;
+    if (skipped) {
+      return { reply: `You've already applied to "${jobTitle}". No new application was submitted.` };
+    }
     return {
       reply: applied
         ? `Done! Your application to "${jobTitle}" has been submitted successfully.`
@@ -378,12 +408,17 @@ export async function runOrchestrator(
 ): Promise<OrchestratorResult> {
   if (!userId) throw new Error('userId required');
 
-  const isFirstMessage = history.length === 0;
   const intent = detectIntent(message);
 
-  if (isFirstMessage && intent === 'help') {
-    const onboarding = await handleOnboarding(userId, message);
-    if (onboarding) return onboarding;
+  if (intent === 'help') {
+    const onboardingComplete = await getOnboardingComplete(userId);
+    if (!onboardingComplete) {
+      const onboarding = await handleOnboarding(userId, message);
+      if (onboarding) {
+        await setOnboardingComplete(userId);
+        return onboarding;
+      }
+    }
   }
 
   switch (intent) {

@@ -3,12 +3,12 @@
  */
 import 'dotenv/config';
 import { runResumeGenerator } from '../agents/resume_generator_agent/index.js';
-import { ensureResumePdfFromJsonFile } from '../agents/resume_generator_agent/export-pdf.js';
+import { ensureResumePdfFromDb } from '../agents/resume_generator_agent/export-pdf.js';
 import { runJobScraper } from '../agents/job_scraper_agent/index.js';
 import { loadJob } from '../shared/job.js';
 import { toHandshakeJobDetailsUrl, getJobIdFromUrl, getJobSiteFromUrl } from '../shared/job-from-url.js';
 import { updateJob } from '../data/jobs.js';
-import { PATHS, getPathsForUser, resolveUserId } from '../shared/config.js';
+import { resolveUserId } from '../shared/config.js';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { dirname, resolve } from 'path';
 import { isAppError } from '../shared/errors.js';
@@ -37,11 +37,11 @@ export interface RunPipelineForJobOptions {
   forceScrape?: boolean;
   userId?: string;
   coverPath?: string;
+  onPhaseChange?: (phase: string) => void;
 }
 
 export interface RunPipelineForJobResult {
   job: Job;
-  jsonPath?: string;
   resumePath?: string;
   applied?: boolean;
   skipped?: boolean;
@@ -58,8 +58,10 @@ export async function runPipelineForJob(
   await preflightForPipeline(jobUrl ?? undefined, userId);
   endPreflight();
 
+  const onPhase = options.onPhaseChange;
   let job: Job;
   if (jobUrl) {
+    onPhase?.('Scraping job...');
     console.log('Step 0: Get job from URL (scrape or cache)...');
     const endStep0 = startPhase('Step 0: Get job (scrape or cache)');
     const { job: scrapedJob } = await runJobScraper(jobUrl, { forceScrape: options.forceScrape });
@@ -72,20 +74,21 @@ export async function runPipelineForJob(
     endLoad();
   }
 
+  onPhase?.('Generating resume...');
   console.log('Step 1: Generate resume from profile + job...');
   const endStep1 = startPhase('Step 1: Generate resume');
-  const { jsonPath, resumePath: generatedPdfPath } = await runResumeGenerator({ job, userId });
+  const { jobRef, resumePath: generatedPdfPath } = await runResumeGenerator({ job, userId });
   let resumePath = generatedPdfPath;
-  if (!resumePath && jsonPath) {
-    const endPdf = startPhase('Step 1b: Ensure PDF from JSON');
-    const { resumePath: ensured } = ensureResumePdfFromJsonFile(jsonPath, {
-      outputDir: getPathsForUser(userId).resumesDir,
-    });
+  const site = job?.site;
+  const jobId = job?.jobId;
+  if (!resumePath && jobRef && site && jobId) {
+    const endPdf = startPhase('Step 1b: Ensure PDF from DB');
+    const { resumePath: ensured } = await ensureResumePdfFromDb(userId, site, jobId, { profile: undefined, job });
     resumePath = ensured;
     endPdf();
   }
   endStep1();
-  console.log('Resume:', resumePath ?? jsonPath);
+  console.log('Resume:', resumePath ?? jobRef ?? '(none)');
 
   if (jobUrl) {
     const site = getJobSiteFromUrl(jobUrl);
@@ -98,7 +101,7 @@ export async function runPipelineForJob(
   if (!jobUrl) {
     console.log('No JOB_URL. Run handshake:apply with the job URL when ready.');
     endTotal();
-    return { job, jsonPath, resumePath: resumePath ?? undefined };
+    return { job, resumePath: resumePath ?? undefined };
   }
 
   const endAlreadyApplied = startPhase('Check already applied (store)');
@@ -107,9 +110,10 @@ export async function runPipelineForJob(
   if (applicationSubmitted) {
     console.log('Already applied to this job. Skipping apply step.');
     endTotal();
-    return { job, jsonPath, resumePath: resumePath ?? undefined, applied: true, skipped: true };
+    return { job, resumePath: resumePath ?? undefined, applied: true, skipped: true };
   }
 
+  onPhase?.('Checking required documents...');
   let coverPath = options.coverPath;
   console.log('Step 2: Probe required attachment sections...');
   const endProbe = startPhase('Step 2: Probe apply modal');
@@ -128,6 +132,7 @@ export async function runPipelineForJob(
   }
   endProbe();
 
+  onPhase?.('Applying to job...');
   console.log('Step 3: Run Handshake apply...');
   const endApply = startPhase('Step 3: Handshake apply (browser + upload + submit)');
   const applyResult = await runHandshakeApply(jobUrl, {
@@ -140,7 +145,6 @@ export async function runPipelineForJob(
   endTotal();
   return {
     job,
-    jsonPath,
     resumePath: resumePath ?? undefined,
     applied: applyResult.applied || applyResult.skipped,
   };

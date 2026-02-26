@@ -6,14 +6,15 @@ import 'dotenv/config';
 import { fileURLToPath } from 'url';
 import { join, dirname } from 'path';
 import { existsSync, mkdirSync } from 'fs';
-import { PATHS, getPathsForUser, resolveUserId } from '../../shared/config.js';
+import { PATHS, resolveUserId } from '../../shared/config.js';
 import { setApplicationState } from '../../data/apply-state.js';
 import { setUserJobState, toJobRef } from '../../data/user-job-state.js';
 import { getJobIdFromUrl, getJobSiteFromUrl, toHandshakeJobDetailsUrl } from '../../shared/job-from-url.js';
 import { getJob, updateJob } from '../../data/jobs.js';
 import { getProfile } from '../../data/profile.js';
-import { resumeBasename } from '../../shared/filename-slugs.js';
-import { getResumePathsForJob } from '../../data/resumes.js';
+import { getResumeForJob } from '../../data/job-artifacts.js';
+import { ensureResumePdfFromDb } from '../resume_generator_agent/export-pdf.js';
+import { ensureCoverLetterPdfFromDb } from '../resume_generator_agent/cover-letter.js';
 import { getApplyFormSchema, saveApplyFormSchema } from '../../data/apply-forms.js';
 import { attachSection, getPresentSectionConfigs, type PresentSectionConfig } from '../../shared/handshake-attach-helper.js';
 import { captureApplyFormSchema } from '../../shared/apply-form-capture.js';
@@ -60,22 +61,12 @@ async function getPreferredResumePathForJob(jobUrl: string, userId: string): Pro
   const job = await getJob(site, jobId);
   if (!job) return null;
   try {
-    const { jsonPath, pdfPath } = await getResumePathsForJob(site, jobId, userId);
-    if (jsonPath && pdfPath) {
-      if (existsSync(pdfPath)) return pdfPath;
-      if (existsSync(jsonPath)) {
-        const { ensureResumePdfFromJsonFile } = await import('../resume_generator_agent/export-pdf.js');
-        const { resumesDir } = getPathsForUser(userId);
-        const { resumePath } = ensureResumePdfFromJsonFile(jsonPath, { outputDir: resumesDir });
-        return resumePath;
-      }
-      return null;
+    const existing = await getResumeForJob(userId, site, jobId);
+    if (existing) {
+      const { resumePath } = await ensureResumePdfFromDb(userId, site, jobId, { profile: await getProfile(userId), job });
+      return resumePath;
     }
-    const profile = await getProfile(userId);
-    const basename = resumeBasename(profile, job);
-    if (!basename) return null;
-    const path = join(getPathsForUser(userId).resumesDir, `${basename}.pdf`);
-    return existsSync(path) ? path : null;
+    return null;
   } catch {
     return null;
   }
@@ -86,8 +77,26 @@ async function getFixtures(
   options: { resumePath?: string; transcriptPath?: string; coverPath?: string; userId?: string } = {}
 ): Promise<{ transcript: string; resume: string; coverLetter: string }> {
   const userId = options.userId ?? 'default';
-  const preferredResume =
-    !(options.resumePath ?? process.env.RESUME_PATH) ? await getPreferredResumePathForJob(jobUrl, userId) : null;
+  const jobId = getJobIdFromUrl(jobUrl);
+  const site = getJobSiteFromUrl(jobUrl);
+
+  let preferredResume: string | null = null;
+  if (!(options.resumePath ?? process.env.RESUME_PATH)) {
+    preferredResume = await getPreferredResumePathForJob(jobUrl, userId);
+  }
+
+  let preferredCover: string = options.coverPath ?? process.env.COVER_PATH ?? '';
+  if (!preferredCover && site && jobId) {
+    try {
+      const { getCoverLetterForJob } = await import('../../data/job-artifacts.js');
+      const cover = await getCoverLetterForJob(userId, site, jobId);
+      if (cover) {
+        const { coverPath } = await ensureCoverLetterPdfFromDb(userId, site, jobId);
+        preferredCover = coverPath;
+      }
+    } catch (_) {}
+  }
+
   return {
     transcript:
       options.transcriptPath ??
@@ -98,7 +107,7 @@ async function getFixtures(
       process.env.RESUME_PATH ??
       preferredResume ??
       join(PATHS.fixtures, 'sample-resume.pdf'),
-    coverLetter: options.coverPath ?? process.env.COVER_PATH ?? '',
+    coverLetter: preferredCover,
   };
 }
 

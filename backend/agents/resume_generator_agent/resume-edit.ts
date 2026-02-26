@@ -1,8 +1,8 @@
 /**
- * Update tailored resume for a job from a chat message. Loads JSON, calls LLM, saves back. No PDF.
+ * Update tailored resume for a job from a chat message. Loads from DB, calls LLM, saves back. No PDF.
  */
 import { getJob } from '../../data/jobs.js';
-import { getResumeJsonPathForJob, readResumeJson, writeResumeJson } from '../../data/resumes.js';
+import { getResumeForJob, saveResumeForJob } from '../../data/job-artifacts.js';
 import { updateResumeFromChat } from './assistant.js';
 import { AppError, CODES } from '../../shared/errors.js';
 
@@ -23,13 +23,12 @@ export async function updateResumeForJob(
 ): Promise<Record<string, unknown>> {
   const userId = options.userId ?? 'default';
   await getJob(site, jobId); // ensure job exists (optional check)
-  const jsonPath = await getResumeJsonPathForJob(site, jobId, userId);
-  if (!jsonPath) {
+  const resumeJson = await getResumeForJob(userId, site, jobId);
+  if (!resumeJson) {
     throw new AppError(CODES.NO_RESUME);
   }
 
-  const resumeJson = readResumeJson(jsonPath);
   const updated = await updateResumeFromChat(resumeJson, userMessage, options);
-  writeResumeJson(jsonPath, updated);
+  await saveResumeForJob(userId, site, jobId, updated);
   return updated;
 }
