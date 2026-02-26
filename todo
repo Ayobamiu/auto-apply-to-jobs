@@ -2,8 +2,9 @@ x put in apis
 x account for many users, not just one (for the profile)
 x scrape from https://wmich.joinhandshake.com/jobs/<id>
 x dont generate resume for jobs that dont require it
-store saome state to know users that are onboarding for the first time. Tell them what you can do first.
+Remember all the things we are generating are JSON (resume)/text (cover leter) first. store JSON/pdf and only convert to pdf when needed. this way users have the Opportunity to edit before using it.
+store some state to know users that are onboarding for the first time. Tell them what you can do first.
 after user send session details to the backend, we want to show some messge Automatically Confirming it on the chat page.
-when applying for job or doing some Processing, we need to keep the user engege with loading indication 
+when applying for job or doing some Processing, we need to keep the user engege with loading indication (showing details of What’s Happening)
 agent should be able to to add new info to my profile. e.g. i have not add my army status. it can add it if need be.
 when user asks you to apply for a job, if There’s some Something Contrary from the job Description and my profile e.g. i am not in the army, if a job is only for Those that served, inform me so that i dont apply blindly

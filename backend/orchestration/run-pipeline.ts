@@ -13,6 +13,8 @@ import { fileURLToPath, pathToFileURL } from 'url';
 import { dirname, resolve } from 'path';
 import { isAppError } from '../shared/errors.js';
 import { preflightForPipeline } from '../shared/preflight.js';
+import { probeRequiredSections } from '../shared/probe-apply-modal.js';
+import { generateCoverLetter } from '../agents/resume_generator_agent/cover-letter.js';
 import { runHandshakeApply } from '../agents/auto_apply_agent/handshake-apply-real.js';
 import { getApplicationStatus } from '../agents/job_scraper_agent/index.js';
 import { startPhase, startTotal, isTimingEnabled } from '../shared/timing.js';
@@ -34,6 +36,7 @@ export interface RunPipelineForJobOptions {
   submit?: boolean;
   forceScrape?: boolean;
   userId?: string;
+  coverPath?: string;
 }
 
 export interface RunPipelineForJobResult {
@@ -107,11 +110,30 @@ export async function runPipelineForJob(
     return { job, jsonPath, resumePath: resumePath ?? undefined, applied: true, skipped: true };
   }
 
-  console.log('Step 2: Run Handshake apply...');
-  const endApply = startPhase('Step 2: Handshake apply (browser + upload + submit)');
+  let coverPath = options.coverPath;
+  console.log('Step 2: Probe required attachment sections...');
+  const endProbe = startPhase('Step 2: Probe apply modal');
+  try {
+    const { requiredSections } = await probeRequiredSections(jobUrl, userId);
+    if (requiredSections.includes('coverLetter') && !coverPath) {
+      console.log('Cover letter required — generating...');
+      const endCover = startPhase('Step 2b: Generate cover letter');
+      const { coverPath: generated } = await generateCoverLetter({ job, userId });
+      coverPath = generated;
+      endCover();
+      console.log('Cover letter:', coverPath);
+    }
+  } catch (err) {
+    console.warn('Probe failed, proceeding without pre-check:', (err as Error).message);
+  }
+  endProbe();
+
+  console.log('Step 3: Run Handshake apply...');
+  const endApply = startPhase('Step 3: Handshake apply (browser + upload + submit)');
   const applyResult = await runHandshakeApply(jobUrl, {
     submit: options.submit ?? (process.env.SUBMIT_APPLICATION === '1' || process.env.SUBMIT_APPLICATION === 'true'),
     resumePath: resumePath ?? undefined,
+    coverPath,
     userId,
   });
   endApply();

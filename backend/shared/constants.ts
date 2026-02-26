@@ -41,6 +41,15 @@ export const PRE_SUBMIT_DELAY_MS = 6_000;
 /** Delay after clicking Submit before checking for confirmation. */
 export const POST_SUBMIT_DELAY_MS = 2_000;
 
+/** Max time to wait for all uploads to show green checkmarks before submitting. */
+export const UPLOAD_COMPLETE_TIMEOUT_MS = 30_000;
+/** How often to poll for upload completion status. */
+export const UPLOAD_COMPLETE_POLL_MS = 1_000;
+/** Max retries for submit when it fails (e.g. validation error still showing). */
+export const SUBMIT_MAX_RETRIES = 3;
+/** Delay between submit retries. */
+export const SUBMIT_RETRY_DELAY_MS = 5_000;
+
 // ── Attach helper (search / upload) ─────────────────────────────────
 
 export const SEARCH_INPUT_TIMEOUT_MS = 5_000;

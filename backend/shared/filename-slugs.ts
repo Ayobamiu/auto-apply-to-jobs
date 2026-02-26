@@ -39,6 +39,14 @@ export function resumeBasename(profile: Profile | null | undefined, job: Job | n
   return [name, initials, company, 'resume'].filter(Boolean).join('_');
 }
 
+/** Cover letter basename (no extension): <name>_<title initials>_<company>_cover */
+export function coverLetterBasename(profile: Profile | null | undefined, job: Job | null | undefined): string {
+  const name = nameSlug(profile?.name);
+  const initials = titleToInitials(job?.title);
+  const company = companySlug(job?.company);
+  return [name, initials, company, 'cover'].filter(Boolean).join('_');
+}
+
 /** Job JSON basename (no extension): handshake_<title initials>_<company> */
 export function jobJsonBasename(job: Job | null | undefined): string {
   const initials = titleToInitials(job?.title);

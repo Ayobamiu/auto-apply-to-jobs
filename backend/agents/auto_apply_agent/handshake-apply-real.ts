@@ -29,6 +29,10 @@ import {
   POST_APPLY_CLICK_DELAY_MS,
   PRE_SUBMIT_DELAY_MS,
   POST_SUBMIT_DELAY_MS,
+  UPLOAD_COMPLETE_TIMEOUT_MS,
+  UPLOAD_COMPLETE_POLL_MS,
+  SUBMIT_MAX_RETRIES,
+  SUBMIT_RETRY_DELAY_MS,
 } from '../../shared/constants.js';
 import { preflightForApply } from '../../shared/preflight.js';
 import { getApplicationStatus } from '../job_scraper_agent/index.js';
@@ -94,7 +98,7 @@ async function getFixtures(
       process.env.RESUME_PATH ??
       preferredResume ??
       join(PATHS.fixtures, 'sample-resume.pdf'),
-    coverLetter: options.coverPath ?? process.env.COVER_PATH ?? join(PATHS.fixtures, 'sample-cover-letter.pdf'),
+    coverLetter: options.coverPath ?? process.env.COVER_PATH ?? '',
   };
 }
 
@@ -286,34 +290,76 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
 
     let applied = false;
     if (doSubmit) {
-      const endSubmit = startPhase('Apply: 6s delay + submit click + wait confirmation');
-      await new Promise((r) => setTimeout(r, PRE_SUBMIT_DELAY_MS));
-      const submitBtn = applyModal.getByRole('button', { name: /submit\s*application/i }).first();
-      await submitBtn.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
-      await submitBtn.click({ force: true, timeout: 5000 }).catch(() =>
-        page.evaluate(() => {
-          const b = document.querySelector('button[type="button"]');
-          if (b && /submit/i.test(b.textContent || '')) (b as HTMLElement).click();
-        })
-      );
-      await new Promise((r) => setTimeout(r, POST_SUBMIT_DELAY_MS));
-      let submitted = false;
-      try {
-        await page.getByText(/Applied on .+/i).first().waitFor({ state: 'visible', timeout: SUBMIT_CONFIRM_TIMEOUT_MS });
-        console.log('Application submitted successfully.');
-        submitted = true;
-      } catch (_) {
-        try {
-          await page.getByText(/Withdraw application/i).first().waitFor({ state: 'visible', timeout: 5000 });
-          console.log('Application submitted successfully.');
-          submitted = true;
-        } catch (_) {
-          const screenshotDir = PATHS.applyScreenshots ?? join(PATHS.output, 'apply-screenshots');
-          mkdirSync(screenshotDir, { recursive: true });
-          await page.screenshot({ path: join(screenshotDir, 'after-submit-failed.png') });
-          console.error('Submit may have failed. Screenshot saved to output/apply-screenshots/after-submit-failed.png');
+      const endSubmit = startPhase('Apply: wait uploads + submit + confirm');
+
+      const expectedUploads = toAttach.length;
+      if (expectedUploads > 0) {
+        console.log(`Waiting for ${expectedUploads} upload(s) to complete...`);
+        const deadline = Date.now() + UPLOAD_COMPLETE_TIMEOUT_MS;
+        while (Date.now() < deadline) {
+          const completedCount = await applyModal.locator('[data-status="positive"]').count();
+          if (completedCount >= expectedUploads) {
+            console.log(`All ${expectedUploads} upload(s) confirmed (green checkmarks).`);
+            break;
+          }
+          const validationError = await applyModal.getByText(/please enter a valid|make sure all required/i).first().isVisible().catch(() => false);
+          if (validationError) {
+            console.log(`Uploads in progress (${completedCount}/${expectedUploads}), validation message visible — waiting...`);
+          }
+          await new Promise((r) => setTimeout(r, UPLOAD_COMPLETE_POLL_MS));
         }
       }
+
+      await new Promise((r) => setTimeout(r, PRE_SUBMIT_DELAY_MS));
+
+      let submitted = false;
+      for (let attempt = 1; attempt <= SUBMIT_MAX_RETRIES; attempt++) {
+        const submitBtn = page.getByRole('button', { name: /submit\s*application/i }).first();
+        await submitBtn.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+
+        const isDisabled = await submitBtn.isDisabled().catch(() => false);
+        if (isDisabled && attempt < SUBMIT_MAX_RETRIES) {
+          console.log(`Submit button disabled (attempt ${attempt}/${SUBMIT_MAX_RETRIES}). Validation may be pending — waiting...`);
+          await new Promise((r) => setTimeout(r, SUBMIT_RETRY_DELAY_MS));
+          continue;
+        }
+
+        console.log(`Clicking Submit Application (attempt ${attempt}/${SUBMIT_MAX_RETRIES})...`);
+        await submitBtn.click({ force: true, timeout: 5000 }).catch(() =>
+          page.evaluate(() => {
+            const buttons = Array.from(document.querySelectorAll('button'));
+            const sub = buttons.find((b) => /submit/i.test(b.textContent || ''));
+            if (sub) (sub as HTMLElement).click();
+          })
+        );
+
+        await new Promise((r) => setTimeout(r, POST_SUBMIT_DELAY_MS));
+
+        try {
+          await page.getByText(/Applied on .+/i).first().waitFor({ state: 'visible', timeout: SUBMIT_CONFIRM_TIMEOUT_MS });
+          console.log('Application submitted successfully.');
+          submitted = true;
+          break;
+        } catch (_) {
+          try {
+            await page.getByText(/Withdraw application/i).first().waitFor({ state: 'visible', timeout: 5000 });
+            console.log('Application submitted successfully.');
+            submitted = true;
+            break;
+          } catch (_) {
+            if (attempt < SUBMIT_MAX_RETRIES) {
+              console.log(`Submit not confirmed (attempt ${attempt}/${SUBMIT_MAX_RETRIES}). Retrying in ${SUBMIT_RETRY_DELAY_MS / 1000}s...`);
+              await new Promise((r) => setTimeout(r, SUBMIT_RETRY_DELAY_MS));
+            } else {
+              const screenshotDir = PATHS.applyScreenshots ?? join(PATHS.output, 'apply-screenshots');
+              mkdirSync(screenshotDir, { recursive: true });
+              await page.screenshot({ path: join(screenshotDir, 'after-submit-failed.png') });
+              console.error(`Submit failed after ${SUBMIT_MAX_RETRIES} attempts. Screenshot saved.`);
+            }
+          }
+        }
+      }
+
       const submittedAt = new Date().toISOString();
       await setApplicationState(jobUrl, { resumePath: files.resume, submittedAt }, userId);
       if (submitted) {
