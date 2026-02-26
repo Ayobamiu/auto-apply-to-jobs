@@ -4,6 +4,7 @@
  */
 import type { Request, Response } from 'express';
 import { getPipelineJob, listPipelineJobs } from '../../data/pipeline-jobs.js';
+import { normalizePipelineOutcome, getPipelineOutcomeMessage } from '../../shared/pipeline-outcome.js';
 
 export async function getPipelineJobStatus(req: Request, res: Response): Promise<void> {
   const userId = req.userId;
@@ -17,6 +18,13 @@ export async function getPipelineJobStatus(req: Request, res: Response): Promise
     res.status(404).json({ error: 'Not found' });
     return;
   }
+  let userMessage: string | null = null;
+  if (job.status === 'done' && job.result && typeof job.result === 'object') {
+    const result = job.result as Record<string, unknown>;
+    const outcome = normalizePipelineOutcome(result);
+    const jobTitle = String((result.job as Record<string, unknown>)?.title ?? job.job_url ?? '');
+    userMessage = outcome ? getPipelineOutcomeMessage(outcome, jobTitle) : null;
+  }
   res.status(200).json({
     status: job.status,
     phase: job.phase ?? null,
@@ -24,6 +32,7 @@ export async function getPipelineJobStatus(req: Request, res: Response): Promise
     submit: job.submit,
     result: job.result,
     error: job.error,
+    userMessage,
     createdAt: job.created_at,
     updatedAt: job.updated_at,
   });

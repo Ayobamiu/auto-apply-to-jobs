@@ -40,11 +40,12 @@ export interface RunPipelineForJobOptions {
   onPhaseChange?: (phase: string) => void;
 }
 
+import type { PipelineApplyOutcome } from '../shared/pipeline-outcome.js';
+
 export interface RunPipelineForJobResult {
   job: Job;
   resumePath?: string;
-  applied?: boolean;
-  skipped?: boolean;
+  outcome: PipelineApplyOutcome;
 }
 
 export async function runPipelineForJob(
@@ -101,7 +102,7 @@ export async function runPipelineForJob(
   if (!jobUrl) {
     console.log('No JOB_URL. Run handshake:apply with the job URL when ready.');
     endTotal();
-    return { job, resumePath: resumePath ?? undefined };
+    return { job, resumePath: resumePath ?? undefined, outcome: 'no_apply' };
   }
 
   const endAlreadyApplied = startPhase('Check already applied (store)');
@@ -110,7 +111,7 @@ export async function runPipelineForJob(
   if (applicationSubmitted) {
     console.log('Already applied to this job. Skipping apply step.');
     endTotal();
-    return { job, resumePath: resumePath ?? undefined, applied: true, skipped: true };
+    return { job, resumePath: resumePath ?? undefined, outcome: 'already_applied' };
   }
 
   onPhase?.('Checking required documents...');
@@ -143,10 +144,12 @@ export async function runPipelineForJob(
   });
   endApply();
   endTotal();
+  const outcome: PipelineApplyOutcome =
+    applyResult.skipped ? 'already_applied' : applyResult.applied ? 'submitted' : 'skipped';
   return {
     job,
     resumePath: resumePath ?? undefined,
-    applied: applyResult.applied || applyResult.skipped,
+    outcome,
   };
 }
 

@@ -161,12 +161,9 @@ export function renderChat(
           showTypingIndicator(job.phase ?? 'Processing...');
           if (job.status === 'done') {
             hideTypingIndicator();
-            const result = job.result as { applied?: boolean; skipped?: boolean } | undefined;
-            const msg = result?.skipped
-              ? "You've already applied to this job. No new application was submitted."
-              : result?.applied
-                ? 'Application submitted successfully!'
-                : 'Pipeline completed.';
+            const msg =
+              job.userMessage ??
+              (job.error ? `Failed: ${job.error}` : 'Pipeline completed.');
             addMessage('assistant', msg);
             stopPolling();
           } else if (job.status === 'failed') {

@@ -117,6 +117,8 @@ export interface PipelineJobStatus {
   submit?: boolean;
   result?: unknown;
   error?: string | null;
+  /** User-facing message when status is 'done' (single source of truth from backend) */
+  userMessage?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

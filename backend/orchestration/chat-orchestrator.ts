@@ -14,6 +14,7 @@ import { runPipelineInBackground } from './run-pipeline-background.js';
 import { listJobsWithStatus } from './list-jobs-with-status.js';
 import { isAppError, CODES } from '../shared/errors.js';
 import { SESSION_STALE_THRESHOLD_MS } from '../shared/constants.js';
+import { normalizePipelineOutcome, getPipelineOutcomeMessage } from '../shared/pipeline-outcome.js';
 import type { Profile } from '../shared/types.js';
 
 export interface ChatMessage {
@@ -320,17 +321,12 @@ function formatJobStatus(job: {
 
   if (job.status === 'done') {
     const result = job.result as Record<string, unknown> | null;
-    const skipped = result?.skipped === true;
-    const applied = result?.applied === true && !skipped;
-    const jobTitle = (result?.job as Record<string, unknown>)?.title ?? job.job_url;
-    if (skipped) {
-      return { reply: `You've already applied to "${jobTitle}". No new application was submitted.` };
-    }
-    return {
-      reply: applied
-        ? `Done! Your application to "${jobTitle}" has been submitted successfully.`
-        : `The pipeline finished for "${jobTitle}". Resume was generated but the application was not submitted (submit was not enabled or the job was skipped).`,
-    };
+    const outcome = normalizePipelineOutcome(result);
+    const jobTitle = String((result?.job as Record<string, unknown>)?.title ?? job.job_url ?? '');
+    const reply = outcome
+      ? getPipelineOutcomeMessage(outcome, jobTitle)
+      : `The pipeline finished for "${jobTitle}".`;
+    return { reply };
   }
 
   if (job.status === 'failed') {

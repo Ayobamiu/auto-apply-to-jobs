@@ -65,7 +65,7 @@ describe('pipeline-jobs data layer', () => {
   it('updatePipelineJobStatus transitions to done with result', async () => {
     const { id } = await createPipelineJob('test-user-a', 'https://example.com/job/6');
     await updatePipelineJobStatus(id, 'running');
-    const result = { applied: true, skipped: false };
+    const result = { job: { title: 'Test' }, outcome: 'submitted' };
     await updatePipelineJobStatus(id, 'done', result);
     const job = await getPipelineJobById(id);
     assert.equal(job!.status, 'done');

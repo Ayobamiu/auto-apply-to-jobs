@@ -15,7 +15,7 @@ describe('runPipelineInBackground', () => {
   beforeEach(async () => { await cleanup(); });
 
   it('transitions pending -> running -> done on success', async () => {
-    const mockResult = { job: { title: 'Test' }, applied: true, skipped: false };
+    const mockResult = { job: { title: 'Test' }, outcome: 'submitted' as const };
     const mockPipeline: RunPipelineFn = async (_url, _opts) => mockResult;
 
     const { id } = await createPipelineJob('test-user-bg', 'https://example.com/job/bg-1', { submit: false });
