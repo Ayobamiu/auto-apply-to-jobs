@@ -12,14 +12,9 @@ import {
   POST_SEARCH_FILL_DELAY_MS,
   POST_UPLOAD_CLICK_DELAY_MS,
 } from './constants.js';
+import type { AttachSectionOptions, PresentSectionConfig, SectionKey } from './types.js';
 
-export interface AttachSectionOptions {
-  sectionHeading: string;
-  searchPlaceholder: string;
-  fileInputName: string;
-  fileInputId?: string;
-  filePath: string;
-}
+export type { AttachSectionOptions, PresentSectionConfig, SectionKey } from './types.js';
 
 export async function attachSection(page: Page, modal: Locator, options: AttachSectionOptions): Promise<'selected' | 'uploaded'> {
   const { sectionHeading, searchPlaceholder, fileInputName, fileInputId, filePath } = options;
@@ -91,16 +86,6 @@ export const SECTION_CONFIG = {
     fileInputId: 'file-cover',
   },
 } as const;
-
-export type SectionKey = keyof typeof SECTION_CONFIG;
-
-export interface PresentSectionConfig {
-  key: SectionKey;
-  sectionHeading: string;
-  searchPlaceholder: string;
-  fileInputName: string;
-  fileInputId?: string;
-}
 
 export async function getPresentSectionConfigs(
   page: Page,

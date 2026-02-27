@@ -16,19 +16,8 @@ function ensureDir(dir: string): void {
   } catch (_) {}
 }
 
-export interface FillJobApplicationFormOptions {
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  workAuth?: string;
-  phone?: string;
-  linkedin?: string;
-  stopBeforeSubmit?: boolean;
-  headless?: boolean;
-  keepOpen?: boolean;
-  screenshotDir?: string;
-  runId?: number | null;
-}
+export type { FillJobApplicationFormOptions } from './shared/types.js';
+import type { FillJobApplicationFormOptions } from './shared/types.js';
 
 export async function fillJobApplicationForm(options: FillJobApplicationFormOptions = {}): Promise<{ success: boolean; message: string }> {
   const {

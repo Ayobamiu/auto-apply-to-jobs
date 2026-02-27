@@ -3,15 +3,11 @@
  * Warns only; does not block the apply.
  */
 import OpenAI from 'openai';
-import type { Profile } from './types.js';
-import type { Job } from './types.js';
+import type { Profile, Job, JobProfileMismatchResult } from './types.js';
+
+export type { JobProfileMismatchResult } from './types.js';
 
 const DEFAULT_MODEL = 'gpt-4o-mini';
-
-export interface JobProfileMismatchResult {
-  hasMismatch: boolean;
-  reason?: string;
-}
 
 const SYSTEM_PROMPT = `You compare a candidate profile with a job description to identify HARD requirements the candidate does not satisfy.
 

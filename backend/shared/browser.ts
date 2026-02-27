@@ -27,10 +27,8 @@ async function checkCamoufox(): Promise<boolean> {
   return camoufoxAvailable;
 }
 
-export interface LaunchBrowserOptions {
-  headless?: boolean;
-  proxy?: { server: string; username?: string; password?: string };
-}
+export type { LaunchBrowserOptions } from './types.js';
+import type { LaunchBrowserOptions } from './types.js';
 
 export async function launchBrowser(options: LaunchBrowserOptions = {}): Promise<Browser> {
   const headless = options.headless ?? true;

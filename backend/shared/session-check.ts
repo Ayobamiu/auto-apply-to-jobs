@@ -7,9 +7,8 @@ import { SESSION_CHECK_TIMEOUT_MS, POST_NAVIGATE_DELAY_MS } from './constants.js
 
 const STABLE_HANDSHAKE_URL = process.env.HANDSHAKE_JOBS_BASE_URL || 'https://app.joinhandshake.com';
 
-export type SessionCheckResult =
-  | { valid: true }
-  | { valid: false; reason: 'no_session' | 'session_expired' };
+import type { SessionCheckResult } from './types.js';
+export type { SessionCheckResult } from './types.js';
 
 export async function checkSessionValid(userId?: string): Promise<SessionCheckResult> {
   const storagePath = await getHandshakeSessionPath(userId ?? 'default');

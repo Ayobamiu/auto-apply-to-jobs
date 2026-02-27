@@ -2,18 +2,9 @@
  * Capture apply modal form schema (sections, file inputs) for storage.
  */
 import type { Page, Locator } from 'playwright';
-import type { PresentSectionConfig } from './handshake-attach-helper.js';
+import type { FormSection, ApplyFormSchema, PresentSectionConfig } from './types.js';
 
-export interface FormSection {
-  heading: string;
-  fileInputs: Array<{ name?: string; id?: string }>;
-}
-
-export interface ApplyFormSchema {
-  sections: FormSection[];
-  capturedAt: string;
-  presentSections?: PresentSectionConfig[];
-}
+export type { FormSection, ApplyFormSchema } from './types.js';
 
 export async function captureApplyFormSchema(page: Page, modalLocator: Locator): Promise<ApplyFormSchema> {
   const element = await modalLocator.elementHandle();

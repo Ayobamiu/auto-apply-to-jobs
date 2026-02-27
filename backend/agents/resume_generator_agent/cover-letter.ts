@@ -26,15 +26,8 @@ RULES:
 - Output ONLY the cover letter text. No JSON, no markdown formatting, no explanation.
 - Use the candidate's real name for the sign-off.`;
 
-export interface GenerateCoverLetterOptions {
-  profile?: Profile;
-  job: Job;
-  userId?: string;
-  apiKey?: string;
-  model?: string;
-  outputDir?: string;
-  forceRegenerate?: boolean;
-}
+export type { GenerateCoverLetterOptions, EnsureCoverLetterPdfFromDbOptions } from '../../shared/types.js';
+import type { GenerateCoverLetterOptions, EnsureCoverLetterPdfFromDbOptions } from '../../shared/types.js';
 
 export async function generateCoverLetter(options: GenerateCoverLetterOptions): Promise<{ coverPath: string }> {
   const userId = options.userId ?? 'default';
@@ -119,11 +112,6 @@ export async function generateCoverLetter(options: GenerateCoverLetterOptions): 
   return { coverPath: pdfPath };
 }
 
-export interface EnsureCoverLetterPdfFromDbOptions {
-  outputDir?: string;
-  profile?: Profile | null;
-  job?: Job | null;
-}
 
 /**
  * Load cover letter text from job_artifacts, generate PDF on demand. Throws if no cover in DB.

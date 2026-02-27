@@ -30,11 +30,8 @@ STRICT RULES:
 - Bullets must be arrays of strings.
 - Skills must be an array of objects, each with "category" (string) and "keywords" (array of strings). Choose category names that fit the resume: for technical resumes use labels like "Languages & Frameworks", "Backend", "Tools"; for other fields use relevant labels like "Leadership", "Clinical Skills", "Languages", "Certifications", etc.`;
 
-export interface ExtractProfileFromResumeOptions {
-  apiKey?: string;
-  model?: string;
-  baseURL?: string;
-}
+export type { ExtractProfileFromResumeOptions } from './types.js';
+import type { ExtractProfileFromResumeOptions } from './types.js';
 
 function ensureEducationEntries(raw: unknown): EducationEntry[] {
   if (!Array.isArray(raw)) return [];

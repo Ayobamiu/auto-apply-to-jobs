@@ -34,14 +34,8 @@ function buildUserMessage(profile: Profile, job: Job): { role: 'user'; content: 
   };
 }
 
-export interface GenerateResumeWithAssistantParams {
-  profile: Profile;
-  job?: Job;
-  messages?: Array<{ role: string; content: string }>;
-  apiKey?: string;
-  model?: string;
-  baseURL?: string;
-}
+export type { GenerateResumeWithAssistantParams, UpdateResumeFromChatOptions } from '../../shared/types.js';
+import type { GenerateResumeWithAssistantParams, UpdateResumeFromChatOptions } from '../../shared/types.js';
 
 export async function generateResumeWithAssistant({
   profile,
@@ -98,12 +92,6 @@ export async function generateResumeWithAssistant({
 }
 
 const EDIT_SYSTEM_PROMPT = `You are a resume editor. You will receive the current resume as JSON (JSON Resume schema) and a user request. Apply the requested changes and return the complete updated resume as a single JSON object only. No markdown, no explanation. Preserve all fields not affected by the request. The JSON must remain valid JSON Resume format.`;
-
-export interface UpdateResumeFromChatOptions {
-  apiKey?: string;
-  model?: string;
-  baseURL?: string;
-}
 
 export async function updateResumeFromChat(
   resumeJson: Record<string, unknown>,

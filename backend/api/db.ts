@@ -146,12 +146,8 @@ export async function ensureDataTables(): Promise<void> {
   dataTablesInitialized = true;
 }
 
-export interface User {
-  id: string;
-  email: string;
-  password_hash: string;
-  created_at: Date;
-}
+import type { User } from '../shared/types.js';
+export type { User } from '../shared/types.js';
 
 export async function createUser(email: string, passwordHash: string): Promise<User> {
   await ensureUsersTable();

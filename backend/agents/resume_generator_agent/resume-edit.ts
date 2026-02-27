@@ -6,11 +6,8 @@ import { getResumeForJob, saveResumeForJob } from '../../data/job-artifacts.js';
 import { updateResumeFromChat } from './assistant.js';
 import { AppError, CODES } from '../../shared/errors.js';
 
-export interface UpdateResumeForJobOptions {
-  apiKey?: string;
-  model?: string;
-  userId?: string;
-}
+export type { UpdateResumeForJobOptions } from '../../shared/types.js';
+import type { UpdateResumeForJobOptions } from '../../shared/types.js';
 
 /**
  * Edit the resume for a job per user message. Requires OPENAI_API_KEY (or options.apiKey).

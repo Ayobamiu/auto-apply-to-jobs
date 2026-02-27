@@ -82,18 +82,8 @@ export function toHandshakeJobDetailsUrl(url: string): string {
   }
 }
 
-export type ApplyType = 'apply' | 'apply_externally' | 'none';
-
-export interface ScrapedJob {
-  title: string;
-  company: string;
-  description: string;
-  url?: string;
-  applyType: ApplyType;
-  applicationSubmitted: boolean;
-  jobClosed?: boolean;
-  appliedAt?: string;
-}
+export type { ApplyType, ScrapedJob, GetJobFromUrlOptions, GetApplicationStatusFromUrlOptions } from './types.js';
+import type { ApplyType, ScrapedJob, GetJobFromUrlOptions, GetApplicationStatusFromUrlOptions } from './types.js';
 
 async function expandDescriptionSections(page: Page): Promise<void> {
   const moreButton = page.locator('button.view-more-button').filter({ hasText: 'More' });
@@ -220,12 +210,6 @@ export async function scrapeJobFromPage(page: Page): Promise<ScrapedJob> {
   return { title, company, description, url, applyType, applicationSubmitted, jobClosed, ...(appliedAt && { appliedAt }) };
 }
 
-export interface GetJobFromUrlOptions {
-  useAuth?: boolean;
-  cacheDir?: string;
-  maxAgeMs?: number;
-  headless?: boolean;
-}
 
 export async function getJobFromUrl(jobUrl: string, options: GetJobFromUrlOptions = {}): Promise<Job & { url: string }> {
   const normalized = normalizeUrl(jobUrl);
@@ -330,10 +314,6 @@ export async function getJobFromUrl(jobUrl: string, options: GetJobFromUrlOption
   }
 }
 
-export interface GetApplicationStatusFromUrlOptions {
-  headless?: boolean;
-  useAuth?: boolean;
-}
 
 export async function getApplicationStatusFromUrl(
   jobUrl: string,

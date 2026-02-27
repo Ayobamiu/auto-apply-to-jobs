@@ -6,10 +6,11 @@
 import { launchBrowser } from './browser.js';
 import { getHandshakeSessionPath } from '../data/handshake-session.js';
 import { getApplyFormSchema, saveApplyFormSchema } from '../data/apply-forms.js';
-import { getPresentSectionConfigs, type SectionKey } from './handshake-attach-helper.js';
+import { getPresentSectionConfigs } from './handshake-attach-helper.js';
 import { captureApplyFormSchema } from './apply-form-capture.js';
 import { getJobIdFromUrl, toHandshakeJobDetailsUrl } from './job-from-url.js';
 import { AppError, CODES } from './errors.js';
+import type { ProbeResult, SectionKey } from './types.js';
 import {
   POST_NAVIGATE_DELAY_MS,
   APPLY_BUTTON_TIMEOUT_MS,
@@ -17,10 +18,7 @@ import {
   APPLY_MODAL_TIMEOUT_MS,
 } from './constants.js';
 
-export interface ProbeResult {
-  requiredSections: SectionKey[];
-  cached: boolean;
-}
+export type { ProbeResult } from './types.js';
 
 export async function probeRequiredSections(jobUrl: string, userId: string): Promise<ProbeResult> {
   const normalized = toHandshakeJobDetailsUrl(jobUrl);

@@ -42,18 +42,8 @@ import { startPhase } from '../../shared/timing.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-export interface RunHandshakeApplyOptions {
-  submit?: boolean;
-  resumePath?: string;
-  transcriptPath?: string;
-  coverPath?: string;
-  userId?: string;
-}
-
-export interface RunHandshakeApplyResult {
-  applied: boolean;
-  skipped?: boolean;
-}
+import type { RunHandshakeApplyOptions, RunHandshakeApplyResult } from '../../shared/types.js';
+export type { RunHandshakeApplyOptions, RunHandshakeApplyResult } from '../../shared/types.js';
 
 async function getPreferredResumePathForJob(jobUrl: string, userId: string): Promise<string | null> {
   const jobId = getJobIdFromUrl(jobUrl);

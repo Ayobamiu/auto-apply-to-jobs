@@ -16,24 +16,8 @@ import type { Profile, Job } from '../../shared/types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 
-export interface RunResumeGeneratorOptions {
-  profile?: Profile;
-  job?: Job;
-  profilePath?: string;
-  jobPath?: string;
-  outputDir?: string;
-  userId?: string;
-  theme?: string;
-  useAssistant?: boolean;
-  assistantApiKey?: string;
-  assistantModel?: string;
-  forceRegenerate?: boolean;
-}
-
-export interface RunResumeGeneratorResult {
-  jobRef: string | null;
-  resumePath: string | null;
-}
+export type { RunResumeGeneratorOptions, RunResumeGeneratorResult } from '../../shared/types.js';
+import type { RunResumeGeneratorOptions, RunResumeGeneratorResult } from '../../shared/types.js';
 
 export async function runResumeGenerator(options: RunResumeGeneratorOptions = {}): Promise<RunResumeGeneratorResult> {
   const userId = options.userId ?? 'default';

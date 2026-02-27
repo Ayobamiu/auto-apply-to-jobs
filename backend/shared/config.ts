@@ -34,11 +34,8 @@ export function getTranscriptPath(): string {
   return process.env.TRANSCRIPT_PATH ?? join(PATHS.fixtures, 'Unofficial Academic Transcript .pdf');
 }
 
-export interface UserPaths {
-  authState: string;
-  navigationLog: string;
-  resumesDir: string;
-}
+import type { UserPaths } from './types.js';
+export type { UserPaths } from './types.js';
 
 /** User-specific paths (auth and resume files per user). */
 export function getPathsForUser(userId: string): UserPaths {

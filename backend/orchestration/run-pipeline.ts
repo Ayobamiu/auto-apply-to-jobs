@@ -20,7 +20,7 @@ import { runHandshakeApply } from '../agents/auto_apply_agent/handshake-apply-re
 import { getApplicationStatus } from '../agents/job_scraper_agent/index.js';
 import { startPhase, startTotal, isTimingEnabled } from '../shared/timing.js';
 import { setPipelineJobAwaitingApproval } from '../data/pipeline-jobs.js';
-import type { Job } from '../shared/types.js';
+import type { Job, PipelineApplyOutcome, RunPipelineForJobOptions, RunPipelineForJobResult } from '../shared/types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -34,27 +34,7 @@ function getJobUrl(): string | null {
   return raw ? toHandshakeJobDetailsUrl(raw as string) : null;
 }
 
-export interface RunPipelineForJobOptions {
-  submit?: boolean;
-  forceScrape?: boolean;
-  userId?: string;
-  coverPath?: string;
-  onPhaseChange?: (phase: string) => void;
-  /** Set by background runner so pipeline can pause for approval. */
-  jobId?: string;
-  /** From pipeline_jobs row so we know whether to pause at review. */
-  automationLevel?: 'full' | 'review';
-}
-
-import type { PipelineApplyOutcome } from '../shared/pipeline-outcome.js';
-
-export interface RunPipelineForJobResult {
-  job: Job;
-  resumePath?: string;
-  outcome: PipelineApplyOutcome;
-  /** When true, runner must not overwrite status (already set to awaiting_approval). */
-  paused?: boolean;
-}
+export type { RunPipelineForJobOptions, RunPipelineForJobResult } from '../shared/types.js';
 
 export async function runPipelineForJob(
   jobUrl: string | null,

@@ -15,12 +15,8 @@ import { AppError, CODES } from '../../shared/errors.js';
 
 const DEFAULT_THEME = 'jsonresume-theme-even';
 
-export interface ExportResumeOptions {
-  outputDir?: string;
-  jobSlug?: string;
-  resumeBasename?: string;
-  theme?: string;
-}
+export type { ExportResumeOptions, EnsureResumePdfFromDbOptions } from '../../shared/types.js';
+import type { ExportResumeOptions, EnsureResumePdfFromDbOptions } from '../../shared/types.js';
 
 export function exportResumeToPdf(
   resumeJson: Record<string, unknown>,
@@ -73,12 +69,6 @@ export function ensureResumePdfFromJsonFile(
   return exportResumeToPdf(resumeJson, { outputDir: outDir, resumeBasename: base, theme });
 }
 
-export interface EnsureResumePdfFromDbOptions {
-  outputDir?: string;
-  theme?: string;
-  profile?: { name?: string } | null;
-  job?: { title?: string; company?: string } | null;
-}
 
 /**
  * Load resume JSON from job_artifacts, generate PDF on demand. Throws if no resume in DB.

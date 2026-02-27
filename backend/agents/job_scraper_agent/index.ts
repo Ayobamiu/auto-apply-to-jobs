@@ -20,20 +20,8 @@ import type { Job } from '../../shared/types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 
-export interface RunJobScraperOptions {
-  cacheDir?: string;
-  headless?: boolean;
-  useAuth?: boolean;
-  maxAgeMs?: number;
-  forceScrape?: boolean;
-}
-
-export interface RunJobScraperResult {
-  job: Job & { url?: string };
-  jobsFilePath: string;
-  fromStore?: boolean;
-  htmlPath?: string | null;
-}
+export type { RunJobScraperOptions, RunJobScraperResult, GetApplicationStatusOptions } from '../../shared/types.js';
+import type { RunJobScraperOptions, RunJobScraperResult, GetApplicationStatusOptions } from '../../shared/types.js';
 
 export async function runJobScraper(jobUrl: string, options: RunJobScraperOptions = {}): Promise<RunJobScraperResult> {
   const cacheDir = options.cacheDir ?? PATHS.jobCache;
@@ -84,10 +72,6 @@ export async function runJobScraper(jobUrl: string, options: RunJobScraperOption
   };
 }
 
-export interface GetApplicationStatusOptions {
-  fromStoreOnly?: boolean;
-  userId?: string;
-}
 
 export async function getApplicationStatus(
   jobUrl: string,

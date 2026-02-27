@@ -15,20 +15,9 @@ import { listJobsWithStatus } from './list-jobs-with-status.js';
 import { isAppError, CODES } from '../shared/errors.js';
 import { SESSION_STALE_THRESHOLD_MS } from '../shared/constants.js';
 import { normalizePipelineOutcome, getPipelineOutcomeMessage } from '../shared/pipeline-outcome.js';
-import type { Profile } from '../shared/types.js';
+import type { Profile, ChatMessage, OrchestratorResult } from '../shared/types.js';
 
-export interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
-export interface OrchestratorResult {
-  reply: string;
-  meta?: {
-    jobId?: string;
-    pollStatus?: boolean;
-  };
-}
+export type { ChatMessage, OrchestratorResult } from '../shared/types.js';
 
 type Intent =
   | 'connect_handshake'
