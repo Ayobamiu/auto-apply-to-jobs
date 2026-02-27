@@ -29,6 +29,11 @@ export const PATHS = {
   job: join(ROOT, 'shared', 'job.json'),
 };
 
+/** Transcript path for apply: TRANSCRIPT_PATH env or default fixture. Use when job requires transcript. */
+export function getTranscriptPath(): string {
+  return process.env.TRANSCRIPT_PATH ?? join(PATHS.fixtures, 'Unofficial Academic Transcript .pdf');
+}
+
 export interface UserPaths {
   authState: string;
   navigationLog: string;

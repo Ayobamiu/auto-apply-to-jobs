@@ -16,7 +16,19 @@ import { postPipeline } from './routes/pipeline.js';
 import { getJobs, getJobsStatus } from './routes/jobs.js';
 import { getProfileHandler, putProfile, postProfileFromResume } from './routes/profile.js';
 import { postHandshakeSessionUpload, getHandshakeSessionStatusHandler } from './routes/handshake-session.js';
-import { getPipelineJobStatus, getPipelineJobList } from './routes/pipeline-jobs.js';
+import {
+  getPipelineJobStatus,
+  getPipelineJobList,
+  getPipelineJobArtifacts,
+  getPipelineJobArtifactsResume,
+  getPipelineJobArtifactsCover,
+  putPipelineJobArtifactsResume,
+  putPipelineJobArtifactsCover,
+  postPipelineJobApprove,
+  getAppliedArtifactsResume,
+  getAppliedArtifactsCover,
+} from './routes/pipeline-jobs.js';
+import { getSettings, putSettings } from './routes/settings.js';
 import { postChat } from './routes/chat.js';
 
 if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
@@ -50,7 +62,17 @@ app.get('/profile', authMiddleware, getProfileHandler);
 app.put('/profile', authMiddleware, putProfile);
 app.post('/profile/from-resume', authMiddleware, postProfileFromResume);
 app.get('/pipeline/jobs', authMiddleware, getPipelineJobList);
+app.get('/pipeline/jobs/:jobId/artifacts/resume', authMiddleware, getPipelineJobArtifactsResume);
+app.get('/pipeline/jobs/:jobId/artifacts/cover', authMiddleware, getPipelineJobArtifactsCover);
+app.get('/pipeline/jobs/:jobId/artifacts', authMiddleware, getPipelineJobArtifacts);
+app.put('/pipeline/jobs/:jobId/artifacts/resume', authMiddleware, putPipelineJobArtifactsResume);
+app.put('/pipeline/jobs/:jobId/artifacts/cover', authMiddleware, putPipelineJobArtifactsCover);
+app.post('/pipeline/jobs/:jobId/approve', authMiddleware, postPipelineJobApprove);
+app.get('/pipeline/jobs/:jobId/applied-artifacts/resume', authMiddleware, getAppliedArtifactsResume);
+app.get('/pipeline/jobs/:jobId/applied-artifacts/cover', authMiddleware, getAppliedArtifactsCover);
 app.get('/pipeline/jobs/:jobId', authMiddleware, getPipelineJobStatus);
+app.get('/settings', authMiddleware, getSettings);
+app.put('/settings', authMiddleware, putSettings);
 app.post('/handshake/session/upload', authMiddleware, postHandshakeSessionUpload);
 app.get('/handshake/session/status', authMiddleware, getHandshakeSessionStatusHandler);
 app.post('/chat', authMiddleware, postChat);

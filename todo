@@ -1,5 +1,6 @@
 ask agent to check the code base for Inconsistency that could lead to code depth and fix.
-wwe should allow user select level of Automation. some level allow us to present the generated artifacts to the user to confirm Before uploading
+do step by step check to improve UX
+x wwe should allow user select level of Automation. some level allow us to present the generated artifacts to the user to confirm Before uploading
 x we still cant apply in headless mode. fix that
 x put in apis
 x account for many users, not just one (for the profile)

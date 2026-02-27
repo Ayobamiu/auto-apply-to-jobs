@@ -170,3 +170,31 @@ export async function ensureCoverLetterPdfFromDb(
   }
   return { coverPath: pdfPath };
 }
+
+/**
+ * Generate cover letter PDF from plain text and write to the given path.
+ * Used for applied-artifacts PDF download (snapshot, not from DB).
+ */
+export async function generateCoverLetterPdfFromText(text: string, pdfPath: string): Promise<void> {
+  const paragraphs = text.split('\n').map((line) =>
+    line.trim() ? `<p>${line}</p>` : '<br>'
+  ).join('\n');
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+  body { font-family: Georgia, serif; max-width: 700px; margin: 40px auto; padding: 20px; line-height: 1.6; color: #333; font-size: 12pt; }
+  p { margin: 0 0 1em; }
+</style></head><body>${paragraphs}</body></html>`;
+
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle' });
+    await page.pdf({
+      path: pdfPath,
+      format: 'Letter',
+      margin: { top: '0.75in', bottom: '0.75in', left: '1in', right: '1in' },
+    });
+  } finally {
+    await browser.close();
+  }
+}

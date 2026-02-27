@@ -98,6 +98,7 @@ const USER_PREFERENCES_TABLE_SQL = `
   CREATE TABLE IF NOT EXISTS user_preferences (
     user_id text PRIMARY KEY,
     onboarding_complete boolean DEFAULT false,
+    automation_level text DEFAULT 'review',
     updated_at timestamptz DEFAULT now()
   )
 `;
@@ -139,6 +140,9 @@ export async function ensureDataTables(): Promise<void> {
   await pool.query(USER_PREFERENCES_TABLE_SQL);
   await pool.query(PIPELINE_JOBS_TABLE_SQL);
   await pool.query('ALTER TABLE pipeline_jobs ADD COLUMN IF NOT EXISTS phase text DEFAULT NULL');
+  await pool.query("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS automation_level text DEFAULT 'review'");
+  await pool.query("ALTER TABLE pipeline_jobs ADD COLUMN IF NOT EXISTS automation_level text DEFAULT 'review'");
+  await pool.query('ALTER TABLE pipeline_jobs ADD COLUMN IF NOT EXISTS artifacts jsonb');
   dataTablesInitialized = true;
 }
 

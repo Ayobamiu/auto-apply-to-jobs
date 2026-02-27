@@ -3,14 +3,14 @@
  * Always uses the provided userId from JWT — never falls back to 'default'.
  */
 import { getProfile, updateProfile } from '../data/profile.js';
-import { getOnboardingComplete, setOnboardingComplete } from '../data/user-preferences.js';
+import { getOnboardingComplete, setOnboardingComplete, getAutomationLevel } from '../data/user-preferences.js';
 import { extractProfileFromResumeText } from '../shared/profile-from-resume.js';
 import { getSessionAge } from '../data/handshake-session.js';
 import { createPipelineJob, listPipelineJobs, getPipelineJob } from '../data/pipeline-jobs.js';
 import { runJobScraper } from '../agents/job_scraper_agent/index.js';
 import { checkJobProfileMismatch } from '../shared/job-profile-mismatch.js';
 import { extractProfileUpdateFromMessage } from '../shared/profile-update-from-chat.js';
-import { runPipelineInBackground } from './run-pipeline-background.js';
+import { runPipelineInBackground, resumePipelineAfterApproval } from './run-pipeline-background.js';
 import { listJobsWithStatus } from './list-jobs-with-status.js';
 import { isAppError, CODES } from '../shared/errors.js';
 import { SESSION_STALE_THRESHOLD_MS } from '../shared/constants.js';
@@ -37,6 +37,8 @@ type Intent =
   | 'apply'
   | 'check_status'
   | 'list_jobs'
+  | 'approve'
+  | 'cancel'
   | 'help';
 
 const HANDSHAKE_URL_RE = /joinhandshake\.com\/(jobs|job-search)\/\d+/i;
@@ -75,6 +77,24 @@ function detectIntent(message: string): Intent {
     lower.includes('job list')
   ) {
     return 'list_jobs';
+  }
+
+  if (
+    lower.trim() === 'approve' ||
+    lower.includes('approve and apply') ||
+    lower.includes('yes, apply') ||
+    lower.includes('go ahead and apply')
+  ) {
+    return 'approve';
+  }
+
+  if (
+    lower.trim() === 'cancel' ||
+    lower.includes('cancel apply') ||
+    lower.includes("don't apply") ||
+    lower.includes('never mind')
+  ) {
+    return 'cancel';
   }
 
   if (
@@ -278,13 +298,21 @@ async function handleApply(userId: string, message: string): Promise<Orchestrato
   }
 
   try {
-    const { id: jobId } = await createPipelineJob(userId, url, { submit: true });
+    const automationLevel = await getAutomationLevel(userId);
+    const { id: jobId } = await createPipelineJob(userId, url, {
+      submit: true,
+      automationLevel,
+    });
     setImmediate(() => void runPipelineInBackground(jobId));
+    const reviewNote =
+      automationLevel === 'review'
+        ? " I'll generate your resume and cover letter, then pause so you can review and approve in the panel. "
+        : ' ';
     return {
       reply:
         mismatchWarning +
-        `I've started applying to this job. This usually takes 1-2 minutes. ` +
-        `I'll keep you posted — you can also ask "check status" anytime.`,
+        `I've started applying to this job.${reviewNote}` +
+        `This usually takes 1-2 minutes. I'll keep you posted — you can also ask "check status" anytime.`,
       meta: { jobId, pollStatus: true },
     };
   } catch (err) {
@@ -346,6 +374,14 @@ function formatJobStatus(job: {
     return { reply: userFriendly };
   }
 
+  if (job.status === 'awaiting_approval') {
+    return {
+      reply:
+        "I've generated your resume and cover letter. You can edit them in the review panel, then approve to have me apply or cancel to apply manually.",
+      meta: { jobId: job.id, pollStatus: true },
+    };
+  }
+
   return {
     reply: `Your application is still ${job.status}. I'll let you know when it's done.`,
     meta: { jobId: job.id, pollStatus: stillRunning },
@@ -384,12 +420,36 @@ function handleConnectHandshake(): OrchestratorResult {
   };
 }
 
+async function handleApprove(userId: string): Promise<OrchestratorResult> {
+  const jobs = await listPipelineJobs(userId, 20);
+  const awaiting = jobs.find((j) => j.status === 'awaiting_approval');
+  if (!awaiting) {
+    return {
+      reply:
+        "I don't have any applications waiting for approval. Send me a job URL to start one, or check status to see current jobs.",
+    };
+  }
+  await resumePipelineAfterApproval(awaiting.id);
+  return {
+    reply: "Approved. I'm applying now — I'll let you know when it's done.",
+    meta: { jobId: awaiting.id, pollStatus: true },
+  };
+}
+
+function handleCancel(): OrchestratorResult {
+  return {
+    reply:
+      "No problem. You can use the Cancel button in the review panel, or just leave it — you can still download the resume and cover letter to apply manually.",
+  };
+}
+
 function handleHelp(): OrchestratorResult {
   return {
     reply:
       "Here's what I can do:\n\n" +
       '- **Apply to a job** — Send me a Handshake job URL\n' +
       '- **Check status** — Ask "check status" to see how your application is going\n' +
+      '- **Approve** — Say "approve" to apply after reviewing resume and cover letter\n' +
       '- **Set up profile** — Paste your resume text\n' +
       '- **List jobs** — Say "list jobs" to see your applied jobs\n' +
       '- **Connect Handshake** — Say "connect handshake" for setup instructions\n\n' +
@@ -430,6 +490,10 @@ export async function runOrchestrator(
       return handleCheckStatus(userId, message);
     case 'list_jobs':
       return handleListJobs(userId);
+    case 'approve':
+      return handleApprove(userId);
+    case 'cancel':
+      return handleCancel();
     case 'help':
     default:
       return handleHelp();

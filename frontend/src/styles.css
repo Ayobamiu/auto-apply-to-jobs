@@ -194,6 +194,170 @@ html, body {
   color: var(--text-muted);
 }
 
+.header-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.header-select {
+  padding: 4px 8px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--font);
+  cursor: pointer;
+}
+
+/* ── Review card ───────────────────────────────────────────── */
+.review-card {
+  max-width: 100%;
+}
+
+.review-card-header {
+  margin-bottom: 12px;
+}
+
+.review-job-title {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.review-section {
+  margin: 10px 0;
+}
+
+.review-section summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+
+/* Resume form (structured edit) */
+.resume-form {
+  margin-top: 8px;
+}
+.resume-form-section {
+  margin-bottom: 12px;
+}
+.resume-form-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.resume-form-input,
+.resume-form-textarea {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--font);
+}
+.resume-form-textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+.resume-form-entry {
+  margin-bottom: 12px;
+  padding: 10px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+.resume-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.resume-form-row input {
+  flex: 1;
+  min-width: 100px;
+}
+
+.review-textarea {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+  font-family: ui-monospace, monospace;
+  resize: vertical;
+}
+
+.review-error {
+  font-size: 12px;
+  color: var(--danger);
+  margin-top: 4px;
+}
+
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.review-btn {
+  padding: 8px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.review-btn:hover {
+  background: var(--border);
+}
+
+.review-btn-primary {
+  background: var(--accent);
+  color: var(--text-on-primary);
+  border-color: var(--accent);
+}
+
+.review-btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+/* Applied artifacts (read-only after submit) */
+.applied-artifacts-card .review-card-header {
+  margin-bottom: 10px;
+}
+.applied-section {
+  margin: 10px 0;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+.applied-section:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+.applied-summary,
+.applied-cover-preview {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* ── Messages ─────────────────────────────────────────────── */
 .chat-messages {
   flex: 1;

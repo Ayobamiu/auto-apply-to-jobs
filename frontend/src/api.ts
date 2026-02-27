@@ -110,12 +110,18 @@ export async function sendChat(
   });
 }
 
+/** Snapshot of resume/cover used when the job was submitted (in result.appliedArtifacts). */
+export interface AppliedArtifacts {
+  resume?: Record<string, unknown> | null;
+  coverLetter?: { text: string } | null;
+}
+
 export interface PipelineJobStatus {
   status: string;
   phase: string | null;
   jobUrl?: string;
   submit?: boolean;
-  result?: unknown;
+  result?: { appliedArtifacts?: AppliedArtifacts; job?: unknown; outcome?: string };
   error?: string | null;
   /** User-facing message when status is 'done' (single source of truth from backend) */
   userMessage?: string | null;
@@ -125,6 +131,95 @@ export interface PipelineJobStatus {
 
 export async function getPipelineJobStatus(jobId: string): Promise<PipelineJobStatus> {
   return request<PipelineJobStatus>(`/pipeline/jobs/${encodeURIComponent(jobId)}`);
+}
+
+export interface PipelineArtifacts {
+  resume: Record<string, unknown> | null;
+  cover: { text: string } | null;
+  jobTitle: string;
+  /** Sections the job requires; used to show only resume and/or cover in review UI. */
+  requiredSections?: string[];
+}
+
+export async function getPipelineArtifacts(jobId: string): Promise<PipelineArtifacts> {
+  return request<PipelineArtifacts>(`/pipeline/jobs/${encodeURIComponent(jobId)}/artifacts`);
+}
+
+export async function putPipelineArtifactResume(jobId: string, json: Record<string, unknown>): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/pipeline/jobs/${encodeURIComponent(jobId)}/artifacts/resume`, {
+    method: 'PUT',
+    body: JSON.stringify(json),
+  });
+}
+
+export async function putPipelineArtifactCover(jobId: string, text: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/pipeline/jobs/${encodeURIComponent(jobId)}/artifacts/cover`, {
+    method: 'PUT',
+    body: JSON.stringify({ text }),
+  });
+}
+
+export async function approvePipelineJob(jobId: string): Promise<{ message: string }> {
+  return request<{ message: string }>(`/pipeline/jobs/${encodeURIComponent(jobId)}/approve`, {
+    method: 'POST',
+  });
+}
+
+/** Fetch PDF as blob with auth and trigger download. */
+export async function downloadPipelineArtifactPdf(
+  jobId: string,
+  type: 'resume' | 'cover'
+): Promise<void> {
+  const path = `/pipeline/jobs/${encodeURIComponent(jobId)}/artifacts/${type}?format=pdf`;
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(API_BASE + path, { headers });
+  if (!res.ok) throw new Error(res.status === 401 ? 'Session expired' : `Download failed: ${res.status}`);
+  const blob = await res.blob();
+  const name = type === 'resume' ? 'resume.pdf' : 'cover-letter.pdf';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/** Download PDF of applied resume/cover from snapshot (for jobs that are done). */
+export async function downloadAppliedArtifactPdf(
+  jobId: string,
+  type: 'resume' | 'cover'
+): Promise<void> {
+  const path = `/pipeline/jobs/${encodeURIComponent(jobId)}/applied-artifacts/${type}?format=pdf`;
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(API_BASE + path, { headers });
+  if (!res.ok) throw new Error(res.status === 401 ? 'Session expired' : res.status === 404 ? 'No applied document' : `Download failed: ${res.status}`);
+  const blob = await res.blob();
+  const name = type === 'resume' ? 'resume.pdf' : 'cover-letter.pdf';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+export type AutomationLevel = 'full' | 'review';
+
+export interface Settings {
+  automationLevel: AutomationLevel;
+}
+
+export async function getSettings(): Promise<Settings> {
+  return request<Settings>('/settings');
+}
+
+export async function putSettings(settings: { automationLevel: AutomationLevel }): Promise<Settings> {
+  return request<Settings>('/settings', {
+    method: 'PUT',
+    body: JSON.stringify(settings),
+  });
 }
 
 export interface HandshakeSessionStatus {

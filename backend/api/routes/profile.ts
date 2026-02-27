@@ -3,6 +3,7 @@
  */
 import type { Request, Response } from 'express';
 import { getProfile, updateProfile } from '../../data/profile.js';
+import { getAutomationLevel } from '../../data/user-preferences.js';
 import { extractProfileFromResumeText } from '../../shared/profile-from-resume.js';
 import type { Profile } from '../../shared/types.js';
 
@@ -12,8 +13,11 @@ export async function getProfileHandler(req: Request, res: Response): Promise<vo
     return;
   }
   try {
-    const profile = await getProfile(req.userId);
-    res.status(200).json({ profile });
+    const [profile, automationLevel] = await Promise.all([
+      getProfile(req.userId),
+      getAutomationLevel(req.userId),
+    ]);
+    res.status(200).json({ profile, automationLevel });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to get profile';
     res.status(500).json({ error: message });

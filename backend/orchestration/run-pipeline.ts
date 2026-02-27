@@ -8,7 +8,8 @@ import { runJobScraper } from '../agents/job_scraper_agent/index.js';
 import { loadJob } from '../shared/job.js';
 import { toHandshakeJobDetailsUrl, getJobIdFromUrl, getJobSiteFromUrl } from '../shared/job-from-url.js';
 import { updateJob } from '../data/jobs.js';
-import { resolveUserId } from '../shared/config.js';
+import { resolveUserId, getTranscriptPath } from '../shared/config.js';
+import { existsSync } from 'fs';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { dirname, resolve } from 'path';
 import { isAppError } from '../shared/errors.js';
@@ -18,6 +19,7 @@ import { generateCoverLetter } from '../agents/resume_generator_agent/cover-lett
 import { runHandshakeApply } from '../agents/auto_apply_agent/handshake-apply-real.js';
 import { getApplicationStatus } from '../agents/job_scraper_agent/index.js';
 import { startPhase, startTotal, isTimingEnabled } from '../shared/timing.js';
+import { setPipelineJobAwaitingApproval } from '../data/pipeline-jobs.js';
 import type { Job } from '../shared/types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -38,6 +40,10 @@ export interface RunPipelineForJobOptions {
   userId?: string;
   coverPath?: string;
   onPhaseChange?: (phase: string) => void;
+  /** Set by background runner so pipeline can pause for approval. */
+  jobId?: string;
+  /** From pipeline_jobs row so we know whether to pause at review. */
+  automationLevel?: 'full' | 'review';
 }
 
 import type { PipelineApplyOutcome } from '../shared/pipeline-outcome.js';
@@ -46,6 +52,8 @@ export interface RunPipelineForJobResult {
   job: Job;
   resumePath?: string;
   outcome: PipelineApplyOutcome;
+  /** When true, runner must not overwrite status (already set to awaiting_approval). */
+  paused?: boolean;
 }
 
 export async function runPipelineForJob(
@@ -116,10 +124,12 @@ export async function runPipelineForJob(
 
   onPhase?.('Checking required documents...');
   let coverPath = options.coverPath;
+  let requiredSections: string[] = ['resume', 'coverLetter'];
   console.log('Step 2: Probe required attachment sections...');
   const endProbe = startPhase('Step 2: Probe apply modal');
   try {
-    const { requiredSections } = await probeRequiredSections(jobUrl, userId);
+    const probeResult = await probeRequiredSections(jobUrl, userId);
+    requiredSections = probeResult.requiredSections;
     if (requiredSections.includes('coverLetter') && !coverPath) {
       console.log('Cover letter required — generating...');
       const endCover = startPhase('Step 2b: Generate cover letter');
@@ -133,13 +143,40 @@ export async function runPipelineForJob(
   }
   endProbe();
 
+  const automationLevel = options.automationLevel ?? 'review';
+  if (automationLevel === 'review' && options.jobId) {
+    await setPipelineJobAwaitingApproval(options.jobId, {
+      jobTitle: job.title,
+      jobUrl: jobUrl,
+      requiredSections,
+    });
+    endTotal();
+    return {
+      job,
+      resumePath: resumePath ?? undefined,
+      outcome: 'no_apply',
+      paused: true,
+    };
+  }
+
   onPhase?.('Applying to job...');
+  let transcriptPath: string | undefined;
+  if (requiredSections.includes('transcript')) {
+    const path = getTranscriptPath();
+    if (!existsSync(path)) {
+      throw new Error(
+        'This job requires a transcript. Set TRANSCRIPT_PATH in .env to your transcript PDF path (e.g. TRANSCRIPT_PATH=/path/to/your/transcript.pdf), then try again.'
+      );
+    }
+    transcriptPath = path;
+  }
   console.log('Step 3: Run Handshake apply...');
   const endApply = startPhase('Step 3: Handshake apply (browser + upload + submit)');
   const applyResult = await runHandshakeApply(jobUrl, {
     submit: options.submit ?? (process.env.SUBMIT_APPLICATION === '1' || process.env.SUBMIT_APPLICATION === 'true'),
     resumePath: resumePath ?? undefined,
     coverPath,
+    transcriptPath,
     userId,
   });
   endApply();
