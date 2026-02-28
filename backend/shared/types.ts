@@ -288,9 +288,19 @@ export interface LaunchBrowserOptions {
 
 // ── Job profile mismatch & list ───────────────────────────────────────────
 
+export type JobProfileMismatchSeverity = 'info' | 'warning' | 'blocker';
+
 export interface JobProfileMismatchResult {
   hasMismatch: boolean;
+  /** One concise sentence explaining the mismatch (already truncated for display). */
   reason?: string;
+  /** How strong the mismatch is; defaults to 'warning' when hasMismatch is true. */
+  severity?: JobProfileMismatchSeverity;
+  /**
+   * When true, the orchestrator should ask the user to confirm before proceeding
+   * with apply (used for serious, high-risk mismatches).
+   */
+  requiresConfirmation?: boolean;
 }
 
 export interface JobWithStatus {

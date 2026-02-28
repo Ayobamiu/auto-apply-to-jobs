@@ -18,9 +18,21 @@ Focus ONLY on clear, non-negotiable requirements such as:
 - Years of experience (e.g. "5+ years required", "minimum 3 years")
 - Specific certifications or licenses
 
-Return JSON: { "hasMismatch": boolean, "reason": string | null }
+Return JSON with this exact shape:
+{
+  "hasMismatch": boolean,
+  "reason": string | null,
+  "severity": "info" | "warning" | "blocker" | null,
+  "requiresConfirmation": boolean | null
+}
+
 - hasMismatch: true only if there is a CLEAR, HARD requirement the profile does not satisfy
-- reason: one concise sentence explaining the mismatch, or null if no mismatch
+- reason: ONE concise sentence explaining the mismatch (no more than ~200 characters), or null if no mismatch
+- severity:
+  - "blocker" for serious, high-risk mismatches (e.g. not work-authorized, missing required degree, far below required years of experience, or explicit eligibility like "US citizens only" not met)
+  - "warning" for notable but less severe mismatches
+  - "info" for mild caveats we should show only if helpful
+- requiresConfirmation: true when the mismatch is serious enough that the assistant should ask the user before proceeding to apply (typically when severity is "blocker")
 
 Do NOT flag:
 - Soft preferences ("preferred", "nice to have")
@@ -60,14 +72,40 @@ export async function checkJobProfileMismatch(
     const raw = completion.choices?.[0]?.message?.content;
     if (!raw) return { hasMismatch: false };
 
-    const parsed = JSON.parse(raw) as { hasMismatch?: boolean; reason?: string | null };
-    const hasMismatch = parsed.hasMismatch === true;
-    const reason =
-      hasMismatch && typeof parsed.reason === 'string' && parsed.reason.trim()
-        ? parsed.reason.trim()
-        : undefined;
+    const parsed = JSON.parse(raw) as {
+      hasMismatch?: boolean;
+      reason?: string | null;
+      severity?: string | null;
+      requiresConfirmation?: boolean | null;
+    };
 
-    return { hasMismatch, reason };
+    const hasMismatch = parsed.hasMismatch === true;
+
+    let reason: string | undefined;
+    if (hasMismatch && typeof parsed.reason === 'string' && parsed.reason.trim()) {
+      const trimmed = parsed.reason.trim();
+      reason = trimmed.length > 200 ? `${trimmed.slice(0, 197)}…` : trimmed;
+    }
+
+    let severity: JobProfileMismatchResult['severity'];
+    if (hasMismatch && typeof parsed.severity === 'string') {
+      const sev = parsed.severity.toLowerCase();
+      if (sev === 'info' || sev === 'warning' || sev === 'blocker') {
+        severity = sev;
+      }
+    }
+    if (hasMismatch && !severity) {
+      severity = 'warning';
+    }
+
+    let requiresConfirmation: boolean | undefined;
+    if (hasMismatch && typeof parsed.requiresConfirmation === 'boolean') {
+      requiresConfirmation = parsed.requiresConfirmation;
+    } else if (hasMismatch && severity === 'blocker') {
+      requiresConfirmation = true;
+    }
+
+    return { hasMismatch, reason, severity, requiresConfirmation };
   } catch {
     return { hasMismatch: false };
   }

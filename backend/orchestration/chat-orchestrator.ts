@@ -15,7 +15,12 @@ import { listJobsWithStatus } from './list-jobs-with-status.js';
 import { isAppError, CODES } from '../shared/errors.js';
 import { SESSION_STALE_THRESHOLD_MS } from '../shared/constants.js';
 import { normalizePipelineOutcome, getPipelineOutcomeMessage } from '../shared/pipeline-outcome.js';
-import type { Profile, ChatMessage, OrchestratorResult } from '../shared/types.js';
+import type {
+  Profile,
+  ChatMessage,
+  OrchestratorResult,
+  JobProfileMismatchResult,
+} from '../shared/types.js';
 
 export type { ChatMessage, OrchestratorResult } from '../shared/types.js';
 
@@ -242,7 +247,25 @@ async function handleUpdateProfile(userId: string, message: string): Promise<Orc
   }
 }
 
-async function handleApply(userId: string, message: string): Promise<OrchestratorResult> {
+function formatMismatchPrefix(mismatch: JobProfileMismatchResult | null | undefined): string {
+  if (!mismatch?.hasMismatch || !mismatch.reason) return '';
+  const severity = mismatch.severity ?? 'warning';
+  const label =
+    severity === 'blocker' ? 'Blocker' : severity === 'warning' ? 'Warning' : 'Note';
+  return `${label}: ${mismatch.reason}\n\n`;
+}
+
+function shouldRequireConfirmation(mismatch: JobProfileMismatchResult | null | undefined): boolean {
+  if (!mismatch?.hasMismatch) return false;
+  if (mismatch.requiresConfirmation === true) return true;
+  return mismatch.severity === 'blocker';
+}
+
+async function handleApply(
+  userId: string,
+  message: string,
+  options: { skipMismatchConfirmation?: boolean } = {}
+): Promise<OrchestratorResult> {
   const url = extractUrl(message);
   if (!url) {
     return { reply: 'Please send me a valid Handshake job URL so I can start the application.' };
@@ -274,20 +297,31 @@ async function handleApply(userId: string, message: string): Promise<Orchestrato
     };
   }
 
-  let mismatchWarning = '';
+  const automationLevel = await getAutomationLevel(userId);
+
+  let mismatch: JobProfileMismatchResult | null = null;
   try {
     const profile = await getProfile(userId);
     const { job } = await runJobScraper(url, { forceScrape: false });
-    const mismatch = await checkJobProfileMismatch(profile ?? {}, job);
-    if (mismatch.hasMismatch && mismatch.reason) {
-      mismatchWarning = `Note: ${mismatch.reason} Proceeding anyway.\n\n`;
-    }
+    mismatch = await checkJobProfileMismatch(profile ?? {}, job);
   } catch {
     // Ignore; proceed with apply
   }
 
+  const mismatchPrefix = formatMismatchPrefix(mismatch);
+  const requireConfirmation = !options.skipMismatchConfirmation && shouldRequireConfirmation(mismatch);
+
+  if (requireConfirmation) {
+    const question =
+      automationLevel === 'full'
+        ? 'This looks like a serious mismatch for a full-auto application. Do you still want me to apply for you automatically? Reply "yes" to proceed or "no" to skip this job.'
+        : 'This looks like a serious mismatch. Do you still want me to generate a tailored resume and cover letter for this job for you to review before applying? Reply "yes" to proceed or "no" to skip this job.';
+    return {
+      reply: mismatchPrefix + question,
+    };
+  }
+
   try {
-    const automationLevel = await getAutomationLevel(userId);
     const { id: jobId } = await createPipelineJob(userId, url, {
       submit: true,
       automationLevel,
@@ -299,7 +333,7 @@ async function handleApply(userId: string, message: string): Promise<Orchestrato
         : ' ';
     return {
       reply:
-        mismatchWarning +
+        mismatchPrefix +
         `I've started applying to this job.${reviewNote}` +
         `This usually takes 1-2 minutes. I'll keep you posted — you can also ask "check status" anytime.`,
       meta: { jobId, pollStatus: true },
@@ -409,6 +443,74 @@ function handleConnectHandshake(): OrchestratorResult {
   };
 }
 
+function findLastAssistantMessage(history: ChatMessage[]): ChatMessage | null {
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (history[i].role === 'assistant') return history[i];
+  }
+  return null;
+}
+
+function findLastApplyUserMessage(history: ChatMessage[]): ChatMessage | null {
+  for (let i = history.length - 1; i >= 0; i--) {
+    const m = history[i];
+    if (m.role !== 'user') continue;
+    if (HANDSHAKE_URL_RE.test(m.content) || URL_RE.test(m.content)) {
+      return m;
+    }
+  }
+  return null;
+}
+
+function looksLikeYes(message: string): boolean {
+  const lower = message.trim().toLowerCase();
+  return (
+    lower === 'yes' ||
+    lower === 'y' ||
+    lower.startsWith('yes,') ||
+    lower.startsWith('yeah') ||
+    lower.startsWith('yep') ||
+    lower.startsWith('sure') ||
+    lower.startsWith('go ahead') ||
+    lower.includes('proceed') ||
+    lower.includes('continue')
+  );
+}
+
+function looksLikeNo(message: string): boolean {
+  const lower = message.trim().toLowerCase();
+  return (
+    lower === 'no' ||
+    lower === 'n' ||
+    lower.startsWith("don't") ||
+    lower.startsWith('dont') ||
+    lower.startsWith('no,') ||
+    lower.includes('stop') ||
+    lower.includes('cancel') ||
+    lower.includes('skip') ||
+    lower.includes('not apply')
+  );
+}
+
+function getPendingMismatchConfirmation(
+  history: ChatMessage[]
+): { originalApplyMessage: string } | null {
+  const lastAssistant = findLastAssistantMessage(history);
+  if (!lastAssistant) return null;
+
+  const content = lastAssistant.content.toLowerCase();
+  const isMismatchPrompt =
+    content.includes('serious mismatch') &&
+    content.includes('reply "yes" to proceed') &&
+    content.includes('reply "yes" to proceed or "no" to skip this job.');
+
+  if (!isMismatchPrompt) return null;
+
+  const lastApply = findLastApplyUserMessage(history);
+  if (!lastApply) return null;
+
+  return { originalApplyMessage: lastApply.content };
+}
+
 async function handleApprove(userId: string): Promise<OrchestratorResult> {
   const jobs = await listPipelineJobs(userId, 20);
   const awaiting = jobs.find((j) => j.status === 'awaiting_approval');
@@ -452,6 +554,22 @@ export async function runOrchestrator(
   history: ChatMessage[] = []
 ): Promise<OrchestratorResult> {
   if (!userId) throw new Error('userId required');
+
+  // If the last turn asked the user to confirm a serious mismatch, interpret this
+  // short reply as yes/no before doing normal intent detection.
+  const pendingConfirm = getPendingMismatchConfirmation(history);
+  if (pendingConfirm && (looksLikeYes(message) || looksLikeNo(message))) {
+    if (looksLikeNo(message)) {
+      return {
+        reply: 'Okay, I will skip this job and not start an application.',
+      };
+    }
+    // User confirmed "yes" – rerun apply flow for the original message, but
+    // skip mismatch confirmation this time so we actually start the pipeline.
+    return handleApply(userId, pendingConfirm.originalApplyMessage, {
+      skipMismatchConfirmation: true,
+    });
+  }
 
   const intent = detectIntent(message);
 
