@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auto Apply — Apply to jobs 10× faster</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+
+    .waitlist-fit-viewport {
+      --pad-v: clamp(2vh, 3vw, 4vh);
+      --gap: clamp(1vh, 1.5vw, 2vh);
+      --h1: clamp(1.35rem, 4.5vh, 2.25rem);
+      --h2: clamp(1rem, 2.5vh, 1.25rem);
+      --body: clamp(0.8rem, 1.8vh, 1rem);
+      --lead: clamp(0.95rem, 2.2vh, 1.125rem);
+    }
+
+    .waitlist-fit-viewport {
+      padding-top: var(--pad-v);
+      padding-bottom: var(--pad-v);
+    }
+
+    .waitlist-fit-viewport h1 {
+      font-size: var(--h1);
+      margin-bottom: var(--gap);
+    }
+
+    .waitlist-fit-viewport .waitlist-story {
+      margin-bottom: var(--gap);
+      font-size: var(--body);
+      line-height: 1.45;
+    }
+
+    .waitlist-fit-viewport .waitlist-story p+p {
+      margin-top: 0.4em;
+    }
+
+    .waitlist-fit-viewport .waitlist-section {
+      margin-bottom: var(--gap);
+    }
+
+    .waitlist-fit-viewport .waitlist-section h2 {
+      font-size: var(--h2);
+      margin-bottom: 0.4em;
+    }
+
+    .waitlist-fit-viewport .waitlist-section ul {
+      font-size: var(--body);
+      margin-bottom: 0.4em;
+    }
+
+    .waitlist-fit-viewport .waitlist-section ul li+li {
+      margin-top: 0.2em;
+    }
+
+    .waitlist-fit-viewport .waitlist-cta-label {
+      font-size: var(--lead);
+      margin-bottom: 0.5em;
+    }
+
+    .waitlist-fit-viewport #waitlist-form {
+      font-size: var(--body);
+    }
+
+    .waitlist-fit-viewport .waitlist-trust {
+      font-size: clamp(0.75rem, 1.5vh, 0.875rem);
+      margin-top: 0.5em;
+    }
+  </style>
+</head>
+<!-- Set data-api-url to your API origin when waitlist is on a different origin (e.g. data-api-url="http://localhost:3000") -->
+
+<body class=" bg-slate-950 text-slate-100 antialiased"
+  data-api-url="https://script.google.com/macros/s/AKfycbzJtMpSzf0skaRriXw-CHqLcM_CLXP-PYq8iuXctuwaW_oqdUl8B2H7ekOh1cd8RVnBYw/exec">
+  <main class="waitlist-fit-viewport h-full min-h-0 max-w-2xl mx-auto px-6 overflow-hidden flex flex-col">
+    <h1 class="flex-shrink-0 font-semibold tracking-tight text-white">
+      Apply to jobs 10× faster, without losing control.
+    </h1>
+
+    <section class="waitlist-story flex-shrink-0 text-slate-300">
+      <p>
+        I was stuck in the same loop:<br />
+        copy job description → ask ChatGPT → edit resume → export PDF → upload → fill forms.
+      </p>
+      <p>
+        I didn't want an AI blasting hundreds of applications.<br />
+        I wanted to choose companies I care about - and let an agent handle the repetitive work.
+      </p>
+    </section>
+
+    <section class="waitlist-section flex-shrink-0">
+      <h2 class="font-semibold text-white">What Auto Apply does</h2>
+      <ul class="space-y-0.5 text-slate-300">
+        <li class="flex items-start gap-2">
+          <span class="text-emerald-400 mt-0.5">•</span>
+          <span>Finds jobs you match</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <span class="text-emerald-400 mt-0.5">•</span>
+          <span>Writes tailored resumes and cover letters</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <span class="text-emerald-400 mt-0.5">•</span>
+          <span>Fills applications automatically</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <span class="text-emerald-400 mt-0.5">•</span>
+          <span>You review before submitting</span>
+        </li>
+      </ul>
+      <p class="text-slate-300">So you stay in control, and apply way faster.</p>
+    </section>
+
+    <section class="waitlist-section flex-shrink-0">
+      <h2 class="font-semibold text-white mb-0.5">Who it's for</h2>
+      <p class="text-slate-300">Students. New grads. Engineers. Anyone tired of filling the same forms.</p>
+    </section>
+
+    <section class="waitlist-section flex-shrink-0" id="cta-section">
+      <p class="waitlist-cta-label font-medium text-white">Join the waitlist → Get early access.</p>
+      <form id="waitlist-form" class="flex flex-col sm:flex-row gap-2.5 max-w-md">
+        <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email"
+          class="flex-1 px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+        <button type="submit" id="submit-btn"
+          class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-950 disabled:opacity-60 disabled:cursor-not-allowed">
+          Get early access
+        </button>
+      </form>
+      <p id="form-message" class="mt-2 min-h-[1rem] text-[length:var(--body)]" aria-live="polite"></p>
+    </section>
+
+    <p class="waitlist-trust flex-shrink-0 text-slate-500">No mass spam. You approve every application.</p>
+  </main>
+  <script src="app.js"></script>
+</body>
+
+</html>
