@@ -201,3 +201,4 @@ The repo is structured for multiple agents (each with a clear input/output):
 - `fill-form.js`, `handshake-apply.js`, `test-handshake.js` – Demo / fake Handshake (local tests)
 - `fixtures/` – Sample PDFs; `data/` – Profile, jobs, apply state, resumes, job cache; `output/` – Screenshots (gitignored)
 - `.auth/` – Saved Handshake session (gitignored)
+# auto-apply-to-jobs
