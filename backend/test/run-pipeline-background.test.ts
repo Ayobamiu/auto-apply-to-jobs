@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { pool, ensureDataTables } from '../api/db.js';
 import { createPipelineJob, getPipelineJobById } from '../data/pipeline-jobs.js';
 import { runPipelineInBackground, type RunPipelineFn } from '../orchestration/run-pipeline-background.js';
+import { JOB_CANCELLED_ERROR } from '../orchestration/run-pipeline.js';
 
 async function cleanup() {
   await ensureDataTables();
@@ -66,5 +67,16 @@ describe('runPipelineInBackground', () => {
     await runPipelineInBackground(id, mockPipeline);
 
     assert.equal(receivedUserId, 'test-user-bg-uid');
+  });
+
+  it('sets status to cancelled when pipeline throws JOB_CANCELLED_ERROR', async () => {
+    const mockPipeline: RunPipelineFn = async () => { throw JOB_CANCELLED_ERROR; };
+
+    const { id } = await createPipelineJob('test-user-bg', 'https://example.com/job/bg-cancel');
+    await runPipelineInBackground(id, mockPipeline);
+
+    const job = await getPipelineJobById(id);
+    assert.equal(job!.status, 'cancelled');
+    assert.equal(job!.error, null);
   });
 });

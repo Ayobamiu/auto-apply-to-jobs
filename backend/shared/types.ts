@@ -94,6 +94,8 @@ export interface RunPipelineForJobOptions {
   onPhaseChange?: (phase: string) => void;
   jobId?: string;
   automationLevel?: 'full' | 'review';
+  /** When provided, pipeline checks this before/after phases and throws if true (cancelled). */
+  checkCancelled?: () => Promise<boolean>;
 }
 
 export interface RunPipelineForJobResult {

@@ -5,7 +5,7 @@
  */
 import { existsSync } from 'fs';
 import { getPipelineJobById, updatePipelineJobStatus, updatePipelineJobPhase } from '../data/pipeline-jobs.js';
-import { runPipelineForJob } from './run-pipeline.js';
+import { runPipelineForJob, JOB_CANCELLED_ERROR } from './run-pipeline.js';
 import { getJobIdFromUrl, getJobSiteFromUrl } from '../shared/job-from-url.js';
 import { ensureResumePdfFromDb } from '../agents/resume_generator_agent/export-pdf.js';
 import { ensureCoverLetterPdfFromDb } from '../agents/resume_generator_agent/cover-letter.js';
@@ -35,12 +35,22 @@ export async function runPipelineInBackground(
       jobId,
       automationLevel,
       onPhaseChange: (phase) => void updatePipelineJobPhase(jobId, phase),
+      checkCancelled: async () => {
+        const j = await getPipelineJobById(jobId);
+        return j?.status === 'cancelled';
+      },
     });
     if (result.paused === true) {
       return;
     }
+    const current = await getPipelineJobById(jobId);
+    if (current?.status === 'cancelled') return;
     await updatePipelineJobStatus(jobId, 'done', result);
   } catch (err) {
+    if (err === JOB_CANCELLED_ERROR || (err instanceof Error && err.message === 'JOB_CANCELLED')) {
+      await updatePipelineJobStatus(jobId, 'cancelled');
+      return;
+    }
     const message = err instanceof Error ? err.message : String(err);
     await updatePipelineJobStatus(jobId, 'failed', undefined, message);
   }

@@ -6,6 +6,7 @@ import {
   getPipelineJob,
   getPipelineJobById,
   updatePipelineJobStatus,
+  cancelPipelineJob,
 } from '../data/pipeline-jobs.js';
 
 async function cleanup() {
@@ -81,5 +82,39 @@ describe('pipeline-jobs data layer', () => {
     assert.equal(job!.status, 'failed');
     assert.equal(job!.error, 'Pipeline exploded');
     assert.equal(job!.result, null);
+  });
+
+  it('cancelPipelineJob returns true and sets status to cancelled when job is pending', async () => {
+    const { id } = await createPipelineJob('test-user-a', 'https://example.com/job/8');
+    const ok = await cancelPipelineJob(id, 'test-user-a');
+    assert.equal(ok, true);
+    const job = await getPipelineJobById(id);
+    assert.equal(job!.status, 'cancelled');
+  });
+
+  it('cancelPipelineJob returns true when job is running', async () => {
+    const { id } = await createPipelineJob('test-user-a', 'https://example.com/job/9');
+    await updatePipelineJobStatus(id, 'running');
+    const ok = await cancelPipelineJob(id, 'test-user-a');
+    assert.equal(ok, true);
+    const job = await getPipelineJobById(id);
+    assert.equal(job!.status, 'cancelled');
+  });
+
+  it('cancelPipelineJob returns false for wrong user', async () => {
+    const { id } = await createPipelineJob('test-user-a', 'https://example.com/job/10');
+    const ok = await cancelPipelineJob(id, 'test-user-b');
+    assert.equal(ok, false);
+    const job = await getPipelineJobById(id);
+    assert.equal(job!.status, 'pending');
+  });
+
+  it('cancelPipelineJob returns false when job is already done', async () => {
+    const { id } = await createPipelineJob('test-user-a', 'https://example.com/job/11');
+    await updatePipelineJobStatus(id, 'done', {});
+    const ok = await cancelPipelineJob(id, 'test-user-a');
+    assert.equal(ok, false);
+    const job = await getPipelineJobById(id);
+    assert.equal(job!.status, 'done');
   });
 });

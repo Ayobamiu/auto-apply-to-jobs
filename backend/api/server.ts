@@ -30,6 +30,7 @@ import {
   putPipelineJobArtifactsResume,
   putPipelineJobArtifactsCover,
   postPipelineJobApprove,
+  postPipelineJobCancel,
   getAppliedArtifactsResume,
   getAppliedArtifactsCover,
 } from './routes/pipeline-jobs.js';
@@ -80,6 +81,7 @@ app.get('/pipeline/jobs/:jobId/artifacts', authMiddleware, getPipelineJobArtifac
 app.put('/pipeline/jobs/:jobId/artifacts/resume', authMiddleware, putPipelineJobArtifactsResume);
 app.put('/pipeline/jobs/:jobId/artifacts/cover', authMiddleware, putPipelineJobArtifactsCover);
 app.post('/pipeline/jobs/:jobId/approve', authMiddleware, postPipelineJobApprove);
+app.post('/pipeline/jobs/:jobId/cancel', authMiddleware, postPipelineJobCancel);
 app.get('/pipeline/jobs/:jobId/applied-artifacts/resume', authMiddleware, getAppliedArtifactsResume);
 app.get('/pipeline/jobs/:jobId/applied-artifacts/cover', authMiddleware, getAppliedArtifactsCover);
 app.get('/pipeline/jobs/:jobId', authMiddleware, getPipelineJobStatus);

@@ -11,7 +11,7 @@ import {
 } from '../data/user-preferences.js';
 import { extractProfileFromResumeText } from '../shared/profile-from-resume.js';
 import { getSessionAge } from '../data/handshake-session.js';
-import { createPipelineJob, listPipelineJobs, getPipelineJob } from '../data/pipeline-jobs.js';
+import { createPipelineJob, listPipelineJobs, getPipelineJob, cancelPipelineJob } from '../data/pipeline-jobs.js';
 import { runJobScraper } from '../agents/job_scraper_agent/index.js';
 import { checkJobProfileMismatch } from '../shared/job-profile-mismatch.js';
 import { getApplyFormSchema } from '../data/apply-forms.js';
@@ -459,6 +459,10 @@ function formatJobStatus(job: {
     };
   }
 
+  if (job.status === 'cancelled') {
+    return { reply: 'That application was cancelled.' };
+  }
+
   return {
     reply: `Your application is still ${job.status}. I'll let you know when it's done.`,
     meta: { jobId: job.id, pollStatus: stillRunning },
@@ -581,11 +585,21 @@ async function handleApprove(userId: string): Promise<OrchestratorResult> {
   };
 }
 
-function handleCancel(): OrchestratorResult {
-  return {
-    reply:
-      "No problem. You can use the Cancel button in the review panel, or just leave it — you can still download the resume and cover letter to apply manually.",
-  };
+async function handleCancel(userId: string): Promise<OrchestratorResult> {
+  const jobs = await listPipelineJobs(userId, 10);
+  const inProgress = jobs.filter((j) => j.status === 'pending' || j.status === 'running');
+  if (inProgress.length === 0) {
+    return {
+      reply:
+        "No problem. You can use the Cancel button in the review panel, or just leave it — you can still download the resume and cover letter to apply manually.",
+    };
+  }
+  const job = inProgress[0];
+  const cancelled = await cancelPipelineJob(job.id, userId);
+  if (cancelled) {
+    return { reply: "I've cancelled that application.", meta: { jobId: job.id } };
+  }
+  return { reply: "That application has already finished or couldn't be cancelled." };
 }
 
 function handleHelp(): OrchestratorResult {
@@ -672,7 +686,7 @@ export async function runOrchestrator(
     case 'approve':
       return handleApprove(userId);
     case 'cancel':
-      return handleCancel();
+      return handleCancel(userId);
     case 'help':
     default:
       return handleHelp();

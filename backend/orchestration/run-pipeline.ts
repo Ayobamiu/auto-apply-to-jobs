@@ -24,6 +24,13 @@ import type { Job, PipelineApplyOutcome, RunPipelineForJobOptions, RunPipelineFo
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+/** Thrown when pipeline is cancelled via checkCancelled. */
+export const JOB_CANCELLED_ERROR = new Error('JOB_CANCELLED');
+
+async function throwIfCancelled(checkCancelled: (() => Promise<boolean>) | undefined): Promise<void> {
+  if (checkCancelled && (await checkCancelled())) throw JOB_CANCELLED_ERROR;
+}
+
 function getJobUrl(): string | null {
   let argv = process.argv.slice(2);
   const userIdx = argv.indexOf('--user');
@@ -41,11 +48,13 @@ export async function runPipelineForJob(
   options: RunPipelineForJobOptions = {}
 ): Promise<RunPipelineForJobResult> {
   const userId = options.userId ?? resolveUserId({ envUserId: process.env.USER_ID, argv: process.argv });
+  await throwIfCancelled(options.checkCancelled);
   if (isTimingEnabled()) console.log('[timing] Phase breakdown:');
   const endTotal = startTotal('pipeline');
   const endPreflight = startPhase('Preflight');
   await preflightForPipeline(jobUrl ?? undefined, userId);
   endPreflight();
+  await throwIfCancelled(options.checkCancelled);
 
   const onPhase = options.onPhaseChange;
   let job: Job;
@@ -56,6 +65,7 @@ export async function runPipelineForJob(
     const { job: scrapedJob } = await runJobScraper(jobUrl, { forceScrape: options.forceScrape });
     job = scrapedJob;
     endStep0();
+    await throwIfCancelled(options.checkCancelled);
     console.log('Job:', job.title || job.company || jobUrl);
   } else {
     const endLoad = startPhase('Load job from file');
@@ -110,12 +120,14 @@ export async function runPipelineForJob(
   try {
     const probeResult = await probeRequiredSections(jobUrl, userId);
     requiredSections = probeResult.requiredSections;
+    await throwIfCancelled(options.checkCancelled);
     if (requiredSections.includes('coverLetter') && !coverPath) {
       console.log('Cover letter required — generating...');
       const endCover = startPhase('Step 2b: Generate cover letter');
       const { coverPath: generated } = await generateCoverLetter({ job, userId });
       coverPath = generated;
       endCover();
+      await throwIfCancelled(options.checkCancelled);
       console.log('Cover letter:', coverPath);
     }
   } catch (err) {

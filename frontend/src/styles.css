@@ -458,8 +458,23 @@ html, body {
 }
 
 /* ── Typing indicator ─────────────────────────────────────── */
+.chat-cancel-btn {
+  margin-left: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.chat-cancel-btn:hover {
+  background: var(--border);
+}
+
 .chat-typing .chat-bubble-content {
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 4px;
   padding: 4px 0;
 }

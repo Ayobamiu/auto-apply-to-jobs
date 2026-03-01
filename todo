@@ -1,6 +1,7 @@
+is a stop/start button good for this app. Butoon that stop ongoing process
 move messages to db.
-When i type "Check status" or "what's the status?", the agent should Understand the command.
-what if user want to cancel job Application thats ongoing
+x what if user want to cancel job Application thats ongoing
+x When i type "Check status" or "what's the status?", the agent should Understand the command.
 ask agent to check the code base for Inconsistency that could lead to code depth and fix.
 do step by step check to improve UX
 x maybe time to add s3. user should be able to upload Transcript, maybe upload resume as pdf

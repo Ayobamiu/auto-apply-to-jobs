@@ -9,7 +9,7 @@ import { createReadStream, unlinkSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
-import { getPipelineJob, listPipelineJobs, type PipelineJob } from '../../data/pipeline-jobs.js';
+import { getPipelineJob, listPipelineJobs, cancelPipelineJob, type PipelineJob } from '../../data/pipeline-jobs.js';
 import { normalizePipelineOutcome, getPipelineOutcomeMessage } from '../../shared/pipeline-outcome.js';
 import { getJobIdFromUrl, getJobSiteFromUrl } from '../../shared/job-from-url.js';
 import {
@@ -53,6 +53,22 @@ export async function getPipelineJobStatus(req: Request, res: Response): Promise
     createdAt: job.created_at,
     updatedAt: job.updated_at,
   });
+}
+
+/** POST /pipeline/jobs/:jobId/cancel — cancel a pending or running job (auth required). */
+export async function postPipelineJobCancel(req: Request, res: Response): Promise<void> {
+  const userId = req.userId;
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+  const jobId = req.params.jobId as string;
+  const cancelled = await cancelPipelineJob(jobId, userId);
+  if (cancelled) {
+    res.status(200).json({ cancelled: true });
+    return;
+  }
+  res.status(400).json({ error: 'Job not found or cannot be cancelled.' });
 }
 
 export async function getPipelineJobList(req: Request, res: Response): Promise<void> {

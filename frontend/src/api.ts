@@ -280,6 +280,12 @@ export async function approvePipelineJob(jobId: string): Promise<{ message: stri
   });
 }
 
+export async function cancelPipelineJob(jobId: string): Promise<{ cancelled: boolean }> {
+  return request<{ cancelled: boolean }>(`/pipeline/jobs/${encodeURIComponent(jobId)}/cancel`, {
+    method: 'POST',
+  });
+}
+
 /** Fetch PDF as blob with auth and trigger download. */
 export async function downloadPipelineArtifactPdf(
   jobId: string,

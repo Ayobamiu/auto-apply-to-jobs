@@ -5,6 +5,7 @@ import {
   putPipelineArtifactResume,
   putPipelineArtifactCover,
   approvePipelineJob,
+  cancelPipelineJob,
   downloadPipelineArtifactPdf,
   downloadAppliedArtifactPdf,
   getHandshakeSessionStatus,
@@ -420,14 +421,20 @@ export function renderChat(
     renderMessages();
   }
 
-  function showTypingIndicator(phase?: string | null): void {
+  function showTypingIndicator(phase?: string | null, cancelOpts?: { jobId: string; onCancel: () => void }): void {
     const existing = document.getElementById('typing-indicator');
     if (existing) {
       const content = existing.querySelector('.chat-bubble-content');
       if (content) {
-        content.innerHTML = phase
+        let html = phase
           ? `<span class="chat-phase">${escapeHtml(phase)}</span>`
           : '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+        if (cancelOpts) {
+          html += ` <button type="button" class="chat-cancel-btn" data-job-id="${escapeHtml(cancelOpts.jobId)}">Cancel application</button>`;
+        }
+        content.innerHTML = html;
+        const btn = content.querySelector('.chat-cancel-btn');
+        if (btn && cancelOpts) btn.addEventListener('click', cancelOpts.onCancel);
       }
       scrollToBottom();
       return;
@@ -435,9 +442,15 @@ export function renderChat(
     const indicator = document.createElement('div');
     indicator.className = 'chat-bubble chat-bubble-assistant chat-typing';
     indicator.id = 'typing-indicator';
-    indicator.innerHTML = phase
-      ? `<div class="chat-bubble-content"><span class="chat-phase">${escapeHtml(phase)}</span></div>`
-      : '<div class="chat-bubble-content"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
+    let inner = phase
+      ? `<span class="chat-phase">${escapeHtml(phase)}</span>`
+      : '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+    if (cancelOpts) {
+      inner += ` <button type="button" class="chat-cancel-btn" data-job-id="${escapeHtml(cancelOpts.jobId)}">Cancel application</button>`;
+    }
+    indicator.innerHTML = `<div class="chat-bubble-content">${inner}</div>`;
+    const btn = indicator.querySelector('.chat-cancel-btn');
+    if (btn && cancelOpts) btn.addEventListener('click', cancelOpts.onCancel);
     messagesEl.appendChild(indicator);
     scrollToBottom();
   }
@@ -459,7 +472,23 @@ export function renderChat(
     stopPolling();
     currentPollJobId = jobId;
     pollAttempts = 0;
-    showTypingIndicator('Starting...');
+    const cancelOpts = {
+      jobId,
+      onCancel: () => {
+        cancelPipelineJob(jobId)
+          .then((r) => {
+            if (r.cancelled) {
+              hideTypingIndicator();
+              addMessage('assistant', 'Application cancelled.');
+              stopPolling();
+            }
+          })
+          .catch(() => {
+            addMessage('assistant', 'Could not cancel. You can try again or ask "check status".');
+          });
+      },
+    };
+    showTypingIndicator('Starting...', cancelOpts);
 
     function poll(): void {
       if (!currentPollJobId || pollAttempts >= MAX_POLL_ATTEMPTS) {
@@ -506,7 +535,30 @@ export function renderChat(
             stopPolling();
             return;
           }
-          showTypingIndicator(job.phase ?? 'Processing...');
+          if (job.status === 'cancelled') {
+            hideTypingIndicator();
+            removeReviewCard();
+            addMessage('assistant', 'That application was cancelled.');
+            stopPolling();
+            return;
+          }
+          const jobIdForCancel = currentPollJobId!;
+          showTypingIndicator(job.phase ?? 'Processing...', {
+            jobId: jobIdForCancel,
+            onCancel: () => {
+              cancelPipelineJob(jobIdForCancel)
+                .then((r) => {
+                  if (r.cancelled) {
+                    hideTypingIndicator();
+                    addMessage('assistant', "Application cancelled.");
+                    stopPolling();
+                  }
+                })
+                .catch(() => {
+                  addMessage('assistant', 'Could not cancel. You can try again or ask "check status".');
+                });
+            },
+          });
           pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
         })
         .catch(() => {
