@@ -118,6 +118,18 @@ export interface OrchestratorResult {
   };
 }
 
+/** Chat intent classification (keyword or LLM). Used by orchestrator and intent-from-llm. */
+export type Intent =
+  | 'connect_handshake'
+  | 'set_profile'
+  | 'update_profile'
+  | 'apply'
+  | 'check_status'
+  | 'list_jobs'
+  | 'approve'
+  | 'cancel'
+  | 'help';
+
 // ── Handshake apply ───────────────────────────────────────────────────────
 
 export interface RunHandshakeApplyOptions {

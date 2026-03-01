@@ -27,20 +27,11 @@ import type {
   ChatMessage,
   OrchestratorResult,
   JobProfileMismatchResult,
+  Intent,
 } from '../shared/types.js';
+import { detectIntentFromLLM } from '../shared/intent-from-llm.js';
 
 export type { ChatMessage, OrchestratorResult } from '../shared/types.js';
-
-type Intent =
-  | 'connect_handshake'
-  | 'set_profile'
-  | 'update_profile'
-  | 'apply'
-  | 'check_status'
-  | 'list_jobs'
-  | 'approve'
-  | 'cancel'
-  | 'help';
 
 const HANDSHAKE_URL_RE = /joinhandshake\.com\/(jobs|job-search)\/\d+/i;
 const URL_RE = /https?:\/\/\S+/i;
@@ -634,7 +625,23 @@ export async function runOrchestrator(
     });
   }
 
-  const intent = detectIntent(message);
+  let intent: Intent;
+  let resolvedUrl: string | null = null;
+
+  if (HANDSHAKE_URL_RE.test(message)) {
+    intent = 'apply';
+    resolvedUrl = extractUrl(message);
+  } else if (process.env.OPENAI_API_KEY) {
+    const lastAssistant = [...history].reverse().find((m) => m.role === 'assistant');
+    const result = await detectIntentFromLLM(message, {
+      lastAssistantMessage: lastAssistant?.content,
+    });
+    intent = result.intent;
+    resolvedUrl = result.url ?? null;
+  } else {
+    intent = detectIntent(message);
+    if (intent === 'apply') resolvedUrl = extractUrl(message);
+  }
 
   if (intent === 'help') {
     const onboardingComplete = await getOnboardingComplete(userId);
@@ -657,7 +664,7 @@ export async function runOrchestrator(
     case 'update_profile':
       return handleUpdateProfile(userId, message);
     case 'apply':
-      return handleApply(userId, message);
+      return handleApply(userId, resolvedUrl ?? message);
     case 'check_status':
       return handleCheckStatus(userId, message);
     case 'list_jobs':

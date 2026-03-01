@@ -1,6 +1,9 @@
+move messages to db.
+When i type "Check status" or "what's the status?", the agent should Understand the command.
+what if user want to cancel job Application thats ongoing
 ask agent to check the code base for Inconsistency that could lead to code depth and fix.
 do step by step check to improve UX
-maybe time to add s3. user should be able to upload Transcript, maybe upload resume as pdf
+x maybe time to add s3. user should be able to upload Transcript, maybe upload resume as pdf
 x in review automation_level, the note is an important peice, but not all the notes are critical, too much is bad UX.
 x in review automation_level, if there is a note you like to share with a user, allow them confirm before proceeding
 x move types and interfaces to a single file like we did for constants
