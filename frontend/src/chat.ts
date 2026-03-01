@@ -10,7 +10,6 @@ import {
   downloadPipelineArtifactPdf,
   downloadAppliedArtifactPdf,
   getHandshakeSessionStatus,
-  getUserIdFromToken,
   getSettings,
   putSettings,
   getProfile,
@@ -32,24 +31,6 @@ const MAX_MESSAGES_TO_BACKEND = 50;
 const POLL_INTERVAL_MS = 3_000;
 const MAX_POLL_ATTEMPTS = 100;
 
-function storageKey(): string {
-  const uid = getUserIdFromToken() ?? 'unknown';
-  return `chat_history_${uid}`;
-}
-
-function loadHistory(): ChatMessage[] {
-  try {
-    const raw = localStorage.getItem(storageKey());
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveHistory(messages: ChatMessage[]): void {
-  localStorage.setItem(storageKey(), JSON.stringify(messages));
-}
-
 function escapeHtml(text: string): string {
   const div = document.createElement('div');
   div.textContent = text;
@@ -67,7 +48,7 @@ export function renderChat(
   container: HTMLElement,
   onLogout: () => void
 ): void {
-  const messages: ChatMessage[] = loadHistory();
+  const messages: ChatMessage[] = [];
   let pollTimer: ReturnType<typeof setTimeout> | null = null;
   let pollAttempts = 0;
   let currentPollJobId: string | null = null;
@@ -418,7 +399,6 @@ export function renderChat(
 
   function addMessage(role: 'user' | 'assistant', content: string): void {
     messages.push({ role, content, timestamp: new Date().toISOString() });
-    saveHistory(messages);
     renderMessages();
   }
 
@@ -840,7 +820,16 @@ export function renderChat(
     onLogout();
   });
 
-  renderMessages();
+  function showMessagesLoading(): void {
+    messagesEl.innerHTML = `
+      <div class="chat-messages-loading" aria-live="polite">
+        <span class="chat-messages-loading-dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+        <span class="chat-messages-loading-text">Loading messages…</span>
+      </div>
+    `;
+  }
+
+  showMessagesLoading();
   input.focus();
 
   getChatMessages(50)
@@ -850,7 +839,7 @@ export function renderChat(
       renderMessages();
     })
     .catch(() => {
-      // Keep loadHistory() result (already in messages)
+      renderMessages();
     });
 
   // Handle ?session=uploaded from extension redirect

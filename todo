@@ -1,6 +1,9 @@
-move messages to db.
+remove localStorage fallback
+use tailwind css
+resume preview and edit UI is bad. Updated resume preview and edit UI for better user experience, addressing previous design issues.
 ask agent to check the code base for Inconsistency that could lead to code depth and fix.
 do step by step check to improve UX
+x move messages to db.
 x how do we handle jobs that are not supported, we only support auto apply to jobs fron Handshake with resume/Transcript/cover letter
 x what if user want to cancel job Application thats ongoing
 x When i type "Check status" or "what's the status?", the agent should Understand the command.
