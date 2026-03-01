@@ -215,6 +215,12 @@ export interface ChatResponse {
   error?: string;
 }
 
+export async function getChatMessages(limit: number = 50): Promise<{ messages: ChatMessage[] }> {
+  const params = new URLSearchParams();
+  params.set('limit', String(limit));
+  return request<{ messages: ChatMessage[] }>(`/chat/messages?${params.toString()}`);
+}
+
 export async function sendChat(
   message: string,
   messages: ChatMessage[] = []

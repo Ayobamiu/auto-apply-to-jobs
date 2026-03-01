@@ -35,7 +35,7 @@ import {
   getAppliedArtifactsCover,
 } from './routes/pipeline-jobs.js';
 import { getSettings, putSettings } from './routes/settings.js';
-import { postChat } from './routes/chat.js';
+import { postChat, getChatMessages } from './routes/chat.js';
 import { transcriptUpload, postTranscript, getTranscriptStatus } from './routes/transcript.js';
 import {
   userResumeUploadMiddleware,
@@ -94,6 +94,7 @@ app.post('/users/me/transcript', authMiddleware, transcriptUpload, postTranscrip
 app.get('/users/me/resume', authMiddleware, getUserResume);
 app.put('/users/me/resume', authMiddleware, putUserResume);
 app.post('/users/me/resume', authMiddleware, userResumeUploadMiddleware, postUserResume);
+app.get('/chat/messages', authMiddleware, getChatMessages);
 app.post('/chat', authMiddleware, postChat);
 
 // Serve frontend SPA (after API routes so API paths take priority)

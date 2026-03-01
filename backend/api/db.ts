@@ -126,6 +126,19 @@ const PIPELINE_JOBS_TABLE_SQL = `
   )
 `;
 
+const CHAT_MESSAGES_TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS chat_messages (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id text NOT NULL,
+    role text NOT NULL CHECK (role IN ('user', 'assistant')),
+    content text NOT NULL,
+    created_at timestamptz DEFAULT now()
+  )
+`;
+const CHAT_MESSAGES_INDEX_SQL = `
+  CREATE INDEX IF NOT EXISTS chat_messages_user_created_idx ON chat_messages (user_id, created_at)
+`;
+
 let usersTableInitialized = false;
 let dataTablesInitialized = false;
 
@@ -148,6 +161,8 @@ export async function ensureDataTables(): Promise<void> {
   await pool.query(USER_PREFERENCES_TABLE_SQL);
   await pool.query(USER_RESUMES_TABLE_SQL);
   await pool.query(PIPELINE_JOBS_TABLE_SQL);
+  await pool.query(CHAT_MESSAGES_TABLE_SQL);
+  await pool.query(CHAT_MESSAGES_INDEX_SQL);
   await pool.query('ALTER TABLE pipeline_jobs ADD COLUMN IF NOT EXISTS phase text DEFAULT NULL');
   await pool.query("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS automation_level text DEFAULT 'review'");
   await pool.query("ALTER TABLE pipeline_jobs ADD COLUMN IF NOT EXISTS automation_level text DEFAULT 'review'");

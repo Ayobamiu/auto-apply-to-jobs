@@ -1,5 +1,6 @@
 import {
   sendChat,
+  getChatMessages,
   getPipelineJobStatus,
   getPipelineArtifacts,
   putPipelineArtifactResume,
@@ -841,6 +842,16 @@ export function renderChat(
 
   renderMessages();
   input.focus();
+
+  getChatMessages(50)
+    .then((res) => {
+      messages.length = 0;
+      messages.push(...res.messages);
+      renderMessages();
+    })
+    .catch(() => {
+      // Keep loadHistory() result (already in messages)
+    });
 
   // Handle ?session=uploaded from extension redirect
   const params = new URLSearchParams(window.location.search);
