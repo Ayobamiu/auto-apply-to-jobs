@@ -213,6 +213,56 @@ html, body {
   cursor: pointer;
 }
 
+.header-menu-wrap {
+  position: relative;
+}
+
+.header-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  min-width: 180px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  padding: 6px 0;
+  z-index: 100;
+}
+
+.header-menu[hidden] {
+  display: none;
+}
+
+.menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--font);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.menu-item:hover {
+  background: var(--bg-input);
+}
+
+.menu-item-secondary {
+  color: var(--text-muted);
+}
+
+.menu-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 6px 0;
+}
+
 /* ── Review card ───────────────────────────────────────────── */
 .review-card {
   max-width: 100%;
@@ -500,6 +550,99 @@ html, body {
 .chat-send-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* ── Base resume modal ─────────────────────────────────────── */
+.base-resume-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.base-resume-modal[hidden],
+#preview-modal[hidden] {
+  display: none;
+}
+
+.preview-modal-body {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 13px;
+  line-height: 1.5;
+  max-height: 60vh;
+  overflow-y: auto;
+  margin: 0;
+  padding: 12px 0 0;
+}
+
+.base-resume-modal-content {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-width: 560px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.base-resume-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.base-resume-modal-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.base-resume-hint {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.base-resume-upload-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.base-resume-upload-row input[type="file"] {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.base-resume-upload .review-textarea {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.base-resume-edit {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.base-resume-edit .review-btn {
+  margin-bottom: 12px;
+}
+
+.base-resume-form-wrap {
+  margin-top: 12px;
+}
+
+.base-resume-form-wrap .resume-form {
+  margin-bottom: 12px;
 }
 
 /* ── Scrollbar ────────────────────────────────────────────── */

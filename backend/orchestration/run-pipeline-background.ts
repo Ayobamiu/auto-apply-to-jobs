@@ -76,13 +76,13 @@ export async function resumePipelineAfterApproval(jobId: string): Promise<void> 
     const needTranscript = requiredSections.includes('transcript');
 
     if (needTranscript) {
-      const path = getTranscriptPath();
+      const path = await getTranscriptPath(userId);
       if (!existsSync(path)) {
         await updatePipelineJobStatus(
           jobId,
           'failed',
           undefined,
-          'This job requires a transcript. Set TRANSCRIPT_PATH in .env to your transcript PDF path (e.g. TRANSCRIPT_PATH=/path/to/your/transcript.pdf), then try again.'
+          'This job requires a transcript. Upload one in the app (Settings or chat) or set TRANSCRIPT_PATH in .env, then try again.'
         );
         return;
       }
@@ -104,7 +104,7 @@ export async function resumePipelineAfterApproval(jobId: string): Promise<void> 
       });
       coverPath = out.coverPath;
     }
-    const transcriptPath = needTranscript ? getTranscriptPath() : undefined;
+    const transcriptPath = needTranscript ? await getTranscriptPath(userId) : undefined;
     const applyResult = await runHandshakeApply(jobUrl, {
       resumePath: resumePath ?? undefined,
       coverPath,

@@ -103,6 +103,14 @@ const USER_PREFERENCES_TABLE_SQL = `
   )
 `;
 
+const USER_RESUMES_TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS user_resumes (
+    user_id text PRIMARY KEY,
+    content jsonb NOT NULL,
+    updated_at timestamptz DEFAULT now()
+  )
+`;
+
 const PIPELINE_JOBS_TABLE_SQL = `
   CREATE TABLE IF NOT EXISTS pipeline_jobs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -138,11 +146,13 @@ export async function ensureDataTables(): Promise<void> {
   await pool.query(HANDSHAKE_SESSIONS_TABLE_SQL);
   await pool.query(JOB_ARTIFACTS_TABLE_SQL);
   await pool.query(USER_PREFERENCES_TABLE_SQL);
+  await pool.query(USER_RESUMES_TABLE_SQL);
   await pool.query(PIPELINE_JOBS_TABLE_SQL);
   await pool.query('ALTER TABLE pipeline_jobs ADD COLUMN IF NOT EXISTS phase text DEFAULT NULL');
   await pool.query("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS automation_level text DEFAULT 'review'");
   await pool.query("ALTER TABLE pipeline_jobs ADD COLUMN IF NOT EXISTS automation_level text DEFAULT 'review'");
   await pool.query('ALTER TABLE pipeline_jobs ADD COLUMN IF NOT EXISTS artifacts jsonb');
+  await pool.query('ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS transcript_storage_key text');
   dataTablesInitialized = true;
 }
 

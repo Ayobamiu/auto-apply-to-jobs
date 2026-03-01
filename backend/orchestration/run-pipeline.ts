@@ -142,10 +142,10 @@ export async function runPipelineForJob(
   onPhase?.('Applying to job...');
   let transcriptPath: string | undefined;
   if (requiredSections.includes('transcript')) {
-    const path = getTranscriptPath();
+    const path = await getTranscriptPath(userId);
     if (!existsSync(path)) {
       throw new Error(
-        'This job requires a transcript. Set TRANSCRIPT_PATH in .env to your transcript PDF path (e.g. TRANSCRIPT_PATH=/path/to/your/transcript.pdf), then try again.'
+        'This job requires a transcript. Upload one in the app (Settings or chat) or set TRANSCRIPT_PATH in .env, then try again.'
       );
     }
     transcriptPath = path;

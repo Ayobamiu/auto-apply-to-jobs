@@ -14,7 +14,12 @@ import { authMiddleware } from './middleware/auth.js';
 import { register, login } from './routes/auth.js';
 import { postPipeline } from './routes/pipeline.js';
 import { getJobs, getJobsStatus } from './routes/jobs.js';
-import { getProfileHandler, putProfile, postProfileFromResume } from './routes/profile.js';
+import {
+  getProfileHandler,
+  putProfile,
+  postProfileFromResume,
+  profileFromResumeUpload,
+} from './routes/profile.js';
 import { postHandshakeSessionUpload, getHandshakeSessionStatusHandler } from './routes/handshake-session.js';
 import {
   getPipelineJobStatus,
@@ -30,6 +35,13 @@ import {
 } from './routes/pipeline-jobs.js';
 import { getSettings, putSettings } from './routes/settings.js';
 import { postChat } from './routes/chat.js';
+import { transcriptUpload, postTranscript, getTranscriptStatus } from './routes/transcript.js';
+import {
+  userResumeUploadMiddleware,
+  getUserResume,
+  putUserResume,
+  postUserResume,
+} from './routes/user-resume.js';
 
 if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
   console.error('JWT_SECRET is required in production');
@@ -60,7 +72,7 @@ app.get('/jobs', authMiddleware, getJobs);
 app.get('/jobs/status', authMiddleware, getJobsStatus);
 app.get('/profile', authMiddleware, getProfileHandler);
 app.put('/profile', authMiddleware, putProfile);
-app.post('/profile/from-resume', authMiddleware, postProfileFromResume);
+app.post('/profile/from-resume', authMiddleware, profileFromResumeUpload, postProfileFromResume);
 app.get('/pipeline/jobs', authMiddleware, getPipelineJobList);
 app.get('/pipeline/jobs/:jobId/artifacts/resume', authMiddleware, getPipelineJobArtifactsResume);
 app.get('/pipeline/jobs/:jobId/artifacts/cover', authMiddleware, getPipelineJobArtifactsCover);
@@ -75,6 +87,11 @@ app.get('/settings', authMiddleware, getSettings);
 app.put('/settings', authMiddleware, putSettings);
 app.post('/handshake/session/upload', authMiddleware, postHandshakeSessionUpload);
 app.get('/handshake/session/status', authMiddleware, getHandshakeSessionStatusHandler);
+app.get('/users/me/transcript', authMiddleware, getTranscriptStatus);
+app.post('/users/me/transcript', authMiddleware, transcriptUpload, postTranscript);
+app.get('/users/me/resume', authMiddleware, getUserResume);
+app.put('/users/me/resume', authMiddleware, putUserResume);
+app.post('/users/me/resume', authMiddleware, userResumeUploadMiddleware, postUserResume);
 app.post('/chat', authMiddleware, postChat);
 
 // Serve frontend SPA (after API routes so API paths take priority)

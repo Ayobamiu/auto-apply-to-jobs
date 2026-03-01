@@ -68,6 +68,8 @@ export const POST_UPLOAD_CLICK_DELAY_MS = 500;
 // ── Resume / Profile ────────────────────────────────────────────────
 
 export const MAX_RESUME_CHARS = 20_000;
+/** Max PDF size for resume/transcript uploads (10 MB). */
+export const PDF_MAX_SIZE_BYTES = 10 * 1024 * 1024;
 
 // ── Server ──────────────────────────────────────────────────────────
 

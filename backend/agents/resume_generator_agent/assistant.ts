@@ -22,11 +22,22 @@ Output only valid JSON with no markdown or explanation. The JSON must include:
 
 Use ISO8601-ish dates where possible (e.g. "2025-05", "2025"). Keep the candidate's facts accurate; tailor emphasis, summary, and ordering to the job.`;
 
-function buildUserMessage(profile: Profile, job: Job): { role: 'user'; content: string } {
+function buildUserMessage(
+  profile: Profile,
+  job: Job,
+  baseResumeJson?: Record<string, unknown>
+): { role: 'user'; content: string } {
   const jobBlock =
     job?.title || job?.company || job?.description
       ? `\n\n## Target job\nTitle: ${job?.title || 'N/A'}\nCompany: ${job?.company || 'N/A'}\n\nDescription:\n${(job?.description || '').slice(0, 8000)}`
       : '';
+  if (baseResumeJson && Object.keys(baseResumeJson).length > 0) {
+    const resumeJson = JSON.stringify(baseResumeJson, null, 2);
+    return {
+      role: 'user',
+      content: `Tailor this candidate's resume (JSON Resume format) to the target job. Output a single JSON object only. Preserve all factual content; reorder, rephrase summary/highlights, and emphasize what fits the job.\n\n## Current resume (JSON)\n${resumeJson}${jobBlock}`,
+    };
+  }
   const profileJson = JSON.stringify(profile, null, 2);
   return {
     role: 'user',
@@ -39,6 +50,7 @@ import type { GenerateResumeWithAssistantParams, UpdateResumeFromChatOptions } f
 
 export async function generateResumeWithAssistant({
   profile,
+  baseResumeJson,
   job = {},
   messages = [],
   apiKey,
@@ -55,7 +67,7 @@ export async function generateResumeWithAssistant({
 
   const client = new OpenAI(openaiOptions);
 
-  const userMessage = buildUserMessage(profile, job as Job);
+  const userMessage = buildUserMessage(profile, job as Job, baseResumeJson);
   const chatMessages: Array<{ role: 'system' | 'user'; content: string }> = [
     { role: 'system', content: SYSTEM_PROMPT },
     ...messages.map((m) => ({ role: m.role as 'user', content: m.content })),

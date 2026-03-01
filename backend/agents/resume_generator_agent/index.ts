@@ -4,6 +4,7 @@
  */
 import 'dotenv/config';
 import { getProfile } from '../../data/profile.js';
+import { getBaseResume } from '../../data/user-resumes.js';
 import { setUserJobState, toJobRef } from '../../data/user-job-state.js';
 import { getResumeForJob, saveResumeForJob } from '../../data/job-artifacts.js';
 import { loadJob } from '../../shared/job.js';
@@ -37,6 +38,9 @@ export async function runResumeGenerator(options: RunResumeGeneratorOptions = {}
     }
   }
 
+  const baseResumeJson =
+    options.baseResumeJson ?? (userId ? await getBaseResume(userId) : null);
+
   const useAssistant =
     options.useAssistant ?? (process.env.USE_RESUME_ASSISTANT === '1' || process.env.USE_RESUME_ASSISTANT === 'true');
 
@@ -44,6 +48,7 @@ export async function runResumeGenerator(options: RunResumeGeneratorOptions = {}
   if (useAssistant) {
     resumeJson = await generateResumeWithAssistant({
       profile,
+      baseResumeJson: baseResumeJson ?? undefined,
       job: (job || {}) as Job,
       apiKey: options.assistantApiKey,
       model: options.assistantModel,

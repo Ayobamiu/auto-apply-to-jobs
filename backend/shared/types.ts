@@ -113,6 +113,8 @@ export interface OrchestratorResult {
   meta?: {
     jobId?: string;
     pollStatus?: boolean;
+    /** When false, do not mark onboarding complete (e.g. waiting for transcript upload). */
+    onboardingComplete?: boolean;
   };
 }
 
@@ -171,6 +173,8 @@ export interface EnsureCoverLetterPdfFromDbOptions {
 
 export interface RunResumeGeneratorOptions {
   profile?: Profile;
+  /** When set, used as main source for tailoring (assistant tailors this JSON to the job). */
+  baseResumeJson?: Record<string, unknown>;
   job?: Job;
   profilePath?: string;
   jobPath?: string;
@@ -210,6 +214,8 @@ export interface UpdateResumeForJobOptions {
 
 export interface GenerateResumeWithAssistantParams {
   profile: Profile;
+  /** When set, assistant tailors this JSON Resume to the job instead of building from profile. */
+  baseResumeJson?: Record<string, unknown>;
   job?: Job;
   messages?: Array<{ role: string; content: string }>;
   apiKey?: string;

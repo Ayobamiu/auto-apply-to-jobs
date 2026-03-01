@@ -3,12 +3,19 @@
  * Always uses the provided userId from JWT — never falls back to 'default'.
  */
 import { getProfile, updateProfile } from '../data/profile.js';
-import { getOnboardingComplete, setOnboardingComplete, getAutomationLevel } from '../data/user-preferences.js';
+import {
+  getOnboardingComplete,
+  setOnboardingComplete,
+  getAutomationLevel,
+  hasTranscript,
+} from '../data/user-preferences.js';
 import { extractProfileFromResumeText } from '../shared/profile-from-resume.js';
 import { getSessionAge } from '../data/handshake-session.js';
 import { createPipelineJob, listPipelineJobs, getPipelineJob } from '../data/pipeline-jobs.js';
 import { runJobScraper } from '../agents/job_scraper_agent/index.js';
 import { checkJobProfileMismatch } from '../shared/job-profile-mismatch.js';
+import { getApplyFormSchema } from '../data/apply-forms.js';
+import { getJobIdFromUrl, toHandshakeJobDetailsUrl } from '../shared/job-from-url.js';
 import { extractProfileUpdateFromMessage } from '../shared/profile-update-from-chat.js';
 import { runPipelineInBackground, resumePipelineAfterApproval } from './run-pipeline-background.js';
 import { listJobsWithStatus } from './list-jobs-with-status.js';
@@ -151,20 +158,42 @@ function profileSummary(p: Profile): string {
   return parts.join('\n');
 }
 
-async function checkPrerequisites(userId: string): Promise<{ hasProfile: boolean; hasSession: boolean; sessionStale: boolean }> {
-  const profile = await getProfile(userId);
+async function checkPrerequisites(userId: string): Promise<{
+  hasProfile: boolean;
+  hasSession: boolean;
+  sessionStale: boolean;
+  hasTranscript: boolean;
+}> {
+  const [profile, sessionAge, transcript] = await Promise.all([
+    getProfile(userId),
+    getSessionAge(userId),
+    hasTranscript(userId),
+  ]);
   const hasProfile = !!(profile?.name?.trim());
-  const sessionAge = await getSessionAge(userId);
   const hasSession = sessionAge !== null;
   const sessionStale = hasSession && sessionAge! > SESSION_STALE_THRESHOLD_MS;
-  return { hasProfile, hasSession, sessionStale };
+  return { hasProfile, hasSession, sessionStale, hasTranscript: transcript };
+}
+
+function looksLikeSkipOrContinue(message: string): boolean {
+  const lower = message.trim().toLowerCase();
+  return (
+    lower === 'skip' ||
+    lower === 'continue' ||
+    lower === 'no' ||
+    lower.startsWith('skip,') ||
+    lower.startsWith('no,') ||
+    lower.includes('skip for now') ||
+    lower.includes("don't have") ||
+    lower.includes("don't need")
+  );
 }
 
 async function handleOnboarding(userId: string, message: string): Promise<OrchestratorResult | null> {
   const intent = detectIntent(message);
   if (intent !== 'help') return null;
 
-  const { hasProfile, hasSession, sessionStale } = await checkPrerequisites(userId);
+  const { hasProfile, hasSession, sessionStale, hasTranscript: userHasTranscript } = await checkPrerequisites(userId);
 
   if (!hasProfile && !hasSession) {
     return {
@@ -195,6 +224,22 @@ async function handleOnboarding(userId: string, message: string): Promise<Orches
         'Welcome back! Your Handshake session may be expired (last updated more than 7 days ago). ' +
         'Please reconnect using the browser extension before applying. ' +
         'Or send me a job URL and I will try anyway.',
+    };
+  }
+  if (hasProfile && hasSession && !userHasTranscript) {
+    if (looksLikeSkipOrContinue(message)) {
+      await setOnboardingComplete(userId);
+      return {
+        reply:
+          "You're all set. Send me a job URL and I'll start applying. " +
+          'You can upload a transcript later in Settings if a job requires it. ' +
+          'Say "list jobs" or ask me to update your profile anytime.',
+      };
+    }
+    return {
+      reply:
+        "You're almost set. Some jobs ask for a transcript — upload yours now (use the Upload transcript button or Settings) so we can attach it when needed, or say \"skip\" to continue.",
+      meta: { onboardingComplete: false },
     };
   }
   return {
@@ -295,6 +340,24 @@ async function handleApply(
       reply: 'I am already working on this job. You can ask me for a status update.',
       meta: { jobId: alreadyRunning.id, pollStatus: true },
     };
+  }
+
+  // If this job requires a transcript and the user has not uploaded one, block and ask for it.
+  const normalizedUrl = toHandshakeJobDetailsUrl(url);
+  const jobIdFromUrl = getJobIdFromUrl(normalizedUrl);
+  if (jobIdFromUrl) {
+    const cached = getApplyFormSchema(jobIdFromUrl);
+    const presentSections = cached?.presentSections as Array<{ key: string }> | undefined;
+    const requiredKeys = Array.isArray(presentSections) ? presentSections.map((s) => s.key) : [];
+    if (requiredKeys.includes('transcript')) {
+      const userHasTranscript = await hasTranscript(userId);
+      if (!userHasTranscript) {
+        return {
+          reply:
+            'This job requires a transcript. Please upload your transcript (PDF) first — use "Upload transcript" in the header, or in Settings. Then send this job URL again and I\'ll apply.',
+        };
+      }
+    }
   }
 
   const automationLevel = await getAutomationLevel(userId);
@@ -578,7 +641,9 @@ export async function runOrchestrator(
     if (!onboardingComplete) {
       const onboarding = await handleOnboarding(userId, message);
       if (onboarding) {
-        await setOnboardingComplete(userId);
+        if (onboarding.meta?.onboardingComplete !== false) {
+          await setOnboardingComplete(userId);
+        }
         return onboarding;
       }
     }

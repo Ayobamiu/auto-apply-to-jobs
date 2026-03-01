@@ -11,6 +11,14 @@ import {
   getUserIdFromToken,
   getSettings,
   putSettings,
+  getProfile,
+  getTranscriptStatus,
+  uploadResumePdf,
+  uploadTranscript,
+  getBaseResume,
+  postBaseResumeFile,
+  postBaseResumeText,
+  putBaseResume,
   type ChatMessage,
   type PipelineArtifacts,
   type AppliedArtifacts,
@@ -77,9 +85,24 @@ export function renderChat(
             <option value="review">Review before apply</option>
             <option value="full">Full auto</option>
           </select></label>
-          <button id="check-connection-btn" class="header-btn" title="Check Handshake connection">Check connection</button>
-          <button id="copy-token-btn" class="header-btn" title="Copy API token for extension">Copy Token</button>
-          <button id="logout-btn" class="header-btn header-btn-secondary">Sign Out</button>
+          <div class="header-menu-wrap">
+            <button type="button" id="menu-btn" class="header-btn" aria-haspopup="true" aria-expanded="false">Menu</button>
+            <div id="header-menu" class="header-menu" hidden>
+              <button type="button" class="menu-item" data-action="preview-profile">Preview profile</button>
+              <button type="button" class="menu-item" data-action="preview-resume">Preview resume</button>
+              <button type="button" class="menu-item" data-action="preview-transcript">Preview transcript</button>
+              <div class="menu-divider"></div>
+              <button type="button" class="menu-item" data-action="upload-resume-pdf">Upload resume PDF</button>
+              <input type="file" id="upload-resume-pdf-input" accept=".pdf,application/pdf" hidden />
+              <button type="button" class="menu-item" data-action="upload-transcript">Upload transcript</button>
+              <input type="file" id="upload-transcript-input" accept=".pdf,application/pdf" hidden />
+              <button type="button" class="menu-item" data-action="base-resume">Base resume</button>
+              <button type="button" class="menu-item" data-action="check-connection">Check connection</button>
+              <button type="button" class="menu-item" data-action="copy-token">Copy Token</button>
+              <div class="menu-divider"></div>
+              <button type="button" class="menu-item menu-item-secondary" data-action="logout">Sign Out</button>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -96,6 +119,43 @@ export function renderChat(
           <button type="submit" id="chat-send" class="chat-send-btn">Send</button>
         </form>
       </footer>
+
+      <div id="base-resume-modal" class="base-resume-modal" hidden>
+        <div class="base-resume-modal-content">
+          <div class="base-resume-modal-header">
+            <h2>Base resume</h2>
+            <button type="button" id="base-resume-modal-close" class="header-btn">Close</button>
+          </div>
+          <div class="base-resume-upload">
+            <p class="base-resume-hint">Upload a PDF or paste text to set your base resume. It will be tailored per job.</p>
+            <div class="base-resume-upload-row">
+              <input type="file" id="base-resume-file" accept=".pdf,application/pdf" />
+              <button type="button" id="base-resume-upload-pdf" class="review-btn">Upload PDF</button>
+            </div>
+            <div class="base-resume-upload-row">
+              <textarea id="base-resume-paste" class="review-textarea" rows="6" placeholder="Or paste resume text here..."></textarea>
+              <button type="button" id="base-resume-save-text" class="review-btn">Save from text</button>
+            </div>
+            <div id="base-resume-upload-error" class="review-error" hidden></div>
+          </div>
+          <div class="base-resume-edit">
+            <button type="button" id="base-resume-load-edit" class="review-btn">Load and edit</button>
+            <button type="button" id="base-resume-save-edits" class="review-btn" hidden>Save edits</button>
+            <div id="base-resume-form-container" class="base-resume-form-wrap" hidden></div>
+            <div id="base-resume-edit-error" class="review-error" hidden></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="preview-modal" class="base-resume-modal" hidden>
+        <div class="base-resume-modal-content">
+          <div class="base-resume-modal-header">
+            <h2 id="preview-modal-title">Preview</h2>
+            <button type="button" id="preview-modal-close" class="header-btn">Close</button>
+          </div>
+          <pre id="preview-modal-body" class="preview-modal-body"></pre>
+        </div>
+      </div>
     </div>
   `;
 
@@ -104,9 +164,27 @@ export function renderChat(
   const input = document.getElementById('chat-input') as HTMLTextAreaElement;
   const sendBtn = document.getElementById('chat-send') as HTMLButtonElement;
   const automationSelect = document.getElementById('automation-level') as HTMLSelectElement;
-  const checkConnectionBtn = document.getElementById('check-connection-btn') as HTMLButtonElement;
-  const copyTokenBtn = document.getElementById('copy-token-btn') as HTMLButtonElement;
-  const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement;
+  const menuBtn = document.getElementById('menu-btn') as HTMLButtonElement;
+  const headerMenu = document.getElementById('header-menu') as HTMLElement;
+  const uploadResumePdfInput = document.getElementById('upload-resume-pdf-input') as HTMLInputElement;
+  const uploadTranscriptInput = document.getElementById('upload-transcript-input') as HTMLInputElement;
+  const previewModal = document.getElementById('preview-modal') as HTMLElement;
+  const previewModalClose = document.getElementById('preview-modal-close') as HTMLButtonElement;
+  const previewModalTitle = document.getElementById('preview-modal-title') as HTMLElement;
+  const previewModalBody = document.getElementById('preview-modal-body') as HTMLElement;
+  const logoutBtn = document.querySelector('[data-action="logout"]') as HTMLButtonElement;
+  const baseResumeModal = document.getElementById('base-resume-modal') as HTMLElement;
+  const baseResumeModalClose = document.getElementById('base-resume-modal-close') as HTMLButtonElement;
+  const baseResumeFile = document.getElementById('base-resume-file') as HTMLInputElement;
+  const baseResumeUploadPdfBtn = document.getElementById('base-resume-upload-pdf') as HTMLButtonElement;
+  const baseResumePaste = document.getElementById('base-resume-paste') as HTMLTextAreaElement;
+  const baseResumeSaveTextBtn = document.getElementById('base-resume-save-text') as HTMLButtonElement;
+  const baseResumeUploadError = document.getElementById('base-resume-upload-error') as HTMLElement;
+  const baseResumeLoadEditBtn = document.getElementById('base-resume-load-edit') as HTMLButtonElement;
+  const baseResumeSaveEditsBtn = document.getElementById('base-resume-save-edits') as HTMLButtonElement;
+  const baseResumeFormContainer = document.getElementById('base-resume-form-container') as HTMLElement;
+  const baseResumeEditError = document.getElementById('base-resume-edit-error') as HTMLElement;
+  let baseResumeFormApi: ReturnType<typeof createResumeForm> | null = null;
 
   getSettings()
     .then((s) => {
@@ -487,40 +565,221 @@ export function renderChat(
     input.style.height = Math.min(input.scrollHeight, 200) + 'px';
   });
 
-  checkConnectionBtn.addEventListener('click', async () => {
-    const prevText = checkConnectionBtn.textContent;
-    checkConnectionBtn.textContent = 'Checking…';
-    checkConnectionBtn.disabled = true;
-    try {
-      const status = await getHandshakeSessionStatus();
-      if (status.connected) {
-        addMessage('assistant', 'Handshake connected successfully.');
-      } else {
-        addMessage('assistant', 'Handshake is not connected. Use the browser extension to upload your session.');
+  function showPreviewModal(title: string, body: string): void {
+    previewModalTitle.textContent = title;
+    previewModalBody.textContent = body;
+    previewModal.hidden = false;
+  }
+  previewModalClose.addEventListener('click', () => {
+    previewModal.hidden = true;
+  });
+  previewModal.addEventListener('click', (e) => {
+    if (e.target === previewModal) previewModal.hidden = true;
+  });
+
+  menuBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    headerMenu.hidden = !headerMenu.hidden;
+    menuBtn.setAttribute('aria-expanded', String(!headerMenu.hidden));
+  });
+  document.addEventListener('click', () => {
+    headerMenu.hidden = true;
+    menuBtn.setAttribute('aria-expanded', 'false');
+  });
+  headerMenu.addEventListener('click', (e) => e.stopPropagation());
+
+  headerMenu.addEventListener('click', async (e) => {
+    const item = (e.target as HTMLElement).closest('.menu-item');
+    if (!item) return;
+    const action = item.getAttribute('data-action');
+    headerMenu.hidden = true;
+    menuBtn.setAttribute('aria-expanded', 'false');
+
+    if (action === 'preview-profile') {
+      try {
+        const { profile } = await getProfile();
+        showPreviewModal('Profile', profile ? JSON.stringify(profile, null, 2) : 'No profile set.');
+      } catch (err) {
+        showPreviewModal('Profile', err instanceof Error ? err.message : 'Failed to load profile.');
       }
-    } catch {
-      addMessage('assistant', 'Could not verify connection. Please try again.');
-    } finally {
-      checkConnectionBtn.textContent = prevText;
-      checkConnectionBtn.disabled = false;
+      return;
+    }
+    if (action === 'preview-resume') {
+      try {
+        const { resume } = await getBaseResume();
+        showPreviewModal('Base resume', JSON.stringify(resume, null, 2));
+      } catch (err) {
+        showPreviewModal('Base resume', err instanceof Error ? err.message : 'No base resume or failed to load.');
+      }
+      return;
+    }
+    if (action === 'preview-transcript') {
+      try {
+        const { hasTranscript } = await getTranscriptStatus();
+        showPreviewModal('Transcript', hasTranscript ? 'Transcript uploaded and saved.' : 'No transcript uploaded.');
+      } catch (err) {
+        showPreviewModal('Transcript', err instanceof Error ? err.message : 'Failed to check transcript.');
+      }
+      return;
+    }
+    if (action === 'upload-resume-pdf') {
+      uploadResumePdfInput.click();
+      return;
+    }
+    if (action === 'upload-transcript') {
+      uploadTranscriptInput.click();
+      return;
+    }
+    if (action === 'base-resume') {
+      baseResumeModal.hidden = false;
+      baseResumeUploadError.hidden = true;
+      baseResumeEditError.hidden = true;
+      return;
+    }
+    if (action === 'check-connection') {
+      try {
+        const status = await getHandshakeSessionStatus();
+        addMessage('assistant', status.connected ? 'Handshake connected successfully.' : 'Handshake is not connected. Use the browser extension to upload your session.');
+      } catch {
+        addMessage('assistant', 'Could not verify connection. Please try again.');
+      }
+      return;
+    }
+    if (action === 'copy-token') {
+      navigator.clipboard.writeText(token).then(
+        () => addMessage('assistant', 'Token copied to clipboard.'),
+        () => addMessage('assistant', 'Failed to copy token.')
+      );
+      return;
+    }
+    if (action === 'logout') {
+      stopPolling();
+      onLogout();
     }
   });
 
-  copyTokenBtn.addEventListener('click', () => {
-    navigator.clipboard.writeText(token).then(
-      () => {
-        copyTokenBtn.textContent = 'Copied!';
-        setTimeout(() => {
-          copyTokenBtn.textContent = 'Copy Token';
-        }, 2000);
-      },
-      () => {
-        copyTokenBtn.textContent = 'Failed';
-        setTimeout(() => {
-          copyTokenBtn.textContent = 'Copy Token';
-        }, 2000);
-      }
-    );
+  uploadResumePdfInput.addEventListener('change', async () => {
+    const file = uploadResumePdfInput.files?.[0];
+    uploadResumePdfInput.value = '';
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
+      addMessage('assistant', 'Please choose a PDF file.');
+      return;
+    }
+    try {
+      await uploadResumePdf(file);
+      addMessage('assistant', 'Profile updated from your resume PDF. You can send a job URL to apply.');
+    } catch (err) {
+      addMessage('assistant', err instanceof Error ? err.message : 'Upload failed.');
+    }
+  });
+
+  uploadTranscriptInput.addEventListener('change', async () => {
+    const file = uploadTranscriptInput.files?.[0];
+    uploadTranscriptInput.value = '';
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
+      addMessage('assistant', 'Please choose a PDF file.');
+      return;
+    }
+    try {
+      await uploadTranscript(file);
+      addMessage('assistant', 'Transcript saved. I\'ll use it when a job requires one.');
+    } catch (err) {
+      addMessage('assistant', err instanceof Error ? err.message : 'Upload failed.');
+    }
+  });
+
+  baseResumeModalClose.addEventListener('click', () => {
+    baseResumeModal.hidden = true;
+  });
+
+  baseResumeUploadPdfBtn.addEventListener('click', async () => {
+    const file = baseResumeFile.files?.[0];
+    baseResumeFile.value = '';
+    baseResumeUploadError.hidden = true;
+    if (!file || (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf')) {
+      baseResumeUploadError.textContent = 'Please select a PDF file.';
+      baseResumeUploadError.hidden = false;
+      return;
+    }
+    baseResumeUploadPdfBtn.disabled = true;
+    baseResumeUploadError.textContent = '';
+    try {
+      await postBaseResumeFile(file);
+      baseResumeUploadError.textContent = 'Base resume saved from PDF.';
+      baseResumeUploadError.hidden = false;
+      baseResumeUploadError.style.color = '';
+    } catch (err) {
+      baseResumeUploadError.textContent = err instanceof Error ? err.message : 'Upload failed.';
+      baseResumeUploadError.hidden = false;
+    } finally {
+      baseResumeUploadPdfBtn.disabled = false;
+    }
+  });
+
+  baseResumeSaveTextBtn.addEventListener('click', async () => {
+    const text = baseResumePaste.value?.trim() ?? '';
+    baseResumeUploadError.hidden = true;
+    if (!text) {
+      baseResumeUploadError.textContent = 'Paste some resume text first.';
+      baseResumeUploadError.hidden = false;
+      return;
+    }
+    baseResumeSaveTextBtn.disabled = true;
+    baseResumeUploadError.textContent = '';
+    try {
+      await postBaseResumeText(text);
+      baseResumeUploadError.textContent = 'Base resume saved from text.';
+      baseResumeUploadError.hidden = false;
+      baseResumeUploadError.style.color = '';
+    } catch (err) {
+      baseResumeUploadError.textContent = err instanceof Error ? err.message : 'Save failed.';
+      baseResumeUploadError.hidden = false;
+    } finally {
+      baseResumeSaveTextBtn.disabled = false;
+    }
+  });
+
+  baseResumeLoadEditBtn.addEventListener('click', async () => {
+    baseResumeEditError.hidden = true;
+    baseResumeLoadEditBtn.disabled = true;
+    try {
+      const { resume } = await getBaseResume();
+      baseResumeFormContainer.hidden = false;
+      baseResumeFormContainer.innerHTML = '';
+      baseResumeFormApi = createResumeForm(baseResumeFormContainer, resume);
+      baseResumeSaveEditsBtn.hidden = false;
+    } catch (err) {
+      baseResumeEditError.textContent = err instanceof Error ? err.message : 'No base resume found. Upload or paste one first.';
+      baseResumeEditError.hidden = false;
+    } finally {
+      baseResumeLoadEditBtn.disabled = false;
+    }
+  });
+
+  baseResumeSaveEditsBtn.addEventListener('click', async () => {
+    if (!baseResumeFormApi) return;
+    const errMsg = baseResumeFormApi.validate();
+    if (errMsg) {
+      baseResumeEditError.textContent = errMsg;
+      baseResumeEditError.hidden = false;
+      return;
+    }
+    baseResumeEditError.hidden = true;
+    baseResumeSaveEditsBtn.disabled = true;
+    try {
+      const value = baseResumeFormApi.getValue();
+      await putBaseResume(value);
+      baseResumeEditError.textContent = 'Edits saved.';
+      baseResumeEditError.hidden = false;
+      baseResumeEditError.style.color = '';
+    } catch (err) {
+      baseResumeEditError.textContent = err instanceof Error ? err.message : 'Save failed.';
+      baseResumeEditError.hidden = false;
+    } finally {
+      baseResumeSaveEditsBtn.disabled = false;
+    }
   });
 
   logoutBtn.addEventListener('click', () => {

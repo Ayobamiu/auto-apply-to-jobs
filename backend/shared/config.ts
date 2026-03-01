@@ -29,9 +29,35 @@ export const PATHS = {
   job: join(ROOT, 'shared', 'job.json'),
 };
 
-/** Transcript path for apply: TRANSCRIPT_PATH env or default fixture. Use when job requires transcript. */
-export function getTranscriptPath(): string {
-  return process.env.TRANSCRIPT_PATH ?? join(PATHS.fixtures, 'Unofficial Academic Transcript .pdf');
+const DEFAULT_TRANSCRIPT_PATH = process.env.TRANSCRIPT_PATH ?? join(PATHS.fixtures, 'Unofficial Academic Transcript .pdf');
+
+/** Fallback transcript path (env or fixture). Use when user has no stored transcript. */
+export function getTranscriptPathFallback(): string {
+  return DEFAULT_TRANSCRIPT_PATH;
+}
+
+/**
+ * Transcript path for apply: if userId has a stored transcript (S3), download to temp and return path;
+ * otherwise return TRANSCRIPT_PATH env or default fixture.
+ */
+export async function getTranscriptPath(userId?: string): Promise<string> {
+  if (!userId || userId === 'default') {
+    return getTranscriptPathFallback();
+  }
+  const { getTranscriptStorageKey } = await import('../data/user-preferences.js');
+  const { downloadTranscriptFromS3ToTemp } = await import('./s3-transcript.js');
+  const key = await getTranscriptStorageKey(userId);
+  if (!key) {
+    return getTranscriptPathFallback();
+  }
+  try {
+    const path = await downloadTranscriptFromS3ToTemp(key);
+    const { scheduleTempFileCleanup } = await import('./s3-transcript.js');
+    scheduleTempFileCleanup(path, 120_000); // delete after 2 min
+    return path;
+  } catch {
+    return getTranscriptPathFallback();
+  }
 }
 
 import type { UserPaths } from './types.js';

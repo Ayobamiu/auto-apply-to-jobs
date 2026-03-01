@@ -85,6 +85,121 @@ export async function login(email: string, password: string): Promise<AuthRespon
   return res;
 }
 
+export interface ProfileFromResumeResponse {
+  profile: Record<string, unknown>;
+}
+
+export interface ProfileResponse {
+  profile: Record<string, unknown> | null;
+  automationLevel?: string;
+}
+
+export async function getProfile(): Promise<ProfileResponse> {
+  return request<ProfileResponse>('/profile');
+}
+
+export async function getTranscriptStatus(): Promise<{ hasTranscript: boolean }> {
+  return request<{ hasTranscript: boolean }>('/users/me/transcript');
+}
+
+/** Upload a resume PDF to set profile; extracts text and saves profile. */
+export async function uploadResumePdf(file: File): Promise<ProfileFromResumeResponse> {
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const form = new FormData();
+  form.append('resume', file);
+  const res = await fetch(`${API_BASE}/profile/from-resume`, {
+    method: 'POST',
+    headers,
+    body: form,
+  });
+  if (res.status === 401) {
+    clearToken();
+    onUnauthorized?.();
+    throw new Error('Session expired. Please sign in again.');
+  }
+  const body = await res.json();
+  if (!res.ok) {
+    throw new Error(body.error || body.message || `Upload failed (${res.status})`);
+  }
+  return body as ProfileFromResumeResponse;
+}
+
+/** Upload transcript PDF for jobs that require it. */
+export async function uploadTranscript(file: File): Promise<{ ok: boolean; message?: string }> {
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const form = new FormData();
+  form.append('transcript', file);
+  const res = await fetch(`${API_BASE}/users/me/transcript`, {
+    method: 'POST',
+    headers,
+    body: form,
+  });
+  if (res.status === 401) {
+    clearToken();
+    onUnauthorized?.();
+    throw new Error('Session expired. Please sign in again.');
+  }
+  const body = await res.json();
+  if (!res.ok) {
+    throw new Error(body.error || body.message || `Upload failed (${res.status})`);
+  }
+  return body as { ok: boolean; message?: string };
+}
+
+/** Base resume JSON (for tailoring per job). */
+export interface BaseResumeResponse {
+  resume: Record<string, unknown>;
+}
+
+export async function getBaseResume(): Promise<BaseResumeResponse> {
+  return request<BaseResumeResponse>('/users/me/resume');
+}
+
+export async function postBaseResumeFile(file: File): Promise<BaseResumeResponse> {
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const form = new FormData();
+  form.append('resume', file);
+  const res = await fetch(`${API_BASE}/users/me/resume`, {
+    method: 'POST',
+    headers,
+    body: form,
+  });
+  if (res.status === 401) {
+    clearToken();
+    onUnauthorized?.();
+    throw new Error('Session expired. Please sign in again.');
+  }
+  const ct = res.headers.get('content-type') ?? '';
+  if (!ct.includes('application/json')) {
+    const text = await res.text();
+    if (text.startsWith('<')) throw new Error('Server returned HTML — is the API running and the dev proxy set up? (e.g. proxy /users to backend)');
+    throw new Error(text || `Upload failed (${res.status})`);
+  }
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || body.message || `Upload failed (${res.status})`);
+  return body as BaseResumeResponse;
+}
+
+export async function postBaseResumeText(resumeText: string): Promise<BaseResumeResponse> {
+  return request<BaseResumeResponse>('/users/me/resume', {
+    method: 'POST',
+    body: JSON.stringify({ resumeText }),
+  });
+}
+
+export async function putBaseResume(resume: Record<string, unknown>): Promise<BaseResumeResponse> {
+  return request<BaseResumeResponse>('/users/me/resume', {
+    method: 'PUT',
+    body: JSON.stringify(resume),
+  });
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;

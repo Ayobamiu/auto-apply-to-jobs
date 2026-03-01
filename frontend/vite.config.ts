@@ -14,6 +14,7 @@ export default defineConfig({
       '/jobs': 'http://localhost:3000',
       '/profile': 'http://localhost:3000',
       '/handshake': 'http://localhost:3000',
+      '/users': 'http://localhost:3000',
     },
   },
 });
