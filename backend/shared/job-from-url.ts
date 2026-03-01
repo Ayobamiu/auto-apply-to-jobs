@@ -19,7 +19,9 @@ import {
   POST_NAVIGATE_DELAY_MS,
 } from './constants.js';
 import { setCachedJobHtml } from '../data/job-cache.js';
+import { parseApplyByDate } from './parse-apply-by-date.js';
 import type { Job } from './types.js';
+import dayjs from 'dayjs';
 
 const turndown = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
 
@@ -111,7 +113,7 @@ export async function scrapeJobFromPage(page: Page): Promise<ScrapedJob> {
       applicationSubmitted = true;
       appliedAt = text;
     }
-  } catch (_) {}
+  } catch (_) { }
 
   let applyType: ApplyType = 'none';
   const applyButton = page.getByRole('button', { name: /apply/i }).first();
@@ -130,18 +132,19 @@ export async function scrapeJobFromPage(page: Page): Promise<ScrapedJob> {
       const text = document.body?.innerText ?? '';
       const match = text.match(/Apply by\s+([A-Za-z]+\s+\d{1,2},?\s+\d{4}(?:\s+at\s+[\d:]+\s*[AP]M)?)/i);
       if (!match) return { found: false as const };
-      const dateStr = match[1].trim();
-      const deadline = new Date(dateStr);
-      if (Number.isNaN(deadline.getTime())) return { found: true as const, closed: false };
-      return { found: true as const, closed: Date.now() > deadline.getTime() };
+      return { found: true as const, dateStr: match[1].trim() };
     });
-    if (applyByResult?.found && applyByResult.closed) jobClosed = true;
+
+    if (applyByResult?.found && applyByResult.dateStr) {
+      const deadline = parseApplyByDate(applyByResult.dateStr);
+      if (deadline && dayjs().isAfter(deadline)) jobClosed = true;
+    }
     if (!jobClosed) {
       const bodyText = await page.evaluate(() => document.body?.innerText ?? '');
       const closedPatterns = /closed|no longer accepting|application deadline has passed|position (is )?closed/i;
       if (closedPatterns.test(bodyText)) jobClosed = true;
     }
-  } catch (_) {}
+  } catch (_) { }
 
   const title = (await page.locator('h1').first().textContent().catch(() => null))?.trim() || '';
 
@@ -172,18 +175,18 @@ export async function scrapeJobFromPage(page: Page): Promise<ScrapedJob> {
     });
     description = htmlToMarkdown(htmlFromDetailsPage).replace(/\s*(More|Less)\s*$/gm, '').trim();
     if (description.length > 500) description = description.slice(0, 20000);
-  } catch (_) {}
+  } catch (_) { }
 
   if (!description || description.length < 100) {
     const descriptionBlock = page.locator('.cSDQep').first();
     try {
       await descriptionBlock.waitFor({ state: 'attached', timeout: 3000 });
-      await descriptionBlock.scrollIntoViewIfNeeded().catch(() => {});
+      await descriptionBlock.scrollIntoViewIfNeeded().catch(() => { });
       await new Promise((r) => setTimeout(r, 500));
       const raw = await descriptionBlock.evaluate((el: Element) => el?.textContent ?? '');
       description = (raw || (await descriptionBlock.innerText().catch(() => null))?.trim() || '').trim();
       description = description.replace(/\s*(More|Less)\s*$/gm, '').trim();
-    } catch (_) {}
+    } catch (_) { }
   }
 
   if (!description) {
@@ -199,7 +202,7 @@ export async function scrapeJobFromPage(page: Page): Promise<ScrapedJob> {
         return text.replace(/\s*(More|Less)\s*$/gm, '').trim();
       });
       if (fromViewMore && fromViewMore.length > 100) description = fromViewMore.slice(0, 15000);
-    } catch (_) {}
+    } catch (_) { }
   }
 
   if (!description) {
@@ -230,7 +233,7 @@ export async function getJobFromUrl(jobUrl: string, options: GetJobFromUrlOption
         const raw = readFileSync(cachePath, 'utf8');
         return { ...JSON.parse(raw), url: normalized } as Job & { url: string };
       }
-    } catch (_) {}
+    } catch (_) { }
   }
 
   const SCRAPE_TIMEOUT_MS = headless ? SCRAPE_TIMEOUT_HEADLESS_MS : SCRAPE_TIMEOUT_HEADED_MS;
@@ -247,7 +250,7 @@ export async function getJobFromUrl(jobUrl: string, options: GetJobFromUrlOption
 
   const doScrape = async (): Promise<Job & { url: string }> => {
     await page.goto(normalized, { waitUntil: 'domcontentloaded', timeout: PAGE_GOTO_TIMEOUT_MS });
-    await page.waitForLoadState('networkidle', { timeout: NETWORK_IDLE_TIMEOUT_MS }).catch(() => {});
+    await page.waitForLoadState('networkidle', { timeout: NETWORK_IDLE_TIMEOUT_MS }).catch(() => { });
     await new Promise((r) => setTimeout(r, POST_NAVIGATE_DELAY_MS));
 
     const jobIdMatch = normalized.match(/job-search\/(\d+)/) || normalized.match(/\/jobs\/(\d+)/);
@@ -267,7 +270,7 @@ export async function getJobFromUrl(jobUrl: string, options: GetJobFromUrlOption
     const screenshotDir = PATHS.scrapeScreenshots ?? join(PATHS.output, 'scrape-screenshots');
     mkdirSync(screenshotDir, { recursive: true });
     const screenshotPath = join(screenshotDir, `job-${fileKey}.png`);
-    await page.screenshot({ path: screenshotPath, fullPage: true }).catch(() => {});
+    await page.screenshot({ path: screenshotPath, fullPage: true }).catch(() => { });
     if (existsSync(screenshotPath)) {
       console.log('Job page screenshot:', screenshotPath);
     }
@@ -276,7 +279,7 @@ export async function getJobFromUrl(jobUrl: string, options: GetJobFromUrlOption
       const html = await page.content();
       setCachedJobHtml(fileKey, html);
       console.log('Job page HTML:', join(PATHS.jobCache, `${fileKey}.html`));
-    } catch (_) {}
+    } catch (_) { }
 
     const job = await scrapeJobFromPage(page);
     const result: Job & { url: string } = { ...job, url: normalized };
@@ -296,7 +299,7 @@ export async function getJobFromUrl(jobUrl: string, options: GetJobFromUrlOption
       if (job.appliedAt) cachePayload.appliedAt = job.appliedAt;
       if (job.jobClosed != null) cachePayload.jobClosed = job.jobClosed;
       writeFileSync(cachePath, JSON.stringify(cachePayload, null, 2), 'utf8');
-    } catch (_) {}
+    } catch (_) { }
 
     return result;
   };
@@ -340,7 +343,7 @@ export async function getApplicationStatusFromUrl(
         applicationSubmitted = true;
         appliedAt = text;
       }
-    } catch (_) {}
+    } catch (_) { }
     return { applicationSubmitted, ...(appliedAt && { appliedAt }) };
   } finally {
     await browser.close();

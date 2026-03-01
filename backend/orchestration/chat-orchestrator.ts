@@ -15,11 +15,11 @@ import { createPipelineJob, listPipelineJobs, getPipelineJob, cancelPipelineJob 
 import { runJobScraper } from '../agents/job_scraper_agent/index.js';
 import { checkJobProfileMismatch } from '../shared/job-profile-mismatch.js';
 import { getApplyFormSchema } from '../data/apply-forms.js';
-import { getJobIdFromUrl, toHandshakeJobDetailsUrl } from '../shared/job-from-url.js';
+import { getJobIdFromUrl, getJobSiteFromUrl, toHandshakeJobDetailsUrl } from '../shared/job-from-url.js';
 import { extractProfileUpdateFromMessage } from '../shared/profile-update-from-chat.js';
 import { runPipelineInBackground, resumePipelineAfterApproval } from './run-pipeline-background.js';
 import { listJobsWithStatus } from './list-jobs-with-status.js';
-import { isAppError, CODES } from '../shared/errors.js';
+import { isAppError, CODES, messageForCode } from '../shared/errors.js';
 import { SESSION_STALE_THRESHOLD_MS } from '../shared/constants.js';
 import { normalizePipelineOutcome, getPipelineOutcomeMessage } from '../shared/pipeline-outcome.js';
 import type {
@@ -306,6 +306,12 @@ async function handleApply(
   if (!url) {
     return { reply: 'Please send me a valid Handshake job URL so I can start the application.' };
   }
+  if (getJobSiteFromUrl(url) !== 'handshake') {
+    return {
+      reply:
+        "I only support applying to jobs on Handshake. Please send a Handshake job link (e.g. from your school's Handshake page).",
+    };
+  }
 
   const { hasProfile, hasSession, sessionStale } = await checkPrerequisites(userId);
   if (!hasProfile) {
@@ -357,6 +363,12 @@ async function handleApply(
   try {
     const profile = await getProfile(userId);
     const { job } = await runJobScraper(url, { forceScrape: false });
+    if (job.jobClosed === true) {
+      return { reply: 'This job posting appears to be closed.' };
+    }
+    if (job.applyType === 'apply_externally') {
+      return { reply: messageForCode(CODES.APPLY_EXTERNALLY) };
+    }
     mismatch = await checkJobProfileMismatch(profile ?? {}, job);
   } catch {
     // Ignore; proceed with apply

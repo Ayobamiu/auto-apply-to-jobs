@@ -1,4 +1,4 @@
-is a stop/start button good for this app. Butoon that stop ongoing process
+how do we handle jobs that are not supported, we only support auto apply to jobs fron Handshake with resume/Transcript/cover letter
 move messages to db.
 x what if user want to cancel job Application thats ongoing
 x When i type "Check status" or "what's the status?", the agent should Understand the command.

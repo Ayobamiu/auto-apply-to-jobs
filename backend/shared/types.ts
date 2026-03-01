@@ -151,6 +151,9 @@ export interface RunHandshakeApplyResult {
 
 export type SectionKey = 'transcript' | 'resume' | 'coverLetter';
 
+/** Section keys we support (resume, transcript, cover letter only). Jobs requiring other document types are rejected. */
+export const SUPPORTED_SECTION_KEYS: readonly SectionKey[] = ['resume', 'transcript', 'coverLetter'];
+
 export interface AttachSectionOptions {
   sectionHeading: string;
   searchPlaceholder: string;

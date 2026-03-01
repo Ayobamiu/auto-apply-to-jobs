@@ -20,12 +20,16 @@ import { runHandshakeApply } from '../agents/auto_apply_agent/handshake-apply-re
 import { getApplicationStatus } from '../agents/job_scraper_agent/index.js';
 import { startPhase, startTotal, isTimingEnabled } from '../shared/timing.js';
 import { setPipelineJobAwaitingApproval } from '../data/pipeline-jobs.js';
-import type { Job, PipelineApplyOutcome, RunPipelineForJobOptions, RunPipelineForJobResult } from '../shared/types.js';
+import type { Job, PipelineApplyOutcome, RunPipelineForJobOptions, RunPipelineForJobResult, SectionKey } from '../shared/types.js';
+import { SUPPORTED_SECTION_KEYS } from '../shared/types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /** Thrown when pipeline is cancelled via checkCancelled. */
 export const JOB_CANCELLED_ERROR = new Error('JOB_CANCELLED');
+
+const UNSUPPORTED_SECTIONS_MESSAGE =
+  "This job requires document types we don't support. We only support resume, transcript, and cover letter.";
 
 async function throwIfCancelled(checkCancelled: (() => Promise<boolean>) | undefined): Promise<void> {
   if (checkCancelled && (await checkCancelled())) throw JOB_CANCELLED_ERROR;
@@ -120,6 +124,12 @@ export async function runPipelineForJob(
   try {
     const probeResult = await probeRequiredSections(jobUrl, userId);
     requiredSections = probeResult.requiredSections;
+    const unsupported = requiredSections.filter((k) => !SUPPORTED_SECTION_KEYS.includes(k as SectionKey));
+    if (unsupported.length > 0) {
+      throw new Error(
+        "This job requires document types we don't support. We only support resume, transcript, and cover letter."
+      );
+    }
     await throwIfCancelled(options.checkCancelled);
     if (requiredSections.includes('coverLetter') && !coverPath) {
       console.log('Cover letter required — generating...');
@@ -131,7 +141,9 @@ export async function runPipelineForJob(
       console.log('Cover letter:', coverPath);
     }
   } catch (err) {
-    console.warn('Probe failed, proceeding without pre-check:', (err as Error).message);
+    const msg = (err as Error).message;
+    if (msg === UNSUPPORTED_SECTIONS_MESSAGE) throw err;
+    console.warn('Probe failed, proceeding without pre-check:', msg);
   }
   endProbe();
 
