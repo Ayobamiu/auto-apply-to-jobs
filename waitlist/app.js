@@ -32,8 +32,11 @@
       const endpoint = apiBase
         ? (apiBase.includes('script.google.com') ? apiBase : apiBase.replace(/\/$/, '') + '/waitlist')
         : '/waitlist';
-      const useCorsProxy = endpoint.includes('script.google.com');
-      const fetchUrl = useCorsProxy ? 'https://corsproxy.io/?' + encodeURIComponent(endpoint) : endpoint;
+      const useGoogleScript = endpoint.includes('script.google.com');
+      const isLocalhost = /^localhost$|^127\.0\.0\.1$/.test(window.location.hostname);
+      const fetchUrl = useGoogleScript
+        ? (isLocalhost ? 'https://corsproxy.io/?' + encodeURIComponent(endpoint) : '/api/waitlist')
+        : endpoint;
       const res = await fetch(fetchUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
