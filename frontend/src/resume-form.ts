@@ -37,14 +37,27 @@ export function createResumeForm(
   const workList = getArr(data, 'work') as Array<Record<string, unknown>>;
   const educationList = getArr(data, 'education') as Array<Record<string, unknown>>;
   const skillsRaw = getObj(data, 'skills');
-  let skillsStrings: string[] = [];
-  if (Array.isArray(skillsRaw)) {
-    skillsStrings = skillsRaw.map((s) => String(typeof s === 'string' ? s : (s as Record<string, unknown>)?.name ?? '').trim()).filter(Boolean);
+  type SkillCategory = { name: string; keywords: string[] };
+  let skillCategories: SkillCategory[] = [];
+  if (Array.isArray(skillsRaw) && skillsRaw.length > 0) {
+    const first = skillsRaw[0];
+    if (typeof first === 'string') {
+      skillCategories = [{ name: 'Skills', keywords: skillsRaw.map((s) => String(s).trim()).filter(Boolean) }];
+    } else {
+      skillCategories = (skillsRaw as Array<Record<string, unknown>>).map((s) => ({
+        name: getStr(s, 'name').trim(),
+        keywords: (getArr(s, 'keywords') as unknown[]).map((k) => String(k).trim()).filter(Boolean),
+      }));
+    }
   } else if (typeof skillsRaw === 'object' && skillsRaw !== null && !Array.isArray(skillsRaw)) {
     const sk = skillsRaw as Record<string, unknown>;
-    if (Array.isArray(sk.keywords)) {
-      skillsStrings = (sk.keywords as unknown[]).map((k) => String(k)).filter(Boolean);
-    }
+    skillCategories = [{
+      name: (getStr(sk, 'name') || 'Skills').trim(),
+      keywords: (getArr(sk, 'keywords') as unknown[]).map((k) => String(k).trim()).filter(Boolean),
+    }];
+  }
+  if (skillCategories.length === 0) {
+    skillCategories = [{ name: '', keywords: [] }];
   }
 
   const work = workList.length ? workList : [{}];
@@ -118,12 +131,12 @@ export function createResumeForm(
       <summary class="resume-form-card-header">
         <div>
           <div class="resume-form-card-title">Skills</div>
-          <div class="resume-form-card-subtitle">Technologies and strengths you want to highlight.</div>
+          <div class="resume-form-card-subtitle">Technologies and strengths you want to highlight. Group by category (e.g. Languages, Technologies); add keywords per category.</div>
         </div>
       </summary>
       <div class="resume-form-section">
-        <label class="resume-form-label">Skills (one per line or comma-separated)</label>
-        <textarea id="rf-skills" class="resume-form-textarea" rows="3" placeholder="e.g. JavaScript, Node.js">${escapeHtml(skillsStrings.join('\n'))}</textarea>
+        <div id="rf-skills-list"></div>
+        <button type="button" id="rf-add-skill-category" class="review-btn">Add skill category</button>
       </div>
     </details>
   `;
@@ -131,6 +144,28 @@ export function createResumeForm(
 
   const workListEl = document.getElementById('rf-work-list')!;
   const educationListEl = document.getElementById('rf-education-list')!;
+  const skillsListEl = document.getElementById('rf-skills-list')!;
+
+  function renderSkillCategoryEntry(index: number, category: SkillCategory): void {
+    const div = document.createElement('div');
+    div.className = 'resume-form-entry';
+    div.dataset.index = String(index);
+    const keywordsText = category.keywords.length ? category.keywords.join('\n') : '';
+    div.innerHTML = `
+      <div class="resume-form-row">
+        <input type="text" class="rf-skill-name resume-form-input" placeholder="Category name (e.g. Languages &amp; Tools)" value="${escapeHtml(category.name)}" />
+        <button type="button" class="rf-remove-skill review-btn">Remove</button>
+      </div>
+      <div class="resume-form-section">
+        <label class="resume-form-label">Keywords (comma or newline separated)</label>
+        <textarea class="rf-skill-keywords resume-form-textarea" rows="2" placeholder="e.g. Python, React, Node.js">${escapeHtml(keywordsText)}</textarea>
+      </div>
+    `;
+    skillsListEl.appendChild(div);
+    div.querySelector('.rf-remove-skill')!.addEventListener('click', () => {
+      div.remove();
+    });
+  }
 
   function renderWorkEntry(index: number, entry: Record<string, unknown>): void {
     const div = document.createElement('div');
@@ -184,12 +219,16 @@ export function createResumeForm(
 
   work.forEach((entry, i) => renderWorkEntry(i, entry as Record<string, unknown>));
   education.forEach((entry, i) => renderEducationEntry(i, entry as Record<string, unknown>));
+  skillCategories.forEach((cat, i) => renderSkillCategoryEntry(i, cat));
 
   document.getElementById('rf-add-work')!.addEventListener('click', () => {
     renderWorkEntry(workListEl.children.length, {});
   });
   document.getElementById('rf-add-education')!.addEventListener('click', () => {
     renderEducationEntry(educationListEl.children.length, {});
+  });
+  document.getElementById('rf-add-skill-category')!.addEventListener('click', () => {
+    renderSkillCategoryEntry(skillsListEl.children.length, { name: '', keywords: [] });
   });
 
   function getValue(): Record<string, unknown> {
@@ -237,17 +276,22 @@ export function createResumeForm(
       });
     });
 
-    const skillsText = (document.getElementById('rf-skills') as HTMLTextAreaElement).value.trim();
-    const skillsArr = skillsText
-      ? skillsText.split(/[\n,]/).map((s) => s.trim()).filter(Boolean)
-      : [];
+    const skillsOut: { name: string; keywords: string[] }[] = [];
+    skillsListEl.querySelectorAll('.resume-form-entry').forEach((entryEl) => {
+      const name = (entryEl.querySelector('.rf-skill-name') as HTMLInputElement)?.value?.trim() ?? '';
+      const keywordsText = (entryEl.querySelector('.rf-skill-keywords') as HTMLTextAreaElement)?.value?.trim() ?? '';
+      const keywords = keywordsText ? keywordsText.split(/[\n,]/).map((s) => s.trim()).filter(Boolean) : [];
+      if (name || keywords.length) {
+        skillsOut.push({ name, keywords });
+      }
+    });
 
     const out: Record<string, unknown> = {
       ...data,
       basics: Object.keys(basicsOut).length ? basicsOut : { name: '', email: '' },
       work: workOut,
       education: educationOut,
-      skills: skillsArr,
+      skills: skillsOut,
     };
     return out;
   }
