@@ -53,42 +53,79 @@ export function createResumeForm(
   const root = document.createElement('div');
   root.className = 'resume-form';
 
-  // Basics
   root.innerHTML = `
-    <div class="resume-form-section">
-      <label class="resume-form-label">Name</label>
-      <input type="text" id="rf-name" class="resume-form-input" value="${escapeHtml(getStr(basics, 'name'))}" placeholder="Full name" />
-    </div>
-    <div class="resume-form-section">
-      <label class="resume-form-label">Email</label>
-      <input type="email" id="rf-email" class="resume-form-input" value="${escapeHtml(getStr(basics, 'email'))}" placeholder="email@example.com" />
-    </div>
-    <div class="resume-form-section">
-      <label class="resume-form-label">Phone</label>
-      <input type="text" id="rf-phone" class="resume-form-input" value="${escapeHtml(getStr(basics, 'phone'))}" placeholder="Phone" />
-    </div>
-    <div class="resume-form-section">
-      <label class="resume-form-label">Title / Label</label>
-      <input type="text" id="rf-label" class="resume-form-input" value="${escapeHtml(getStr(basics, 'label'))}" placeholder="e.g. Software Engineer" />
-    </div>
-    <div class="resume-form-section">
-      <label class="resume-form-label">Summary</label>
-      <textarea id="rf-summary" class="resume-form-textarea" rows="3" placeholder="Short professional summary">${escapeHtml(getStr(basics, 'summary'))}</textarea>
-    </div>
-    <div class="resume-form-section">
-      <strong class="resume-form-label">Work experience</strong>
-      <div id="rf-work-list"></div>
-      <button type="button" id="rf-add-work" class="review-btn">Add experience</button>
-    </div>
-    <div class="resume-form-section">
-      <strong class="resume-form-label">Education</strong>
-      <div id="rf-education-list"></div>
-      <button type="button" id="rf-add-education" class="review-btn">Add education</button>
-    </div>
-    <div class="resume-form-section">
-      <label class="resume-form-label">Skills (one per line or comma-separated)</label>
-      <textarea id="rf-skills" class="resume-form-textarea" rows="3" placeholder="e.g. JavaScript, Node.js">${escapeHtml(skillsStrings.join('\n'))}</textarea>
-    </div>
+    <details class="resume-form-card" open>
+      <summary class="resume-form-card-header">
+        <div>
+          <div class="resume-form-card-title">Basics</div>
+          <div class="resume-form-card-subtitle">How employers can contact you.</div>
+        </div>
+      </summary>
+      <div class="resume-form-section">
+        <label class="resume-form-label">Name</label>
+        <input type="text" id="rf-name" class="resume-form-input" value="${escapeHtml(getStr(basics, 'name'))}" placeholder="Full name" />
+      </div>
+      <div class="resume-form-section">
+        <label class="resume-form-label">Email</label>
+        <input type="email" id="rf-email" class="resume-form-input" value="${escapeHtml(getStr(basics, 'email'))}" placeholder="email@example.com" />
+      </div>
+      <div class="resume-form-section">
+        <label class="resume-form-label">Phone</label>
+        <input type="text" id="rf-phone" class="resume-form-input" value="${escapeHtml(getStr(basics, 'phone'))}" placeholder="Phone" />
+      </div>
+      <div class="resume-form-section">
+        <label class="resume-form-label">Title / Label</label>
+        <input type="text" id="rf-label" class="resume-form-input" value="${escapeHtml(getStr(basics, 'label'))}" placeholder="e.g. Software Engineer" />
+      </div>
+    </details>
+    <details class="resume-form-card" open>
+      <summary class="resume-form-card-header">
+        <div>
+          <div class="resume-form-card-title">Summary</div>
+          <div class="resume-form-card-subtitle">A short elevator pitch about you.</div>
+        </div>
+      </summary>
+      <div class="resume-form-section">
+        <label class="resume-form-label">Summary</label>
+        <textarea id="rf-summary" class="resume-form-textarea" rows="3" placeholder="Short professional summary">${escapeHtml(getStr(basics, 'summary'))}</textarea>
+      </div>
+    </details>
+    <details class="resume-form-card" open>
+      <summary class="resume-form-card-header">
+        <div>
+          <div class="resume-form-card-title">Work experience</div>
+          <div class="resume-form-card-subtitle">Jobs, internships, and relevant experience.</div>
+        </div>
+      </summary>
+      <div class="resume-form-section">
+        <div id="rf-work-list"></div>
+        <button type="button" id="rf-add-work" class="review-btn">Add experience</button>
+      </div>
+    </details>
+    <details class="resume-form-card" open>
+      <summary class="resume-form-card-header">
+        <div>
+          <div class="resume-form-card-title">Education</div>
+          <div class="resume-form-card-subtitle">Schools, degrees, and programs.</div>
+        </div>
+      </summary>
+      <div class="resume-form-section">
+        <div id="rf-education-list"></div>
+        <button type="button" id="rf-add-education" class="review-btn">Add education</button>
+      </div>
+    </details>
+    <details class="resume-form-card" open>
+      <summary class="resume-form-card-header">
+        <div>
+          <div class="resume-form-card-title">Skills</div>
+          <div class="resume-form-card-subtitle">Technologies and strengths you want to highlight.</div>
+        </div>
+      </summary>
+      <div class="resume-form-section">
+        <label class="resume-form-label">Skills (one per line or comma-separated)</label>
+        <textarea id="rf-skills" class="resume-form-textarea" rows="3" placeholder="e.g. JavaScript, Node.js">${escapeHtml(skillsStrings.join('\n'))}</textarea>
+      </div>
+    </details>
   `;
   container.appendChild(root);
 

@@ -26,6 +26,8 @@ import {
   type AutomationLevel,
 } from './api.js';
 import { createResumeForm } from './resume-form.js';
+import { openReviewView } from './review-view.js';
+import { renderResumeToHtml } from './resume-preview.js';
 
 const MAX_MESSAGES_TO_BACKEND = 50;
 const POLL_INTERVAL_MS = 3_000;
@@ -131,12 +133,12 @@ export function renderChat(
       </div>
 
       <div id="preview-modal" class="base-resume-modal" hidden>
-        <div class="base-resume-modal-content">
+        <div class="base-resume-modal-content preview-modal-content">
           <div class="base-resume-modal-header">
             <h2 id="preview-modal-title">Preview</h2>
             <button type="button" id="preview-modal-close" class="header-btn">Close</button>
           </div>
-          <pre id="preview-modal-body" class="preview-modal-body"></pre>
+          <div id="preview-modal-body" class="preview-modal-body"></div>
         </div>
       </div>
     </div>
@@ -246,36 +248,9 @@ export function renderChat(
     removeReviewCard();
     reviewCardJobId = jobId;
 
-    const requiredSections = artifacts.requiredSections ?? ['resume', 'coverLetter'];
-    const showResume = requiredSections.includes('resume');
-    const showCover = requiredSections.includes('coverLetter');
-
     const container = document.createElement('div');
     container.id = 'review-card-container';
     container.className = 'chat-bubble chat-bubble-assistant review-card';
-
-    let coverText = artifacts.cover?.text ?? '';
-
-    const resumeSectionHtml = showResume
-      ? `<details class="review-section">
-          <summary>Resume</summary>
-          <div id="review-resume-form"></div>
-          <div id="review-resume-error" class="review-error" hidden></div>
-        </details>`
-      : '';
-    const coverSectionHtml = showCover
-      ? `<details class="review-section">
-          <summary>Cover letter</summary>
-          <textarea id="review-cover" class="review-textarea" rows="10" spellcheck="false"></textarea>
-          <div id="review-cover-error" class="review-error" hidden></div>
-        </details>`
-      : '';
-    const downloadResumeBtnHtml = showResume
-      ? '<button type="button" id="review-download-resume" class="review-btn">Download resume PDF</button>'
-      : '';
-    const downloadCoverBtnHtml = showCover
-      ? '<button type="button" id="review-download-cover" class="review-btn">Download cover PDF</button>'
-      : '';
 
     const card = document.createElement('div');
     card.className = 'chat-bubble-content';
@@ -284,13 +259,11 @@ export function renderChat(
         <strong>Review before apply</strong>
         <div class="review-job-title">${escapeHtml(artifacts.jobTitle)}</div>
       </div>
-      ${resumeSectionHtml}
-      ${coverSectionHtml}
+      <p class="review-card-hint">We\'ve drafted a tailored resume${artifacts.cover?.text ? ' and cover letter' : ''}. You can open a full-page editor to make changes before we submit.</p>
       <div class="review-actions">
-        <button type="button" id="review-save" class="review-btn">Save edits</button>
-        ${downloadResumeBtnHtml}
-        ${downloadCoverBtnHtml}
-        <button type="button" id="review-approve" class="review-btn review-btn-primary">Approve and apply</button>
+        <button type="button" id="review-open-detailed" class="review-btn review-btn-primary">Open detailed review</button>
+        <button type="button" id="review-download-resume" class="review-btn">Download resume PDF</button>
+        ${artifacts.cover?.text ? '<button type="button" id="review-download-cover" class="review-btn">Download cover PDF</button>' : ''}
         <button type="button" id="review-cancel" class="review-btn">Cancel</button>
       </div>
       <div id="review-action-error" class="review-error" hidden></div>
@@ -301,45 +274,25 @@ export function renderChat(
     messagesEl.appendChild(container);
     scrollToBottom();
 
-    let resumeFormApi: ReturnType<typeof createResumeForm> | null = null;
-    if (showResume) {
-      const formContainer = document.getElementById('review-resume-form')!;
-      resumeFormApi = createResumeForm(formContainer, artifacts.resume ?? {});
-    }
-    const coverTa = document.getElementById('review-cover') as HTMLTextAreaElement | null;
-    if (coverTa) coverTa.value = coverText;
+    const actionError = document.getElementById('review-action-error') as HTMLElement | null;
+    const showActionError = (msg: string): void => {
+      if (!actionError) return;
+      actionError.textContent = msg;
+      actionError.hidden = false;
+    };
 
-    function showError(elId: string, msg: string): void {
-      const el = document.getElementById(elId);
-      if (el) {
-        el.textContent = msg;
-        el.hidden = false;
-      }
-    }
-    function hideError(elId: string): void {
-      const el = document.getElementById(elId);
-      if (el) el.hidden = true;
-    }
-
-    document.getElementById('review-save')!.addEventListener('click', async () => {
-      hideError('review-resume-error');
-      hideError('review-cover-error');
-      try {
-        if (showResume && resumeFormApi) {
-          const err = resumeFormApi.validate();
-          if (err) {
-            showError('review-resume-error', err);
-            return;
-          }
-          await putPipelineArtifactResume(jobId, resumeFormApi.getValue());
-        }
-        if (showCover && coverTa) {
-          await putPipelineArtifactCover(jobId, coverTa.value.trim() || ' ');
-          coverText = coverTa.value;
-        }
-      } catch (err) {
-        showError('review-resume-error', err instanceof Error ? err.message : 'Save failed.');
-      }
+    document.getElementById('review-open-detailed')!.addEventListener('click', () => {
+      openReviewView({
+        jobId,
+        artifacts,
+        onApproved: () => {
+          removeReviewCard();
+          if (currentPollJobId) startPolling(currentPollJobId);
+        },
+        onCancelled: () => {
+          // Keep the summary card so user can still open review later if job is awaiting approval
+        },
+      });
     });
 
     const downloadResumeBtn = document.getElementById('review-download-resume');
@@ -348,7 +301,7 @@ export function renderChat(
         try {
           await downloadPipelineArtifactPdf(jobId, 'resume');
         } catch (err) {
-          showError('review-action-error', err instanceof Error ? err.message : 'Download failed.');
+          showActionError(err instanceof Error ? err.message : 'Download failed.');
         }
       });
     }
@@ -358,21 +311,10 @@ export function renderChat(
         try {
           await downloadPipelineArtifactPdf(jobId, 'cover');
         } catch (err) {
-          showError('review-action-error', err instanceof Error ? err.message : 'Download failed.');
+          showActionError(err instanceof Error ? err.message : 'Download failed.');
         }
       });
     }
-
-    document.getElementById('review-approve')!.addEventListener('click', async () => {
-      hideError('review-action-error');
-      try {
-        await approvePipelineJob(jobId);
-        removeReviewCard();
-        if (currentPollJobId) startPolling(currentPollJobId);
-      } catch (err) {
-        showError('review-action-error', err instanceof Error ? err.message : 'Approve failed.');
-      }
-    });
 
     document.getElementById('review-cancel')!.addEventListener('click', () => {
       removeReviewCard();
@@ -598,10 +540,39 @@ export function renderChat(
     input.style.height = Math.min(input.scrollHeight, 200) + 'px';
   });
 
+  const previewModalContent = previewModal.querySelector('.preview-modal-content');
+
   function showPreviewModal(title: string, body: string): void {
     previewModalTitle.textContent = title;
-    previewModalBody.textContent = body;
+    previewModalContent?.classList.remove('preview-modal-content--resume');
+    previewModalBody.innerHTML = '';
+    const pre = document.createElement('pre');
+    pre.className = 'preview-modal-text';
+    pre.textContent = body;
+    previewModalBody.appendChild(pre);
     previewModal.hidden = false;
+  }
+
+  function showResumePreviewModal(title: string, resume: Record<string, unknown> | null): void {
+    previewModalTitle.textContent = title;
+    previewModalContent?.classList.add('preview-modal-content--resume');
+    previewModalBody.innerHTML = '';
+    const frame = document.createElement('iframe');
+    frame.className = 'preview-modal-iframe';
+    frame.setAttribute('title', title);
+    previewModalBody.appendChild(frame);
+    const doc = frame.contentDocument;
+    if (doc) {
+      doc.open();
+      doc.write(renderResumeToHtml(resume));
+      doc.close();
+    }
+    previewModal.hidden = false;
+  }
+
+  function isResumeShaped(obj: Record<string, unknown> | null): boolean {
+    if (!obj || typeof obj !== 'object') return false;
+    return 'basics' in obj || 'work' in obj || 'education' in obj;
   }
   previewModalClose.addEventListener('click', () => {
     previewModal.hidden = true;
@@ -631,7 +602,11 @@ export function renderChat(
     if (action === 'preview-profile') {
       try {
         const { profile } = await getProfile();
-        showPreviewModal('Profile', profile ? JSON.stringify(profile, null, 2) : 'No profile set.');
+        if (profile && isResumeShaped(profile)) {
+          showResumePreviewModal('Profile', profile);
+        } else {
+          showPreviewModal('Profile', profile ? JSON.stringify(profile, null, 2) : 'No profile set.');
+        }
       } catch (err) {
         showPreviewModal('Profile', err instanceof Error ? err.message : 'Failed to load profile.');
       }
@@ -640,7 +615,7 @@ export function renderChat(
     if (action === 'preview-resume') {
       try {
         const { resume } = await getBaseResume();
-        showPreviewModal('Base resume', JSON.stringify(resume, null, 2));
+        showResumePreviewModal('Base resume', resume ?? null);
       } catch (err) {
         showPreviewModal('Base resume', err instanceof Error ? err.message : 'No base resume or failed to load.');
       }
