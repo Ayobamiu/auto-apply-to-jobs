@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ── Reset & base ─────────────────────────────────────────── */
 *,
 *::before,
@@ -1002,5 +1006,12 @@ html, body {
 
   .review-view-actions {
     justify-content: flex-start;
+  }
+}
+
+/* ── Resume editor: print (Download PDF) ───────────────────── */
+@media print {
+  .no-print {
+    display: none !important;
   }
 }

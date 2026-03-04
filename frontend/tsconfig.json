@@ -7,6 +7,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "jsx": "react-jsx",
+    "resolveJsonModule": true,
     "outDir": "dist",
     "rootDir": "src",
     "declaration": false,
