@@ -20,6 +20,9 @@ export interface Job {
   site?: string;
   applyType?: string;
   jobClosed?: boolean;
+  location?: string;
+  salaryEmploymentType?: string;
+  companyLogoUrl?: string;
   [key: string]: unknown;
 }
 

@@ -8,7 +8,7 @@ type MainView = 'chat' | 'discover';
 
 export function App() {
   const [showChat, setShowChat] = useState(isLoggedIn());
-  const [view, setView] = useState<MainView>('chat');
+  const [view, setView] = useState<MainView>('discover');
 
   useEffect(() => {
     setOnUnauthorized(() => {

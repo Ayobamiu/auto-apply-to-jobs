@@ -52,7 +52,7 @@ export const handshakeJobFinder: JobFinder = {
     const page = await context.newPage();
 
     try {
-      const allRows: { jobId: string; url: string; title?: string; company?: string }[] = [];
+      const allRows: { jobId: string; url: string; title?: string; company?: string; location?: string; salaryEmploymentType?: string; companyLogoUrl?: string }[] = [];
       let currentPage = pagination?.page ?? 1;
       const seenIds = new Set<string>();
 
@@ -72,38 +72,68 @@ export const handshakeJobFinder: JobFinder = {
         }
 
         for (let s = 0; s < 15; s++) {
-          const prevCount = await page.evaluate(() => document.querySelectorAll('a[href*="/jobs/"]').length);
+          const prevCount = await page.evaluate(() => document.querySelectorAll('[data-hook^="job-result-card |"]').length);
           await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
           await new Promise((r) => setTimeout(r, 800));
-          const nextCount = await page.evaluate(() => document.querySelectorAll('a[href*="/jobs/"]').length);
+          const nextCount = await page.evaluate(() => document.querySelectorAll('[data-hook^="job-result-card |"]').length);
           if (nextCount <= prevCount) break;
         }
 
+        interface ScrapedRow {
+          jobId: string;
+          url: string;
+          title?: string;
+          company?: string;
+          location?: string;
+          salaryEmploymentType?: string;
+          companyLogoUrl?: string;
+        }
+
         const listings = await page.evaluate(
-          ({ baseOrigin }: { baseOrigin: string }) => {
-            const seen = new Set<string>();
-            const results: { jobId: string; url: string; title?: string; company?: string }[] = [];
-            const links = document.querySelectorAll<HTMLAnchorElement>('a[href*="/jobs/"]');
-            for (const a of links) {
-              const href = a.getAttribute('href');
-              if (!href) continue;
-              const fullHref = href.startsWith('http') ? href : `${baseOrigin}${href.startsWith('/') ? '' : '/'}${href}`;
-              const idMatch = fullHref.match(/\/jobs\/(\d+)/) || fullHref.match(/job-search\/(\d+)/);
-              const jobId = idMatch ? idMatch[1] : null;
-              if (!jobId || seen.has(jobId)) continue;
-              seen.add(jobId);
+          ({ baseOrigin }: { baseOrigin: string }): ScrapedRow[] => {
+            const cards = document.querySelectorAll<HTMLDivElement>('div[data-hook^="job-result-card |"]');
+            const results: ScrapedRow[] = [];
+            for (const card of cards) {
+              const dataHook = card.getAttribute('data-hook') || '';
+              const parts = dataHook.split('|').map((p) => p.trim());
+              const jobId = parts[1] || '';
+              if (!jobId) continue;
               const url = `${baseOrigin}/jobs/${jobId}`;
-              let title: string | undefined;
+
               let company: string | undefined;
-              const card = a.closest('[class*="sc-"]') || a.closest('div[class]') || a.parentElement;
-              if (card) {
-                const h1 = card.querySelector('h1');
-                if (h1) title = h1.textContent?.trim() || undefined;
-                const companyLink = card.querySelector('a[href^="/e/"]');
-                if (companyLink) company = companyLink.getAttribute('aria-label')?.trim() || companyLink.textContent?.trim() || undefined;
+              let companyLogoUrl: string | undefined;
+              const logoCell = card.querySelector('.sc-gtWJRm.hUKJVK');
+              if (logoCell) {
+                const img = logoCell.querySelector('img[src]');
+                if (img) {
+                  const src = img.getAttribute('src');
+                  if (src) companyLogoUrl = src;
+                  const alt = img.getAttribute('alt');
+                  if (alt) company = alt.trim();
+                }
+                if (!company) {
+                  const companySpan = card.querySelector('.sc-hrCmsx.desELz .sc-bJjNXm.cqsULw');
+                  if (companySpan) company = (companySpan.textContent || '').trim() || undefined;
+                }
+              } else {
+                const companySpan = card.querySelector('.sc-hrCmsx.desELz .sc-bJjNXm.cqsULw');
+                if (companySpan) company = (companySpan.textContent || '').trim() || undefined;
               }
-              if (!title && a.textContent) title = a.textContent.trim().slice(0, 200) || undefined;
-              results.push({ jobId, url, title, company });
+
+              const titleEl = card.querySelector('div[aria-label^="View "]');
+              const title = titleEl ? (titleEl.textContent || '').trim() || undefined : undefined;
+
+              const salaryEl = card.querySelector('.sc-ezucZL.FLVWv');
+              const salaryEmploymentType = salaryEl ? (salaryEl.textContent || '').trim() || undefined : undefined;
+
+              const footer = card.querySelector('[data-hook="job-result-card-footer"]');
+              let location: string | undefined;
+              if (footer) {
+                const locSpan = footer.querySelector('.sc-hPGmpy.iGVZxL');
+                if (locSpan) location = (locSpan.textContent || '').trim() || undefined;
+              }
+
+              results.push({ jobId, url, title, company, location, salaryEmploymentType, companyLogoUrl });
             }
             return results;
           },
@@ -134,6 +164,9 @@ export const handshakeJobFinder: JobFinder = {
             url: canonicalUrl,
             title: row.title,
             company: row.company,
+            location: row.location,
+            salaryEmploymentType: row.salaryEmploymentType,
+            companyLogoUrl: row.companyLogoUrl,
           });
         }
       }
@@ -142,7 +175,7 @@ export const handshakeJobFinder: JobFinder = {
         const loc = filters.location?.trim().toLowerCase();
         out = out.filter((j) => {
           if (q && !j.title?.toLowerCase().includes(q) && !j.company?.toLowerCase().includes(q)) return false;
-          if (loc && !j.title?.toLowerCase().includes(loc) && !j.company?.toLowerCase().includes(loc)) return false;
+          if (loc && !j.title?.toLowerCase().includes(loc) && !j.company?.toLowerCase().includes(loc) && !j.location?.toLowerCase().includes(loc)) return false;
           return true;
         });
       }

@@ -309,6 +309,46 @@ export interface JobListing {
   url: string;
   title?: string;
   company?: string;
+  location?: string;
+  salaryEmploymentType?: string;
+  companyLogoUrl?: string;
+}
+
+export interface JobDetailJob {
+  jobId: string;
+  site: string;
+  title?: string;
+  company?: string;
+  description?: string;
+  url?: string;
+  location?: string;
+  salaryEmploymentType?: string;
+  companyLogoUrl?: string;
+  [key: string]: unknown;
+}
+
+export interface JobDetailPipeline {
+  id: string;
+  status: string;
+  phase: string | null;
+  result: unknown;
+  error: string | null;
+  createdAt: string;
+  updatedAt: string;
+  userMessage: string | null;
+}
+
+export interface JobDetailResponse {
+  job: JobDetailJob;
+  userState: { resumeBasename?: string; applicationSubmitted?: boolean; appliedAt?: string } | null;
+  hasResume: boolean;
+  pipelineJob: JobDetailPipeline | null;
+}
+
+export async function getJobDetail(jobRef: string): Promise<JobDetailResponse> {
+  const params = new URLSearchParams();
+  params.set('jobRef', jobRef);
+  return request<JobDetailResponse>(`/jobs/detail?${params.toString()}`);
 }
 
 export interface FindJobsFilters {

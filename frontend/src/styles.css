@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 /* ── Reset & base ─────────────────────────────────────────── */
 *,
 *::before,
@@ -612,9 +614,18 @@ body {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
+.discover-item-selected,
+.discover-item.discover-item-selected:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-card));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
 .discover-item-main {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
   min-width: 0;
   flex: 1;
 }

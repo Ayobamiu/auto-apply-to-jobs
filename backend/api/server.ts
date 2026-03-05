@@ -13,7 +13,7 @@ const FRONTEND_DIST = join(__dirname, '..', '..', 'frontend', 'dist');
 import { authMiddleware } from './middleware/auth.js';
 import { register, login } from './routes/auth.js';
 import { postPipeline } from './routes/pipeline.js';
-import { getJobs, getJobsStatus } from './routes/jobs.js';
+import { getJobs, getJobsStatus, getJobsDetail } from './routes/jobs.js';
 import { getJobsFind } from './routes/jobs-find.js';
 import {
   getProfileHandler,
@@ -70,6 +70,7 @@ app.post('/auth/login', login);
 
 // Protected routes
 app.post('/pipeline', authMiddleware, postPipeline);
+app.get('/jobs/detail', authMiddleware, getJobsDetail);
 app.get('/jobs', authMiddleware, getJobs);
 app.get('/jobs/find', authMiddleware, getJobsFind);
 app.get('/jobs/status', authMiddleware, getJobsStatus);

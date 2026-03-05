@@ -9,6 +9,9 @@ export interface JobListing {
   url: string;
   title?: string;
   company?: string;
+  location?: string;
+  salaryEmploymentType?: string;
+  companyLogoUrl?: string;
 }
 
 /** Shared search filters; each site finder maps these to its own URL/API params. */
