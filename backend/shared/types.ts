@@ -128,6 +128,7 @@ export type Intent =
   | 'apply'
   | 'check_status'
   | 'list_jobs'
+  | 'find_jobs'
   | 'approve'
   | 'cancel'
   | 'help';

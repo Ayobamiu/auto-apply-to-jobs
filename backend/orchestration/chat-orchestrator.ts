@@ -19,6 +19,7 @@ import { getJobIdFromUrl, getJobSiteFromUrl, toHandshakeJobDetailsUrl } from '..
 import { extractProfileUpdateFromMessage } from '../shared/profile-update-from-chat.js';
 import { runPipelineInBackground, resumePipelineAfterApproval } from './run-pipeline-background.js';
 import { listJobsWithStatus } from './list-jobs-with-status.js';
+import { findJobs } from '../job-finders/registry.js';
 import { isAppError, CODES, messageForCode } from '../shared/errors.js';
 import { SESSION_STALE_THRESHOLD_MS } from '../shared/constants.js';
 import { normalizePipelineOutcome, getPipelineOutcomeMessage } from '../shared/pipeline-outcome.js';
@@ -59,6 +60,16 @@ function detectIntent(message: string): Intent {
     lower.includes('any update')
   ) {
     return 'check_status';
+  }
+
+  if (
+    lower.includes('find jobs') ||
+    lower.includes('discover jobs') ||
+    lower.includes('new handshake jobs') ||
+    lower.includes('find me jobs') ||
+    lower.includes('show me new jobs')
+  ) {
+    return 'find_jobs';
   }
 
   if (
@@ -481,6 +492,48 @@ function formatJobStatus(job: {
   };
 }
 
+async function handleFindJobs(userId: string): Promise<OrchestratorResult> {
+  const { hasSession, sessionStale } = await checkPrerequisites(userId);
+  if (!hasSession) {
+    return {
+      reply: 'You have not connected Handshake yet. Please install the browser extension and connect first. Then say "find jobs" again.',
+    };
+  }
+  if (sessionStale) {
+    return {
+      reply:
+        'Your Handshake session may be expired (last updated more than 7 days ago). Please reconnect using the browser extension, then try "find jobs" again.',
+    };
+  }
+  try {
+    const listings = await findJobs(userId, { site: 'handshake', maxResults: 20 });
+    if (listings.length === 0) {
+      return { reply: 'No jobs found. Try adjusting filters on Handshake or check back later.' };
+    }
+    const lines = listings.slice(0, 20).map((j, i) => {
+      const title = j.title || 'Untitled';
+      const company = j.company ? ` at ${j.company}` : '';
+      return `${i + 1}. **${title}**${company} — ${j.url}`;
+    });
+    return {
+      reply:
+        `I found ${listings.length} job(s) on Handshake:\n\n${lines.join('\n')}\n\n` +
+        'Send me a job URL from the list above to apply, or paste any Handshake job link.',
+    };
+  } catch (err) {
+    if (isAppError(err) && (err.code === CODES.NO_SESSION || err.code === CODES.SESSION_EXPIRED)) {
+      return {
+        reply:
+          err.code === CODES.NO_SESSION
+            ? 'Connect Handshake first. Use the browser extension to upload your session.'
+            : 'Handshake session expired. Please reconnect using the browser extension.',
+      };
+    }
+    console.error('Find jobs failed:', err);
+    return { reply: 'I had trouble loading jobs from Handshake. Please try again.' };
+  }
+}
+
 async function handleListJobs(userId: string): Promise<OrchestratorResult> {
   try {
     const jobs = await listJobsWithStatus(userId);
@@ -695,6 +748,8 @@ export async function runOrchestrator(
       return handleCheckStatus(userId, message);
     case 'list_jobs':
       return handleListJobs(userId);
+    case 'find_jobs':
+      return handleFindJobs(userId);
     case 'approve':
       return handleApprove(userId);
     case 'cancel':

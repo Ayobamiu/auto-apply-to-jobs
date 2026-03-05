@@ -33,9 +33,10 @@ const MAX_POLL_ATTEMPTS = 100;
 
 interface ChatProps {
   onLogout: () => void;
+  onNavigateToDiscover?: () => void;
 }
 
-export function Chat({ onLogout }: ChatProps) {
+export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(true);
   const [automationLevel, setAutomationLevel] = useState<AutomationLevel>('review');
@@ -538,6 +539,11 @@ export function Chat({ onLogout }: ChatProps) {
                   onLogout();
                   return;
                 }
+                if (action === 'discover-jobs' && onNavigateToDiscover) {
+                  onNavigateToDiscover();
+                  setMenuOpen(false);
+                  return;
+                }
                 if (action) void handleMenuAction(action);
               }}
             >
@@ -580,6 +586,14 @@ export function Chat({ onLogout }: ChatProps) {
               <button type="button" className="menu-item" data-action="copy-token">
                 Copy Token
               </button>
+              {onNavigateToDiscover && (
+                <>
+                  <div className="menu-divider" />
+                  <button type="button" className="menu-item" data-action="discover-jobs">
+                    Discover jobs
+                  </button>
+                </>
+              )}
               <div className="menu-divider" />
               <button type="button" className="menu-item menu-item-secondary" data-action="logout">
                 Sign Out

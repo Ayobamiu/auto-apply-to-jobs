@@ -15,6 +15,7 @@ const VALID_INTENTS: Intent[] = [
   'apply',
   'check_status',
   'list_jobs',
+  'find_jobs',
   'approve',
   'cancel',
   'help',
@@ -31,6 +32,7 @@ Intents (use these exact labels):
 - apply: user wants to apply to a job; message may contain a Handshake job URL
 - check_status: user wants to know status of an application ("check status", "what's the status?", "how's it going?", "is it done?", "any update?")
 - list_jobs: user wants to see their jobs list ("list jobs", "my jobs", "show jobs", "applied jobs")
+- find_jobs: user wants to discover or find new jobs from Handshake ("find jobs", "discover jobs", "show me new jobs", "new Handshake jobs")
 - approve: user confirms they want to approve and submit ("approve", "yes apply", "go ahead and apply")
 - cancel: user wants to cancel ("cancel", "don't apply", "never mind")
 - help: greeting, unclear, or request for help ("help", "hi", "hello", "what can you do?")

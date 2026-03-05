@@ -1,0 +1,9 @@
+https://wmich.joinhandshake.com/job-search/10803825?query=software+engineer&pay%5BsalaryType%5D=1&pay%5BsalaryType%5D=2&pay%5BpaySchedule%5D=ANNUAL_SALARY&pay%5BpayMinimum%5D=4000000&remunerations=9&remunerations=5&remoteWork=onsite&remoteWork=remote&remoteWork=hybrid&majors=28&degreeLevels=2&qualifications=majors&qualifications=schoolYears&qualifications=educationLevel&qualifications=graduationDate&qualifications=gpa&workAuthorization=openToUSVisaSponsorship&workAuthorization=openToOptionalPracticalTraining&workAuthorization=openToCurricularPracticalTraining&workAuthorization=noUSWork&per_page=25&employmentTypes=1&employmentTypes=2&jobType=9&jobType=3&jobType=6&jobType=4&jobType=5&jobType=10&jobType=7&jobType=8&locationFilter=%7B%22label%22%3A%22California%2C+United+States+of+America%22%2C%22point%22%3A%2237.0743595873945%2C-119.699375153073%22%2C%22type%22%3A%22place%22%2C%22id%22%3A%22155354586%22%2C%22distance%22%3A%2254mi%22%7D&page=1
+
+Employment type
+Job type
+location
+Onsite/Remote
+Work Authorization 
+Pagination 
+Query

@@ -292,6 +292,68 @@ export async function cancelPipelineJob(jobId: string): Promise<{ cancelled: boo
   });
 }
 
+/** Start pipeline for a job URL (e.g. from Discover jobs). */
+export async function postPipeline(
+  jobUrl: string,
+  options?: { submit?: boolean }
+): Promise<{ jobId: string }> {
+  return request<{ jobId: string }>('/pipeline', {
+    method: 'POST',
+    body: JSON.stringify({ jobUrl: jobUrl.trim(), submit: options?.submit !== false }),
+  });
+}
+
+export interface JobListing {
+  site: string;
+  jobId: string;
+  url: string;
+  title?: string;
+  company?: string;
+}
+
+export interface FindJobsFilters {
+  query?: string;
+  location?: string;
+  employmentTypes?: string[];
+  jobTypes?: string[];
+  remoteWork?: string[];
+  workAuthorization?: string[];
+  page?: number;
+  perPage?: number;
+  locationFilter?: string;
+}
+
+export async function findJobs(options?: {
+  site?: string;
+  maxResults?: number;
+  refresh?: boolean;
+  query?: string;
+  location?: string;
+  employmentTypes?: string[];
+  jobTypes?: string[];
+  remoteWork?: string[];
+  workAuthorization?: string[];
+  page?: number;
+  perPage?: number;
+  locationFilter?: string;
+}): Promise<{ listings: JobListing[]; lastRefreshAt?: string | null }> {
+  const params = new URLSearchParams();
+  if (options?.site) params.set('site', options.site);
+  if (options?.maxResults != null) params.set('maxResults', String(options.maxResults));
+  if (options?.refresh) params.set('refresh', '1');
+  if (options?.query != null && options.query !== '') params.set('query', options.query);
+  if (options?.location != null && options.location !== '') params.set('location', options.location);
+  (options?.employmentTypes ?? []).forEach((v) => params.append('employmentTypes', v));
+  (options?.jobTypes ?? []).forEach((v) => params.append('jobTypes', v));
+  (options?.remoteWork ?? []).forEach((v) => params.append('remoteWork', v));
+  (options?.workAuthorization ?? []).forEach((v) => params.append('workAuthorization', v));
+  if (options?.page != null && options.page >= 1) params.set('page', String(options.page));
+  if (options?.perPage != null && options.perPage >= 1) params.set('perPage', String(options.perPage));
+  if (options?.locationFilter) params.set('locationFilter', options.locationFilter);
+  const qs = params.toString();
+  return request<{ listings: JobListing[]; lastRefreshAt?: string | null }>(`/jobs/find${qs ? `?${qs}` : ''}`);
+}
+
 /** Fetch PDF as blob with auth and trigger download. */
 export async function downloadPipelineArtifactPdf(
   jobId: string,

@@ -14,6 +14,7 @@ import { authMiddleware } from './middleware/auth.js';
 import { register, login } from './routes/auth.js';
 import { postPipeline } from './routes/pipeline.js';
 import { getJobs, getJobsStatus } from './routes/jobs.js';
+import { getJobsFind } from './routes/jobs-find.js';
 import {
   getProfileHandler,
   putProfile,
@@ -70,6 +71,7 @@ app.post('/auth/login', login);
 // Protected routes
 app.post('/pipeline', authMiddleware, postPipeline);
 app.get('/jobs', authMiddleware, getJobs);
+app.get('/jobs/find', authMiddleware, getJobsFind);
 app.get('/jobs/status', authMiddleware, getJobsStatus);
 app.get('/profile', authMiddleware, getProfileHandler);
 app.put('/profile', authMiddleware, putProfile);

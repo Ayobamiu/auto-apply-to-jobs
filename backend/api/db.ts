@@ -126,6 +126,15 @@ const PIPELINE_JOBS_TABLE_SQL = `
   )
 `;
 
+const USER_DISCOVERED_JOBS_TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS user_discovered_jobs (
+    user_id text NOT NULL,
+    job_ref text NOT NULL,
+    discovered_at timestamptz DEFAULT now(),
+    PRIMARY KEY (user_id, job_ref)
+  )
+`;
+
 const CHAT_MESSAGES_TABLE_SQL = `
   CREATE TABLE IF NOT EXISTS chat_messages (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -160,6 +169,7 @@ export async function ensureDataTables(): Promise<void> {
   await pool.query(JOB_ARTIFACTS_TABLE_SQL);
   await pool.query(USER_PREFERENCES_TABLE_SQL);
   await pool.query(USER_RESUMES_TABLE_SQL);
+  await pool.query(USER_DISCOVERED_JOBS_TABLE_SQL);
   await pool.query(PIPELINE_JOBS_TABLE_SQL);
   await pool.query(CHAT_MESSAGES_TABLE_SQL);
   await pool.query(CHAT_MESSAGES_INDEX_SQL);
@@ -168,6 +178,8 @@ export async function ensureDataTables(): Promise<void> {
   await pool.query("ALTER TABLE pipeline_jobs ADD COLUMN IF NOT EXISTS automation_level text DEFAULT 'review'");
   await pool.query('ALTER TABLE pipeline_jobs ADD COLUMN IF NOT EXISTS artifacts jsonb');
   await pool.query('ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS transcript_storage_key text');
+  await pool.query('ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS last_refresh_at timestamptz');
+  await pool.query('ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS job_search_filters jsonb');
   dataTablesInitialized = true;
 }
 
