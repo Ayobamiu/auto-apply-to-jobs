@@ -35,24 +35,24 @@ export function AppliedCard({
     : '';
 
   return (
-    <div id="applied-card-container" className="chat-bubble chat-bubble-assistant review-card applied-artifacts-card">
-      <div className="chat-bubble-content">
-        <div className="review-card-header">
-          <strong>Applied with these documents</strong>
-          <div className="review-job-title">{jobTitle}</div>
+    <div id="applied-card-container" className="max-w-[85%] py-3 px-4 rounded-xl text-[15px] leading-relaxed self-start bg-assistant border border-border rounded-bl">
+      <div className="break-words">
+        <div className="mb-2.5">
+          <strong className="text-text">Applied with these documents</strong>
+          <div className="text-[13px] text-text-muted mt-1">{jobTitle}</div>
         </div>
         {hasResume && (
-          <div className="applied-section">
-            <div className="applied-summary">{resumeSummary}</div>
-            <button type="button" className="review-btn" onClick={onDownloadResume}>
+          <div className="my-2.5 pt-2 border-t border-border first:border-t-0 first:pt-0">
+            <div className="text-[13px] text-text-muted mb-2 whitespace-pre-wrap break-words">{resumeSummary}</div>
+            <button type="button" className="py-2 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border transition-colors" onClick={onDownloadResume}>
               Download resume PDF
             </button>
           </div>
         )}
         {hasCover && (
-          <div className="applied-section">
-            <div className="applied-cover-preview">{coverPreview}</div>
-            <button type="button" className="review-btn" onClick={onDownloadCover}>
+          <div className="my-2.5 pt-2 border-t border-border first:border-t-0 first:pt-0">
+            <div className="text-[13px] text-text-muted mb-2 whitespace-pre-wrap break-words">{coverPreview}</div>
+            <button type="button" className="py-2 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border transition-colors" onClick={onDownloadCover}>
               Download cover PDF
             </button>
           </div>

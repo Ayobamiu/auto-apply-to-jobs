@@ -150,46 +150,39 @@ export function ReviewView({ jobId, artifacts, onApproved, onCancelled }: Review
   return (
     <div
       id="review-view-root"
-      className="review-view-backdrop"
+      className="fixed inset-0 bg-black/70 z-[1100] flex items-stretch justify-center p-5"
       role="dialog"
       aria-modal="true"
       onClick={handleBackdropClick}
     >
-      <div className="review-view-shell">
-        <header className="review-view-header">
+      <div className="bg-card border border-border rounded-xl max-w-[1120px] w-full max-h-full flex flex-col">
+        <header className="flex items-center justify-between gap-3 py-4 px-5 border-b border-border">
           <div>
-            <h2 className="review-view-title">Review before we apply</h2>
-            <p className="review-view-subtitle">
+            <h2 className="text-lg font-semibold text-text">Review before we apply</h2>
+            <p className="mt-1 text-[13px] text-text-muted">
               Make last-minute tweaks to your resume and cover letter. This is what will be sent
-              for <span className="review-view-job-title">{artifacts.jobTitle || 'this job'}</span>.
+              for <span className="font-medium text-text">{artifacts.jobTitle || 'this job'}</span>.
             </p>
           </div>
           <button
             type="button"
-            className="header-btn review-view-close"
+            className="py-1.5 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border"
             aria-label="Back to chat"
             onClick={close}
           >
             Back to chat
           </button>
         </header>
-        <div className="review-view-body">
-          <section className="review-view-edit-pane" aria-label="Edit documents">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)] gap-4 py-4 px-5 min-h-0">
+          <section className="flex flex-col gap-4 overflow-y-auto pr-1" aria-label="Edit documents">
             {showResume && (
-              <div className="review-view-section">
-                <div className="review-view-section-header">
+              <div className="rounded-lg border border-border p-3 bg-page">
+                <div className="flex items-start justify-between gap-2 mb-2">
                   <div>
-                    <h3 className="review-view-section-title">Resume</h3>
-                    <p className="review-view-section-hint">
-                      Update your contact info, experience, education, and skills.
-                    </p>
+                    <h3 className="text-sm font-medium text-text">Resume</h3>
+                    <p className="text-xs text-text-muted mt-0.5">Update your contact info, experience, education, and skills.</p>
                   </div>
-                  <button
-                    type="button"
-                    className="review-view-ai-btn"
-                    disabled
-                    title="Coming soon"
-                  >
+                  <button type="button" className="py-1 px-2.5 rounded-full border border-dashed border-border bg-transparent text-text-muted text-[11px] cursor-default" disabled title="Coming soon">
                     Ask AI to improve (coming soon)
                   </button>
                 </div>
@@ -197,20 +190,13 @@ export function ReviewView({ jobId, artifacts, onApproved, onCancelled }: Review
               </div>
             )}
             {showCover && (
-              <div className="review-view-section">
-                <div className="review-view-section-header">
+              <div className="rounded-lg border border-border p-3 bg-page">
+                <div className="flex items-start justify-between gap-2 mb-2">
                   <div>
-                    <h3 className="review-view-section-title">Cover letter</h3>
-                    <p className="review-view-section-hint">
-                      Tweak your cover letter for this job. Keep it concise and specific.
-                    </p>
+                    <h3 className="text-sm font-medium text-text">Cover letter</h3>
+                    <p className="text-xs text-text-muted mt-0.5">Tweak your cover letter for this job. Keep it concise and specific.</p>
                   </div>
-                  <button
-                    type="button"
-                    className="review-view-ai-btn"
-                    disabled
-                    title="Coming soon"
-                  >
+                  <button type="button" className="py-1 px-2.5 rounded-full border border-dashed border-border bg-transparent text-text-muted text-[11px] cursor-default" disabled title="Coming soon">
                     Tailor with AI (coming soon)
                   </button>
                 </div>
@@ -218,86 +204,29 @@ export function ReviewView({ jobId, artifacts, onApproved, onCancelled }: Review
               </div>
             )}
           </section>
-          <section className="review-view-preview-pane" aria-label="Preview documents">
-            <div className="review-view-preview-header">
-              <h3 className="review-view-preview-title">What we&apos;ll send</h3>
-              <p className="review-view-preview-hint">
-                This preview uses the same layout as the PDF we generate.
-              </p>
+          <section className="flex flex-col gap-3 overflow-y-auto pl-1" aria-label="Preview documents">
+            <div className="mb-1">
+              <h3 className="text-sm font-medium text-text">What we&apos;ll send</h3>
+              <p className="text-xs text-text-muted mt-0.5">This preview uses the same layout as the PDF we generate.</p>
             </div>
-            <div
-              ref={resumePreviewContainerRef}
-              className="review-view-resume-preview-container"
-            />
+            <div ref={resumePreviewContainerRef} className="rounded-lg border border-border bg-[#0b0d13] p-2" />
             {showCover && (
-              <div
-                ref={coverPreviewContainerRef}
-                className="review-view-cover-preview-container"
-              />
+              <div ref={coverPreviewContainerRef} className="rounded-lg border border-border bg-[#0b0d13] p-2 mt-2 text-[13px] leading-normal text-text-muted whitespace-pre-wrap break-words" />
             )}
           </section>
         </div>
-        <footer className="review-view-footer">
-          {error && <div className="review-error">{error}</div>}
-          <div className="review-view-actions">
-            <button
-              type="button"
-              className="review-btn"
-              onClick={handleSave}
-              disabled={busy}
-            >
-              Save changes
-            </button>
+        <footer className="py-2.5 px-5 pb-3.5 border-t border-border flex items-center justify-between gap-3">
+          {error && <div className="text-xs text-danger">{error}</div>}
+          <div className="flex flex-wrap gap-2 justify-end">
+            <button type="button" className="py-2 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border disabled:opacity-60" onClick={handleSave} disabled={busy}>Save changes</button>
             {showResume && (
-              <button
-                type="button"
-                className="review-btn"
-                onClick={async () => {
-                  setError(null);
-                  try {
-                    await downloadPipelineArtifactPdf(jobId, 'resume');
-                  } catch (err) {
-                    setError(err instanceof Error ? err.message : 'Download failed.');
-                  }
-                }}
-                disabled={busy}
-              >
-                Download resume PDF
-              </button>
+              <button type="button" className="py-2 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border disabled:opacity-60" onClick={async () => { setError(null); try { await downloadPipelineArtifactPdf(jobId, 'resume'); } catch (err) { setError(err instanceof Error ? err.message : 'Download failed.'); } }} disabled={busy}>Download resume PDF</button>
             )}
             {showCover && (
-              <button
-                type="button"
-                className="review-btn"
-                onClick={async () => {
-                  setError(null);
-                  try {
-                    await downloadPipelineArtifactPdf(jobId, 'cover');
-                  } catch (err) {
-                    setError(err instanceof Error ? err.message : 'Download failed.');
-                  }
-                }}
-                disabled={busy}
-              >
-                Download cover PDF
-              </button>
+              <button type="button" className="py-2 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border disabled:opacity-60" onClick={async () => { setError(null); try { await downloadPipelineArtifactPdf(jobId, 'cover'); } catch (err) { setError(err instanceof Error ? err.message : 'Download failed.'); } }} disabled={busy}>Download cover PDF</button>
             )}
-            <button
-              type="button"
-              className="review-btn review-btn-primary"
-              onClick={handleApprove}
-              disabled={busy}
-            >
-              Looks good – apply
-            </button>
-            <button
-              type="button"
-              className="review-btn"
-              onClick={close}
-              disabled={busy}
-            >
-              Cancel
-            </button>
+            <button type="button" className="py-2 px-3.5 bg-accent border border-accent rounded-lg text-on-primary text-[13px] cursor-pointer hover:bg-accent-hover hover:border-accent-hover disabled:opacity-60" onClick={handleApprove} disabled={busy}>Looks good – apply</button>
+            <button type="button" className="py-2 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border disabled:opacity-60" onClick={close} disabled={busy}>Cancel</button>
           </div>
         </footer>
       </div>

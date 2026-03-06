@@ -34,15 +34,19 @@ export function MessageList({ messages, typing, children }: MessageListProps) {
   }, [messages, typing, children]);
 
   return (
-    <main ref={containerRef} id="chat-messages" className="chat-messages">
+    <main ref={containerRef} id="chat-messages" className="chat-messages flex-1 overflow-y-auto py-5 px-5 flex flex-col gap-3">
       {messages.map((m) => (
-        <div key={m.timestamp ?? Math.random()} className={`chat-bubble chat-bubble-${m.role}`}>
-          <div
-            className="chat-bubble-content"
-            dangerouslySetInnerHTML={{ __html: formatMessage(m.content) }}
-          />
+        <div
+          key={m.timestamp ?? Math.random()}
+          className={`max-w-[85%] py-3 px-4 rounded-xl text-[15px] leading-relaxed relative ${
+            m.role === 'user'
+              ? 'self-end bg-user text-on-primary rounded-br'
+              : 'self-start bg-assistant border border-border rounded-bl'
+          }`}
+        >
+          <div className="break-words" dangerouslySetInnerHTML={{ __html: formatMessage(m.content) }} />
           {m.timestamp && (
-            <span className="chat-bubble-time">
+            <span className="block text-[11px] text-text-muted mt-1.5 opacity-70">
               {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           )}
@@ -50,10 +54,10 @@ export function MessageList({ messages, typing, children }: MessageListProps) {
       ))}
       {children}
       {typing != null && (
-        <div className="chat-bubble chat-bubble-assistant chat-typing" id="typing-indicator">
-          <div className="chat-bubble-content">
+        <div className="max-w-[85%] py-3 px-4 rounded-xl text-[15px] leading-relaxed self-start bg-assistant border border-border rounded-bl chat-typing" id="typing-indicator">
+          <div className="flex items-center flex-wrap gap-1 py-1">
             {typing.phase ? (
-              <span className="chat-phase">{typing.phase}</span>
+              <span>{typing.phase}</span>
             ) : (
               <>
                 <span className="dot" />
@@ -64,7 +68,7 @@ export function MessageList({ messages, typing, children }: MessageListProps) {
             {typing.cancelOpts && (
               <button
                 type="button"
-                className="chat-cancel-btn"
+                className="ml-2 py-1 px-2.5 text-xs bg-input border border-border rounded-md cursor-pointer hover:bg-border"
                 onClick={typing.cancelOpts.onCancel}
               >
                 Cancel application

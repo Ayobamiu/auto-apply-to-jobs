@@ -499,14 +499,14 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
   );
 
   return (
-    <div className="chat-layout">
-      <header className="chat-header">
-        <h1 className="chat-header-title">Auto Apply</h1>
-        <div className="chat-header-actions">
-          <label className="header-label">
+    <div className="flex flex-col h-full max-w-[800px] max-md:max-w-full mx-auto">
+      <header className="flex items-center justify-between py-3 px-5 border-b border-border bg-card flex-shrink-0">
+        <h1 className="text-lg font-semibold text-text">Auto Apply</h1>
+        <div className="flex gap-2">
+          <label className="flex items-center gap-1.5 text-[13px] text-text-muted">
             Automation:{' '}
             <select
-              className="header-select"
+              className="px-2 py-1 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer"
               title="Review: pause to edit before apply. Full: apply automatically."
               value={automationLevel}
               onChange={handleAutomationChange}
@@ -515,10 +515,10 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
               <option value="full">Full auto</option>
             </select>
           </label>
-          <div className="header-menu-wrap">
+          <div className="relative">
             <button
               type="button"
-              className="header-btn"
+              className="py-1.5 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border transition-colors"
               aria-haspopup="true"
               aria-expanded={menuOpen}
               onClick={(e) => {
@@ -529,11 +529,11 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
               Menu
             </button>
             <div
-              className="header-menu"
+              className="absolute top-full right-0 mt-1 min-w-[180px] bg-card border border-border rounded-lg shadow-xl py-1.5 z-[100]"
               hidden={!menuOpen}
               onClick={(e) => {
                 e.stopPropagation();
-                const action = (e.target as HTMLElement).closest('.menu-item')?.getAttribute('data-action');
+                const action = (e.target as HTMLElement).closest('[data-action]')?.getAttribute('data-action');
                 if (action === 'logout') {
                   stopPolling();
                   onLogout();
@@ -547,17 +547,17 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
                 if (action) void handleMenuAction(action);
               }}
             >
-              <button type="button" className="menu-item" data-action="preview-profile">
+              <button type="button" className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]" data-action="preview-profile">
                 Preview profile
               </button>
-              <button type="button" className="menu-item" data-action="preview-resume">
+              <button type="button" className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]" data-action="preview-resume">
                 Preview resume
               </button>
-              <button type="button" className="menu-item" data-action="preview-transcript">
+              <button type="button" className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]" data-action="preview-transcript">
                 Preview transcript
               </button>
-              <div className="menu-divider" />
-              <button type="button" className="menu-item" data-action="upload-resume-pdf">
+              <div className="h-px bg-border my-1.5" />
+              <button type="button" className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]" data-action="upload-resume-pdf">
                 Upload resume PDF
               </button>
               <input
@@ -567,7 +567,7 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
                 hidden
                 onChange={handleUploadResumePdf}
               />
-              <button type="button" className="menu-item" data-action="upload-transcript">
+              <button type="button" className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]" data-action="upload-transcript">
                 Upload transcript
               </button>
               <input
@@ -577,25 +577,25 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
                 hidden
                 onChange={handleUploadTranscript}
               />
-              <button type="button" className="menu-item" data-action="base-resume">
+              <button type="button" className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]" data-action="base-resume">
                 Base resume
               </button>
-              <button type="button" className="menu-item" data-action="check-connection">
+              <button type="button" className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]" data-action="check-connection">
                 Check connection
               </button>
-              <button type="button" className="menu-item" data-action="copy-token">
+              <button type="button" className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]" data-action="copy-token">
                 Copy Token
               </button>
               {onNavigateToDiscover && (
                 <>
-                  <div className="menu-divider" />
-                  <button type="button" className="menu-item" data-action="discover-jobs">
+                  <div className="h-px bg-border my-1.5" />
+                  <button type="button" className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]" data-action="discover-jobs">
                     Discover jobs
                   </button>
                 </>
               )}
-              <div className="menu-divider" />
-              <button type="button" className="menu-item menu-item-secondary" data-action="logout">
+              <div className="h-px bg-border my-1.5" />
+              <button type="button" className="block w-full py-2 px-3.5 border-0 bg-transparent text-text-muted text-left cursor-pointer hover:bg-input transition-colors text-[13px]" data-action="logout">
                 Sign Out
               </button>
             </div>
@@ -604,9 +604,9 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
       </header>
 
       {loadingMessages ? (
-        <main className="chat-messages">
-          <div className="chat-messages-loading" aria-live="polite">
-            <span className="chat-messages-loading-dots">
+        <main className="chat-messages flex-1 overflow-y-auto py-5 px-5 flex flex-col gap-3">
+          <div className="flex items-center justify-center gap-2.5 py-6 text-text-muted text-sm chat-messages-loading" aria-live="polite">
+            <span className="inline-flex gap-1 chat-messages-loading-dots">
               <span className="dot" />
               <span className="dot" />
               <span className="dot" />
@@ -691,17 +691,17 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
         onClose={() => setPreviewModal((p) => ({ ...p, open: false }))}
       />
 
-      <footer className="chat-footer">
-        <form className="chat-form" onSubmit={handleSubmit}>
+      <footer className="py-3 px-5 pb-5 border-t border-border bg-card flex-shrink-0">
+        <form className="flex gap-2 items-end" onSubmit={handleSubmit}>
           <textarea
             ref={inputRef}
-            className="chat-input"
+            className="flex-1 py-3 px-4 bg-input border border-border rounded-lg text-text text-[15px] leading-normal resize-none outline-none transition-[border-color] max-h-[200px] focus:border-accent placeholder:text-text-muted"
             placeholder="Type a message... (paste resume, send a job URL, or ask for help)"
             rows={2}
             onKeyDown={handleKeyDown}
             disabled={sending}
           />
-          <button type="submit" className="chat-send-btn" disabled={sending}>
+          <button type="submit" className="py-3 px-5 bg-accent border-0 rounded-lg text-on-primary text-[15px] font-medium cursor-pointer transition-[background,opacity] whitespace-nowrap hover:bg-accent-hover disabled:opacity-60 disabled:cursor-not-allowed" disabled={sending}>
             Send
           </button>
         </form>

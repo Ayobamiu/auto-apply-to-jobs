@@ -47,19 +47,17 @@ export function PreviewModal({
 
   return (
     <div
-      className="base-resume-modal"
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-[1000] p-5"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div
-        className={`base-resume-modal-content preview-modal-content${isResume ? ' preview-modal-content--resume' : ''}`}
-      >
-        <div className="base-resume-modal-header">
-          <h2>{title}</h2>
-          <button type="button" className="header-btn" onClick={onClose}>
+      <div className={`bg-card border border-border rounded-xl w-full max-h-[90vh] overflow-y-auto p-5 ${isResume ? 'max-w-[880px]' : 'max-w-[560px]'}`}>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold text-text">{title}</h2>
+          <button type="button" className="py-1.5 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border" onClick={onClose}>
             Close
           </button>
         </div>
-        <div ref={bodyRef} className="preview-modal-body" />
+        <div ref={bodyRef} className="preview-modal-body max-h-[70vh] overflow-auto" />
       </div>
     </div>
   );

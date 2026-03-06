@@ -140,21 +140,21 @@ export function BaseResumeModal({ open, onClose }: BaseResumeModalProps) {
 
   return (
     <div
-      className="base-resume-modal"
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-[1000] p-5"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="base-resume-modal-content">
-        <div className="base-resume-modal-header">
-          <h2>Base resume</h2>
-          <button type="button" className="header-btn" onClick={onClose}>
+      <div className="bg-card border border-border rounded-xl max-w-[560px] w-full max-h-[90vh] overflow-y-auto p-5">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold text-text">Base resume</h2>
+          <button type="button" className="py-1.5 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border" onClick={onClose}>
             Close
           </button>
         </div>
-        <div className="base-resume-upload">
-          <p className="base-resume-hint">
+        <div>
+          <p className="text-text-muted text-[13px] mb-3">
             Upload a PDF or paste text to set your base resume. It will be tailored per job.
           </p>
-          <div className="base-resume-upload-row">
+          <div className="flex gap-2 items-center mb-2.5">
             <input
               ref={fileInputRef}
               type="file"
@@ -166,23 +166,23 @@ export function BaseResumeModal({ open, onClose }: BaseResumeModalProps) {
             />
             <button
               type="button"
-              className="review-btn"
+              className="py-2 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadPdfLoading}
             >
               Upload PDF
             </button>
           </div>
-          <div className="base-resume-upload-row">
+          <div className="flex gap-2 items-center mb-2.5">
             <textarea
               ref={pasteRef}
-              className="review-textarea"
+              className="review-textarea w-full mt-2 p-2.5 bg-input border border-border rounded-lg text-text text-[13px] font-mono resize-y"
               rows={6}
               placeholder="Or paste resume text here..."
             />
             <button
               type="button"
-              className="review-btn"
+              className="py-2 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border"
               onClick={handleSaveFromText}
               disabled={saveTextLoading}
             >
@@ -190,15 +190,15 @@ export function BaseResumeModal({ open, onClose }: BaseResumeModalProps) {
             </button>
           </div>
           {uploadMessage && (
-            <div className={`review-error${uploadError ? '' : ''}`} style={uploadError ? {} : { color: 'inherit' }}>
+            <div className={uploadError ? 'text-xs text-danger mt-1' : 'text-xs text-text-muted mt-1'}>
               {uploadMessage}
             </div>
           )}
         </div>
-        <div className="base-resume-edit">
+        <div className="mt-5 pt-4 border-t border-border">
           <button
             type="button"
-            className="review-btn"
+            className="py-2 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border"
             onClick={handleLoadEdit}
             disabled={loadEditLoading}
           >
@@ -207,16 +207,16 @@ export function BaseResumeModal({ open, onClose }: BaseResumeModalProps) {
           {showForm && (
             <button
               type="button"
-              className="review-btn"
+              className="py-2 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border"
               onClick={handleSaveEdits}
               disabled={saveEditLoading}
             >
               Save edits
             </button>
           )}
-          {showForm && <div ref={formContainerRef} className="base-resume-form-wrap" />}
+          {showForm && <div ref={formContainerRef} className="mt-3" />}
           {editMessage && (
-            <div className={`review-error${editError ? '' : ''}`} style={editError ? {} : { color: 'inherit' }}>
+            <div className={editError ? 'text-xs text-danger mt-1' : 'text-xs text-text-muted mt-1'}>
               {editMessage}
             </div>
           )}
