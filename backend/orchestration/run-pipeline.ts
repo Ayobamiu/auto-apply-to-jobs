@@ -20,6 +20,7 @@ import { runHandshakeApply } from '../agents/auto_apply_agent/handshake-apply-re
 import { getApplicationStatus } from '../agents/job_scraper_agent/index.js';
 import { startPhase, startTotal, isTimingEnabled } from '../shared/timing.js';
 import { setPipelineJobAwaitingApproval } from '../data/pipeline-jobs.js';
+import { getResumeForJob, getCoverLetterForJob } from '../data/job-artifacts.js';
 import type { Job, PipelineApplyOutcome, RunPipelineForJobOptions, RunPipelineForJobResult, SectionKey } from '../shared/types.js';
 import { SUPPORTED_SECTION_KEYS } from '../shared/types.js';
 
@@ -77,6 +78,63 @@ export async function runPipelineForJob(
     endLoad();
   }
 
+  if (jobUrl) {
+    const site = getJobSiteFromUrl(jobUrl);
+    const jobId = getJobIdFromUrl(jobUrl) ?? undefined;
+    if (site && jobId) {
+      await updateJob(site, jobId, { ...job });
+    }
+  }
+
+  if (!jobUrl) {
+    console.log('No JOB_URL. Run handshake:apply with the job URL when ready.');
+    endTotal();
+    return { job, resumePath: undefined, outcome: 'no_apply' };
+  }
+
+  const endAlreadyApplied = startPhase('Check already applied (store)');
+  const { applicationSubmitted } = await getApplicationStatus(jobUrl, { fromStoreOnly: true, userId });
+  endAlreadyApplied();
+  if (applicationSubmitted) {
+    console.log('Already applied to this job. Skipping apply step.');
+    endTotal();
+    return { job, resumePath: undefined, outcome: 'already_applied' };
+  }
+
+  const siteFromUrl = getJobSiteFromUrl(jobUrl);
+  const jobIdFromUrl = getJobIdFromUrl(jobUrl);
+
+  // Artifact reuse: if we already have resume (and cover when required), skip generation and go straight to awaiting_approval
+  if (siteFromUrl && jobIdFromUrl && options.jobId) {
+    onPhase?.('Checking required documents...');
+    try {
+      const probeResult = await probeRequiredSections(jobUrl, userId);
+      const requiredSectionsForReuse = probeResult.requiredSections;
+      const unsupported = requiredSectionsForReuse.filter((k) => !SUPPORTED_SECTION_KEYS.includes(k as SectionKey));
+      if (unsupported.length > 0) {
+        throw new Error(UNSUPPORTED_SECTIONS_MESSAGE);
+      }
+      await throwIfCancelled(options.checkCancelled);
+      const existingResume = await getResumeForJob(userId, siteFromUrl, jobIdFromUrl);
+      const needCover = requiredSectionsForReuse.includes('coverLetter');
+      const existingCover = needCover ? await getCoverLetterForJob(userId, siteFromUrl, jobIdFromUrl) : { text: '' };
+      if (existingResume && (!needCover || (existingCover && existingCover.text))) {
+        console.log('Resume and cover (if required) already exist for this job. Skipping generation.');
+        await setPipelineJobAwaitingApproval(options.jobId, {
+          jobTitle: job.title,
+          jobUrl: jobUrl,
+          requiredSections: requiredSectionsForReuse,
+        });
+        endTotal();
+        return { job, resumePath: undefined, outcome: 'no_apply', paused: true };
+      }
+    } catch (err) {
+      const msg = (err as Error).message;
+      if (msg === UNSUPPORTED_SECTIONS_MESSAGE) throw err;
+      console.warn('Probe failed or missing artifacts, running full pipeline:', msg);
+    }
+  }
+
   onPhase?.('Generating resume...');
   console.log('Step 1: Generate resume from profile + job...');
   const endStep1 = startPhase('Step 1: Generate resume');
@@ -92,29 +150,6 @@ export async function runPipelineForJob(
   }
   endStep1();
   console.log('Resume:', resumePath ?? jobRef ?? '(none)');
-
-  if (jobUrl) {
-    const site = getJobSiteFromUrl(jobUrl);
-    const jobId = getJobIdFromUrl(jobUrl) ?? undefined;
-    if (site && jobId) {
-      await updateJob(site, jobId, { ...job });
-    }
-  }
-
-  if (!jobUrl) {
-    console.log('No JOB_URL. Run handshake:apply with the job URL when ready.');
-    endTotal();
-    return { job, resumePath: resumePath ?? undefined, outcome: 'no_apply' };
-  }
-
-  const endAlreadyApplied = startPhase('Check already applied (store)');
-  const { applicationSubmitted } = await getApplicationStatus(jobUrl, { fromStoreOnly: true, userId });
-  endAlreadyApplied();
-  if (applicationSubmitted) {
-    console.log('Already applied to this job. Skipping apply step.');
-    endTotal();
-    return { job, resumePath: resumePath ?? undefined, outcome: 'already_applied' };
-  }
 
   onPhase?.('Checking required documents...');
   let coverPath = options.coverPath;

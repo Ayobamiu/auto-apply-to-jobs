@@ -105,6 +105,7 @@ export function DiscoverJobsPage({ onBackToChat }: DiscoverJobsPageProps) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [applyingUrl, setApplyingUrl] = useState<string | null>(null);
+  const [generatingUrl, setGeneratingUrl] = useState<string | null>(null);
   const [reviewArtifacts, setReviewArtifacts] = useState<{ pipelineId: string; artifacts: PipelineArtifacts } | null>(null);
 
   const loadList = useCallback(
@@ -141,17 +142,21 @@ export function DiscoverJobsPage({ onBackToChat }: DiscoverJobsPageProps) {
     loadList(false);
   }, [loadList]);
 
-  const loadDetail = useCallback(async (ref: string) => {
-    setDetailLoading(true);
-    setDetailError(null);
+  const loadDetail = useCallback(async (ref: string, silent = false) => {
+    if (!silent) {
+      setDetailLoading(true);
+      setDetailError(null);
+    }
     try {
       const data = await getJobDetail(ref);
       setDetail(data);
     } catch (err) {
-      setDetailError(err instanceof Error ? err.message : 'Failed to load job detail');
-      setDetail(null);
+      if (!silent) {
+        setDetailError(err instanceof Error ? err.message : 'Failed to load job detail');
+        setDetail(null);
+      }
     } finally {
-      setDetailLoading(false);
+      if (!silent) setDetailLoading(false);
     }
   }, []);
 
@@ -163,6 +168,18 @@ export function DiscoverJobsPage({ onBackToChat }: DiscoverJobsPageProps) {
       setDetailError(null);
     }
   }, [selectedJobRef, loadDetail]);
+
+  const pipelineStatus = detail?.pipelineJob?.status;
+  const isPipelineActive =
+    pipelineStatus === 'pending' || pipelineStatus === 'running';
+
+  useEffect(() => {
+    if (!selectedJobRef || !isPipelineActive) return;
+    const interval = setInterval(() => {
+      loadDetail(selectedJobRef, true);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [selectedJobRef, isPipelineActive, loadDetail]);
 
   const handleRefresh = useCallback(() => {
     loadList(true);
@@ -186,6 +203,21 @@ export function DiscoverJobsPage({ onBackToChat }: DiscoverJobsPageProps) {
         setDetailError(err instanceof Error ? err.message : 'Failed to start application');
       } finally {
         setApplyingUrl(null);
+      }
+    },
+    [selectedJobRef, loadDetail]
+  );
+
+  const handleGenerate = useCallback(
+    async (url: string) => {
+      setGeneratingUrl(url);
+      try {
+        await postPipeline(url, { submit: false });
+        if (selectedJobRef) loadDetail(selectedJobRef);
+      } catch (err) {
+        setDetailError(err instanceof Error ? err.message : 'Failed to start generation');
+      } finally {
+        setGeneratingUrl(null);
       }
     },
     [selectedJobRef, loadDetail]
@@ -457,16 +489,59 @@ export function DiscoverJobsPage({ onBackToChat }: DiscoverJobsPageProps) {
                     </div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex flex-wrap gap-2 mb-6">
-                    <button
-                      type="button"
-                      className="review-btn review-btn-primary"
-                      disabled={!!applyingUrl}
-                      onClick={() => detail.job.url && handleApply(detail.job.url)}
-                    >
-                      {applyingUrl === detail.job.url ? 'Starting…' : 'Apply'}
-                    </button>
+                  {/* Next steps */}
+                  <div className="mb-6 space-y-4">
+                    <h3 className="text-sm font-semibold text-[var(--text)]">Next steps</h3>
+                    <div className="flex flex-col gap-4">
+                      <div>
+                        <button
+                          type="button"
+                          className="review-btn review-btn-primary w-full sm:w-auto"
+                          disabled={
+                            !!generatingUrl ||
+                            !!applyingUrl ||
+                            pipeline?.status === 'pending' ||
+                            pipeline?.status === 'running' ||
+                            !!detail.userState?.appliedAt
+                          }
+                          onClick={() => detail.job.url && handleGenerate(detail.job.url)}
+                        >
+                          {generatingUrl === detail.job.url
+                            ? 'Generating…'
+                            : pipeline?.status === 'pending' || pipeline?.status === 'running'
+                              ? 'Processing…'
+                              : 'Generate resume and other documents'}
+                        </button>
+                        <p className="text-sm text-[var(--text-muted)] mt-1.5">
+                          Creates a tailored resume and cover letter for this job and saves them. You can leave and come
+                          back later to review and apply.
+                        </p>
+                      </div>
+                      <div>
+                        <button
+                          type="button"
+                          className="review-btn review-btn-primary w-full sm:w-auto"
+                          disabled={
+                            !!applyingUrl ||
+                            !!generatingUrl ||
+                            pipeline?.status === 'pending' ||
+                            pipeline?.status === 'running' ||
+                            !!detail.userState?.appliedAt
+                          }
+                          onClick={() => detail.job.url && handleApply(detail.job.url)}
+                        >
+                          {applyingUrl === detail.job.url
+                            ? 'Starting…'
+                            : pipeline?.status === 'pending' || pipeline?.status === 'running'
+                              ? 'Applying…'
+                              : 'Apply'}
+                        </button>
+                        <p className="text-sm text-[var(--text-muted)] mt-1.5">
+                          Uses your saved documents if you already generated them, or generates them first. Then you
+                          review and submit your application on Handshake.
+                        </p>
+                      </div>
+                    </div>
                     {detail.job.url && (
                       <a
                         href={detail.job.url}
@@ -503,6 +578,12 @@ export function DiscoverJobsPage({ onBackToChat }: DiscoverJobsPageProps) {
                       <div className="rounded-lg p-4 bg-[var(--bg-card)] border border-[var(--border)]">
                         <h3 className="text-sm font-semibold text-[var(--text)] mb-2">Application status</h3>
                         <p className="text-sm text-[var(--text-muted)] capitalize">{pipeline.status.replace(/_/g, ' ')}</p>
+                        {(pipeline.status === 'pending' || pipeline.status === 'running') && pipeline.phase && (
+                          <p className="text-sm text-[var(--text-muted)] mt-1">{pipeline.phase}</p>
+                        )}
+                        {(pipeline.status === 'pending' || pipeline.status === 'running') && !pipeline.phase && (
+                          <p className="text-sm text-[var(--text-muted)] mt-1">Processing…</p>
+                        )}
                         {pipeline.status === 'awaiting_approval' && (
                           <div className="mt-3">
                             <button type="button" className="review-btn" onClick={handleOpenReview}>
