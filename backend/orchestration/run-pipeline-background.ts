@@ -4,7 +4,7 @@
  * When automation_level is review, pipeline may pause (awaiting_approval); approve runs apply step only.
  */
 import { existsSync } from 'fs';
-import { getPipelineJobById, updatePipelineJobStatus, updatePipelineJobPhase } from '../data/pipeline-jobs.js';
+import { getPipelineJobById, updatePipelineJobStatus, updatePipelineJobPhase, updatePipelineJobSubmit } from '../data/pipeline-jobs.js';
 import { runPipelineForJob, JOB_CANCELLED_ERROR } from './run-pipeline.js';
 import { getJobIdFromUrl, getJobSiteFromUrl } from '../shared/job-from-url.js';
 import { ensureResumePdfFromDb } from '../agents/resume_generator_agent/export-pdf.js';
@@ -117,11 +117,13 @@ export async function resumePipelineAfterApproval(jobId: string): Promise<void> 
       coverPath = out.coverPath;
     }
     const transcriptPath = needTranscript ? await getTranscriptPath(userId) : undefined;
+    // update the pipeline job submit to true
+    await updatePipelineJobSubmit(jobId, true);
     const applyResult = await runHandshakeApply(jobUrl, {
       resumePath: resumePath ?? undefined,
       coverPath,
       transcriptPath,
-      submit: job.submit,
+      submit: true,
       userId,
     });
     const outcome = applyResult.skipped ? 'already_applied' : applyResult.applied ? 'submitted' : 'skipped';

@@ -31,7 +31,11 @@ export async function runJobScraper(jobUrl: string, options: RunJobScraperOption
 
   if (jobId && site && !forceScrape) {
     const stored = await getJob(site, jobId);
-    if (stored) {
+    /** 
+     * When scraping from list of jobs on handshake, we get details like jobId, site, title, company , url, companyLogoUrl, BUT NOT description, applyType, jobClosed, location, salaryEmploymentType
+     * So, if job is in cache, with no description and applyType, we need to scrape the job details from the URL
+     */
+    if (stored && stored.description && stored.applyType) {
       return {
         job: stored,
         jobsFilePath: PATHS.jobsFile,

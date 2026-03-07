@@ -352,6 +352,12 @@ export async function getJobDetail(jobRef: string): Promise<JobDetailResponse> {
   params.set('jobRef', jobRef);
   return request<JobDetailResponse>(`/jobs/detail?${params.toString()}`);
 }
+export async function postScrapeJobDetail(jobRef: string): Promise<{ job: JobDetailJob }> {
+  return request<{ job: JobDetailJob }>("/jobs/scrape", {
+    method: 'POST',
+    body: JSON.stringify({ jobRef }),
+  });
+}
 
 export interface FindJobsFilters {
   query?: string;

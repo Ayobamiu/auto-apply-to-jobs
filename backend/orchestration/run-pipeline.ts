@@ -101,6 +101,12 @@ export async function runPipelineForJob(
     return { job, resumePath: undefined, outcome: 'already_applied' };
   }
 
+  // check if the job if job site is handshake and the job has apply type apply_externally
+  if (getJobSiteFromUrl(jobUrl) === 'handshake' && job.applyType === 'apply_externally') {
+    endTotal();
+    return { job, resumePath: undefined, outcome: 'handshake_apply_externally_not_supported' };
+  }
+
   const siteFromUrl = getJobSiteFromUrl(jobUrl);
   const jobIdFromUrl = getJobIdFromUrl(jobUrl);
 

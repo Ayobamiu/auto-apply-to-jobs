@@ -19,6 +19,7 @@ import {
   getPipelineArtifacts,
   type JobDetailResponse,
   type PipelineArtifacts,
+  postScrapeJobDetail,
 } from "../api";
 import { ReviewView } from "./ReviewView";
 
@@ -29,6 +30,7 @@ export function DiscoverJobDetailPage() {
 
   const [detail, setDetail] = useState<JobDetailResponse | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [scrapingDetail, setScrapingDetail] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [applyingUrl, setApplyingUrl] = useState<string | null>(null);
   const [generatingUrl, setGeneratingUrl] = useState<string | null>(null);
@@ -59,6 +61,23 @@ export function DiscoverJobDetailPage() {
     }
   }, []);
 
+  const scrapeJobDetail = useCallback(
+    async (ref: string) => {
+      setScrapingDetail(true);
+      try {
+        const data = await postScrapeJobDetail(ref);
+        setDetail((prev) => (prev ? { ...prev, job: data.job } : null));
+      } catch (err) {
+        setDetailError(
+          err instanceof Error ? err.message : "Failed to scrape job detail",
+        );
+      } finally {
+        setScrapingDetail(false);
+      }
+    },
+    [setDetail, setDetailError, setScrapingDetail],
+  );
+
   useEffect(() => {
     if (!jobRef) {
       navigate("/discover", { replace: true });
@@ -66,6 +85,15 @@ export function DiscoverJobDetailPage() {
     }
     loadDetail(jobRef);
   }, [jobRef, loadDetail, navigate]);
+
+  /** 
+    After getting the job details, if the job doesnt have description and applyType, we need to scrape the job details from the URL using postScrapeJobDetail.
+ * */
+  useEffect(() => {
+    if (!jobRef) return;
+    if (!detail?.job.description || !detail?.job.applyType)
+      scrapeJobDetail(jobRef);
+  }, [jobRef, detail?.job.description, detail?.job.applyType, scrapeJobDetail]);
 
   const pipelineStatus = detail?.pipelineJob?.status;
   const isPipelineActive =
@@ -374,6 +402,14 @@ export function DiscoverJobDetailPage() {
               )}
             </section>
 
+            {scrapingDetail && (
+              <div className="flex flex-col items-center gap-4 p-8 rounded-xl border border-border bg-card">
+                <p className="text-sm text-text-muted inline-flex items-center gap-2">
+                  Scraping job detail...{" "}
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
+                </p>
+              </div>
+            )}
             {detail.job.description && (
               <section className="mb-6">
                 <h2 className="text-sm font-semibold text-text mb-2">
@@ -473,7 +509,7 @@ export function DiscoverJobDetailPage() {
                     <div className="mt-3">
                       <button
                         type="button"
-                        onClick={handleOpenReview}
+                        onClick={() => handleOpenReview(false)}
                         className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-text bg-input border border-border rounded-lg hover:bg-border focus:outline-none focus:ring-2 focus:ring-accent/20"
                       >
                         <ClipboardList className="w-4 h-4" aria-hidden />
