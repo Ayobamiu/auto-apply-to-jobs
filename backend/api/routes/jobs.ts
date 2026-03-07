@@ -5,7 +5,7 @@ import type { Request, Response } from 'express';
 import { listJobsWithStatus } from '../../orchestration/list-jobs-with-status.js';
 import { getApplicationStatus, runJobScraper } from '../../agents/job_scraper_agent/index.js';
 import { getJob } from '../../data/jobs.js';
-import { getUserJobState } from '../../data/user-job-state.js';
+import { getSubmittedJobs, getUserJobState } from '../../data/user-job-state.js';
 import { getResumeForJob } from '../../data/job-artifacts.js';
 import { getLatestPipelineJobByJobUrl } from '../../data/pipeline-jobs.js';
 import { normalizePipelineOutcome, getPipelineOutcomeMessage } from '../../shared/pipeline-outcome.js';
@@ -143,5 +143,20 @@ export async function postScrapeJobDetail(req: Request, res: Response): Promise<
     }
   } else {
     res.status(404).json({ error: 'Job not found' });
+  }
+}
+
+export async function getSubmittedJobList(req: Request, res: Response): Promise<void> {
+  const userId = req.userId;
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+  try {
+    const jobs = await getSubmittedJobs(userId);
+    res.status(200).json(jobs);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to get submitted jobs';
+    res.status(500).json({ error: message });
   }
 }

@@ -126,10 +126,7 @@ export async function getPipelineJobArtifacts(req: Request, res: Response): Prom
   const ctx = await getPipelineJobAndSiteJobId(req, res);
   if (!ctx) return;
   const { job, site, jobIdFromUrl } = ctx;
-  if (job.status !== 'awaiting_approval') {
-    res.status(400).json({ error: 'Job is not awaiting approval' });
-    return;
-  }
+
   const userId = req.userId!;
   const [resume, cover, jobRecord] = await Promise.all([
     getResumeForJob(userId, site, jobIdFromUrl),
@@ -315,13 +312,13 @@ export async function getAppliedArtifactsResume(req: Request, res: Response): Pr
         try {
           unlinkSync(resumePath);
           unlinkSync(jsonPath);
-        } catch (_) {}
+        } catch (_) { }
       });
       stream.on('error', () => {
         try {
           unlinkSync(resumePath);
           unlinkSync(jsonPath);
-        } catch (_) {}
+        } catch (_) { }
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to generate PDF';
@@ -361,12 +358,12 @@ export async function getAppliedArtifactsCover(req: Request, res: Response): Pro
       stream.on('end', () => {
         try {
           unlinkSync(pdfPath);
-        } catch (_) {}
+        } catch (_) { }
       });
       stream.on('error', () => {
         try {
           unlinkSync(pdfPath);
-        } catch (_) {}
+        } catch (_) { }
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to generate PDF';

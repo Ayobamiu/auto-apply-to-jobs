@@ -312,6 +312,8 @@ export interface JobListing {
   location?: string;
   salaryEmploymentType?: string;
   companyLogoUrl?: string;
+  applicationSubmitted?: boolean;
+  appliedAt?: string;
 }
 
 export interface JobDetailJob {
@@ -400,6 +402,10 @@ export async function findJobs(options?: {
   if (options?.locationFilter) params.set('locationFilter', options.locationFilter);
   const qs = params.toString();
   return request<{ listings: JobListing[]; lastRefreshAt?: string | null }>(`/jobs/find${qs ? `?${qs}` : ''}`);
+}
+
+export async function getSubmittedJobList(): Promise<JobListing[]> {
+  return request<JobListing[]>('/jobs/submitted-list');
 }
 
 /** Fetch PDF as blob with auth and trigger download. */

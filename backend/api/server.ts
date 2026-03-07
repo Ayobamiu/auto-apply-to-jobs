@@ -13,7 +13,7 @@ const FRONTEND_DIST = join(__dirname, '..', '..', 'frontend', 'dist');
 import { authMiddleware } from './middleware/auth.js';
 import { register, login } from './routes/auth.js';
 import { postPipeline } from './routes/pipeline.js';
-import { getJobs, getJobsStatus, getJobsDetail, postScrapeJobDetail } from './routes/jobs.js';
+import { getJobs, getJobsStatus, getJobsDetail, postScrapeJobDetail, getSubmittedJobList } from './routes/jobs.js';
 import { getJobsFind } from './routes/jobs-find.js';
 import {
   getProfileHandler,
@@ -75,6 +75,7 @@ app.get('/jobs/detail', authMiddleware, getJobsDetail);
 app.get('/jobs', authMiddleware, getJobs);
 app.get('/jobs/find', authMiddleware, getJobsFind);
 app.get('/jobs/status', authMiddleware, getJobsStatus);
+app.get('/jobs/submitted-list', authMiddleware, getSubmittedJobList);
 app.get('/profile', authMiddleware, getProfileHandler);
 app.put('/profile', authMiddleware, putProfile);
 app.post('/profile/from-resume', authMiddleware, profileFromResumeUpload, postProfileFromResume);

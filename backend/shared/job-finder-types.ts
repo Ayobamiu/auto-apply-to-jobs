@@ -12,6 +12,8 @@ export interface JobListing {
   location?: string;
   salaryEmploymentType?: string;
   companyLogoUrl?: string;
+  applicationSubmitted?: boolean;
+  appliedAt?: string;
 }
 
 /** Shared search filters; each site finder maps these to its own URL/API params. */

@@ -7,8 +7,10 @@ import {
   RefreshCw,
   Filter,
   ExternalLink,
+  CheckCircle,
 } from "lucide-react";
 import { findJobs, type JobListing } from "../api";
+import { SubmitedJobsDrawer } from "./SubmitedJobsDrawer";
 
 const STORAGE_KEY_SCROLL = "discover-list-scroll";
 
@@ -167,8 +169,9 @@ export function DiscoverListPage() {
 
   return (
     <div className="flex flex-col min-h-full w-full">
-      <header className="flex-shrink-0 border-b border-border bg-card px-4 py-3">
+      <header className="flex-shrink-0 border-b border-border bg-card px-4 py-3 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-text">Discover jobs</h1>
+        <SubmitedJobsDrawer />
       </header>
 
       <main className="flex-1 w-full p-4 md:p-6">
@@ -469,6 +472,15 @@ export function DiscoverListPage() {
                           <ExternalLink className="w-4 h-4" aria-hidden />
                           Open on Handshake
                         </a>
+                      )}
+                      {listing.applicationSubmitted && (
+                        <p className="text-sm text-text-muted inline-flex items-center gap-2">
+                          <CheckCircle
+                            className="w-4 h-4 text-green-600"
+                            aria-hidden
+                          />
+                          Applied at {listing.appliedAt}
+                        </p>
                       )}
                     </div>
                   </li>
