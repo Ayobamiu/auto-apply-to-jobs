@@ -13,6 +13,7 @@ import { runHandshakeApply } from '../agents/auto_apply_agent/handshake-apply-re
 import { getJob } from '../data/jobs.js';
 import { getResumeForJob, getCoverLetterForJob } from '../data/job-artifacts.js';
 import { getTranscriptPath } from '../shared/config.js';
+import { isAppError, CODES } from '../shared/errors.js';
 
 export type RunPipelineFn = typeof runPipelineForJob;
 
@@ -52,7 +53,8 @@ export async function runPipelineInBackground(
       return;
     }
     const message = err instanceof Error ? err.message : String(err);
-    await updatePipelineJobStatus(jobId, 'failed', undefined, message);
+    const code = isAppError(err) ? err.code : null;
+    await updatePipelineJobStatus(jobId, 'failed', undefined, message, code);
   }
 }
 
@@ -134,6 +136,7 @@ export async function resumePipelineAfterApproval(jobId: string): Promise<void> 
     await updatePipelineJobStatus(jobId, 'done', result);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    await updatePipelineJobStatus(jobId, 'failed', undefined, message);
+    const code = isAppError(err) ? err.code : null;
+    await updatePipelineJobStatus(jobId, 'failed', undefined, message, code);
   }
 }

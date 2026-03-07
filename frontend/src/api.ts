@@ -333,6 +333,8 @@ export interface JobDetailPipeline {
   phase: string | null;
   result: unknown;
   error: string | null;
+  error_code?: string | null;
+  retryAllowed?: boolean;
   createdAt: string;
   updatedAt: string;
   userMessage: string | null;

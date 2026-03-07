@@ -20,7 +20,7 @@ import { extractProfileUpdateFromMessage } from '../shared/profile-update-from-c
 import { runPipelineInBackground, resumePipelineAfterApproval } from './run-pipeline-background.js';
 import { listJobsWithStatus } from './list-jobs-with-status.js';
 import { findJobs } from '../job-finders/registry.js';
-import { isAppError, CODES, messageForCode } from '../shared/errors.js';
+import { isAppError, CODES, messageForCode, type AppErrorCode } from '../shared/errors.js';
 import { SESSION_STALE_THRESHOLD_MS } from '../shared/constants.js';
 import { normalizePipelineOutcome, getPipelineOutcomeMessage } from '../shared/pipeline-outcome.js';
 import type {
@@ -444,6 +444,7 @@ function formatJobStatus(job: {
   job_url: string;
   result: unknown;
   error: string | null;
+  error_code?: string | null;
 }): OrchestratorResult {
   const stillRunning = job.status === 'pending' || job.status === 'running';
 
@@ -458,6 +459,10 @@ function formatJobStatus(job: {
   }
 
   if (job.status === 'failed') {
+    if (job.error_code) {
+      const msg = messageForCode(job.error_code as AppErrorCode);
+      return { reply: msg };
+    }
     const errorMsg = job.error ?? 'Unknown error';
     let userFriendly = 'The application failed. ';
     if (errorMsg.includes('Session expired') || errorMsg.includes('not logged in') || errorMsg.includes('login')) {

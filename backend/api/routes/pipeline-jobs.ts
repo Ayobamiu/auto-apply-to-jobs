@@ -11,6 +11,7 @@ import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
 import { getPipelineJob, listPipelineJobs, cancelPipelineJob, type PipelineJob } from '../../data/pipeline-jobs.js';
 import { normalizePipelineOutcome, getPipelineOutcomeMessage } from '../../shared/pipeline-outcome.js';
+import { isNonRetryableFailureCode } from '../../shared/errors.js';
 import { getJobIdFromUrl, getJobSiteFromUrl } from '../../shared/job-from-url.js';
 import {
   getResumeForJob,
@@ -49,6 +50,8 @@ export async function getPipelineJobStatus(req: Request, res: Response): Promise
     submit: job.submit,
     result: job.result,
     error: job.error,
+    error_code: job.error_code ?? null,
+    retryAllowed: !isNonRetryableFailureCode(job.error_code ?? null),
     userMessage,
     createdAt: job.created_at,
     updatedAt: job.updated_at,
@@ -87,6 +90,7 @@ export async function getPipelineJobList(req: Request, res: Response): Promise<v
       submit: j.submit,
       result: j.result,
       error: j.error,
+      error_code: j.error_code ?? null,
       createdAt: j.created_at,
       updatedAt: j.updated_at,
     }))

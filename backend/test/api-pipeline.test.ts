@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import jwt from 'jsonwebtoken';
 import supertest from 'supertest';
 import { pool, ensureDataTables } from '../api/db.js';
+import { createPipelineJob, updatePipelineJobStatus } from '../data/pipeline-jobs.js';
 
 process.env.NODE_ENV = 'test';
 
@@ -134,6 +135,20 @@ describe('GET /pipeline/jobs/:jobId', () => {
       .set('Authorization', `Bearer ${userA.token}`);
 
     assert.equal(res.status, 404);
+  });
+
+  it('includes error_code and retryAllowed when job is failed with error_code', async () => {
+    const { id: jobId } = await createPipelineJob(userA.id, 'https://example.com/job/err-code');
+    await updatePipelineJobStatus(jobId, 'failed', undefined, 'Apply externally', 'APPLY_EXTERNALLY');
+
+    const res = await supertest(app)
+      .get(`/pipeline/jobs/${jobId}`)
+      .set('Authorization', `Bearer ${userA.token}`);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.status, 'failed');
+    assert.equal(res.body.error_code, 'APPLY_EXTERNALLY');
+    assert.equal(res.body.retryAllowed, false);
   });
 });
 

@@ -84,6 +84,24 @@ describe('pipeline-jobs data layer', () => {
     assert.equal(job!.result, null);
   });
 
+  it('updatePipelineJobStatus persists error_code when status is failed', async () => {
+    const { id } = await createPipelineJob('test-user-a', 'https://example.com/job/7b');
+    await updatePipelineJobStatus(id, 'failed', undefined, 'Apply externally', 'APPLY_EXTERNALLY');
+    const job = await getPipelineJobById(id);
+    assert.equal(job!.status, 'failed');
+    assert.equal(job!.error, 'Apply externally');
+    assert.equal(job!.error_code, 'APPLY_EXTERNALLY');
+  });
+
+  it('updatePipelineJobStatus clears error_code when status is not failed', async () => {
+    const { id } = await createPipelineJob('test-user-a', 'https://example.com/job/7c');
+    await updatePipelineJobStatus(id, 'failed', undefined, 'msg', 'JOB_NOT_FOUND');
+    await updatePipelineJobStatus(id, 'running');
+    const job = await getPipelineJobById(id);
+    assert.equal(job!.status, 'running');
+    assert.equal(job!.error_code, null);
+  });
+
   it('cancelPipelineJob returns true and sets status to cancelled when job is pending', async () => {
     const { id } = await createPipelineJob('test-user-a', 'https://example.com/job/8');
     const ok = await cancelPipelineJob(id, 'test-user-a');

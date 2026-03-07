@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useState } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   MapPin,
@@ -12,15 +12,15 @@ import {
   AlertCircle,
   Loader2,
   Clock,
-} from 'lucide-react';
+} from "lucide-react";
 import {
   getJobDetail,
   postPipeline,
   getPipelineArtifacts,
   type JobDetailResponse,
   type PipelineArtifacts,
-} from '../api';
-import { ReviewView } from './ReviewView';
+} from "../api";
+import { ReviewView } from "./ReviewView";
 
 export function DiscoverJobDetailPage() {
   const { jobRef: encodedRef } = useParams<{ jobRef: string }>();
@@ -32,7 +32,11 @@ export function DiscoverJobDetailPage() {
   const [detailError, setDetailError] = useState<string | null>(null);
   const [applyingUrl, setApplyingUrl] = useState<string | null>(null);
   const [generatingUrl, setGeneratingUrl] = useState<string | null>(null);
-  const [reviewArtifacts, setReviewArtifacts] = useState<{ pipelineId: string; artifacts: PipelineArtifacts } | null>(null);
+  const [reviewArtifacts, setReviewArtifacts] = useState<{
+    pipelineId: string;
+    artifacts: PipelineArtifacts;
+    previewOnly?: boolean;
+  } | null>(null);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
 
   const loadDetail = useCallback(async (ref: string, silent = false) => {
@@ -45,7 +49,9 @@ export function DiscoverJobDetailPage() {
       setDetail(data);
     } catch (err) {
       if (!silent) {
-        setDetailError(err instanceof Error ? err.message : 'Failed to load job detail');
+        setDetailError(
+          err instanceof Error ? err.message : "Failed to load job detail",
+        );
         setDetail(null);
       }
     } finally {
@@ -55,14 +61,15 @@ export function DiscoverJobDetailPage() {
 
   useEffect(() => {
     if (!jobRef) {
-      navigate('/discover', { replace: true });
+      navigate("/discover", { replace: true });
       return;
     }
     loadDetail(jobRef);
   }, [jobRef, loadDetail, navigate]);
 
   const pipelineStatus = detail?.pipelineJob?.status;
-  const isPipelineActive = pipelineStatus === 'pending' || pipelineStatus === 'running';
+  const isPipelineActive =
+    pipelineStatus === "pending" || pipelineStatus === "running";
 
   useEffect(() => {
     if (!jobRef || !isPipelineActive) return;
@@ -81,12 +88,14 @@ export function DiscoverJobDetailPage() {
         await postPipeline(url, { submit: true });
         if (jobRef) loadDetail(jobRef);
       } catch (err) {
-        setDetailError(err instanceof Error ? err.message : 'Failed to start application');
+        setDetailError(
+          err instanceof Error ? err.message : "Failed to start application",
+        );
       } finally {
         setApplyingUrl(null);
       }
     },
-    [jobRef, loadDetail]
+    [jobRef, loadDetail],
   );
 
   const handleGenerate = useCallback(
@@ -96,23 +105,34 @@ export function DiscoverJobDetailPage() {
         await postPipeline(url, { submit: false });
         if (jobRef) loadDetail(jobRef);
       } catch (err) {
-        setDetailError(err instanceof Error ? err.message : 'Failed to start generation');
+        setDetailError(
+          err instanceof Error ? err.message : "Failed to start generation",
+        );
       } finally {
         setGeneratingUrl(null);
       }
     },
-    [jobRef, loadDetail]
+    [jobRef, loadDetail],
   );
 
-  const handleOpenReview = useCallback(async () => {
-    if (!detail?.pipelineJob?.id) return;
-    try {
-      const artifacts = await getPipelineArtifacts(detail.pipelineJob.id);
-      setReviewArtifacts({ pipelineId: detail.pipelineJob.id, artifacts });
-    } catch (err) {
-      setDetailError(err instanceof Error ? err.message : 'Failed to load review');
-    }
-  }, [detail?.pipelineJob?.id]);
+  const handleOpenReview = useCallback(
+    async (previewOnly = false) => {
+      if (!detail?.pipelineJob?.id) return;
+      try {
+        const artifacts = await getPipelineArtifacts(detail.pipelineJob.id);
+        setReviewArtifacts({
+          pipelineId: detail.pipelineJob.id,
+          artifacts,
+          previewOnly,
+        });
+      } catch (err) {
+        setDetailError(
+          err instanceof Error ? err.message : "Failed to load review",
+        );
+      }
+    },
+    [detail?.pipelineJob?.id],
+  );
 
   const handleReviewApproved = useCallback(() => {
     setReviewArtifacts(null);
@@ -124,6 +144,22 @@ export function DiscoverJobDetailPage() {
   }, []);
 
   const pipeline = detail?.pipelineJob;
+  const appliedAt = !!detail?.userState?.appliedAt;
+  const hasResume = !!detail?.hasResume;
+  const showGenerate =
+    !appliedAt &&
+    !hasResume &&
+    !(
+      pipeline &&
+      (pipeline.status === "awaiting_approval" || pipeline.status === "done")
+    );
+  const showApply =
+    !appliedAt &&
+    !(pipeline?.status === "failed" && pipeline?.retryAllowed === false);
+  const cannotApply =
+    pipeline?.status === "failed" &&
+    pipeline?.retryAllowed === false &&
+    !!detail?.job?.url;
 
   if (!jobRef) return null;
 
@@ -183,10 +219,12 @@ export function DiscoverJobDetailPage() {
               )}
               <div className="min-w-0 flex-1">
                 <h1 className="text-xl md:text-2xl font-semibold text-text mb-1">
-                  {detail.job.title || 'Untitled'}
+                  {detail.job.title || "Untitled"}
                 </h1>
                 {detail.job.company && (
-                  <p className="text-text-muted font-medium">{detail.job.company}</p>
+                  <p className="text-text-muted font-medium">
+                    {detail.job.company}
+                  </p>
                 )}
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-text-muted">
                   {detail.job.location && (
@@ -206,66 +244,122 @@ export function DiscoverJobDetailPage() {
             </div>
 
             <section className="mb-6">
-              <h2 className="text-sm font-semibold text-text mb-3">Next steps</h2>
+              <h2 className="text-sm font-semibold text-text mb-3">
+                Next steps
+              </h2>
               <div className="flex flex-col gap-4">
-                <div>
-                  <button
-                    type="button"
-                    disabled={
-                      !!generatingUrl ||
-                      !!applyingUrl ||
-                      pipeline?.status === 'pending' ||
-                      pipeline?.status === 'running' ||
-                      !!detail.userState?.appliedAt
-                    }
-                    onClick={() => detail.job.url && handleGenerate(detail.job.url!)}
-                    className="inline-flex items-center gap-2 w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-white bg-accent border-0 rounded-lg cursor-pointer hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                  >
-                    {generatingUrl === detail.job.url ? (
-                      <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
-                    ) : (
-                      <FileText className="w-4 h-4" aria-hidden />
+                {cannotApply && (
+                  <div className="rounded-xl p-4 bg-card border border-border">
+                    <p className="text-sm text-text">
+                      We can&apos;t apply to this job through the app.
+                      {!hasResume &&
+                        " Would you like to generate a resume and cover letter to use elsewhere?"}
+                    </p>
+                    {pipeline?.error && (
+                      <p className="text-sm text-text-muted mt-1">
+                        {pipeline.error}
+                      </p>
                     )}
-                    {generatingUrl === detail.job.url
-                      ? 'Generating…'
-                      : pipeline?.status === 'pending' || pipeline?.status === 'running'
-                        ? 'Processing…'
-                        : 'Generate resume and other documents'}
-                  </button>
-                  <p className="text-sm text-text-muted mt-1.5">
-                    Creates a tailored resume and cover letter for this job and saves them. You can leave and come back
-                    later to review and apply.
-                  </p>
-                </div>
-                <div>
-                  <button
-                    type="button"
-                    disabled={
-                      !!applyingUrl ||
-                      !!generatingUrl ||
-                      pipeline?.status === 'pending' ||
-                      pipeline?.status === 'running' ||
-                      !!detail.userState?.appliedAt
-                    }
-                    onClick={() => detail.job.url && handleApply(detail.job.url!)}
-                    className="inline-flex items-center gap-2 w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-white bg-accent border-0 rounded-lg cursor-pointer hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                  >
-                    {applyingUrl === detail.job.url ? (
-                      <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
-                    ) : (
-                      <Send className="w-4 h-4" aria-hidden />
+                    {!hasResume && detail.job.url && (
+                      <button
+                        type="button"
+                        disabled={
+                          !!generatingUrl ||
+                          !!applyingUrl ||
+                          pipeline?.status === "pending" ||
+                          pipeline?.status === "running"
+                        }
+                        onClick={() => handleGenerate(detail.job.url!)}
+                        className="inline-flex items-center gap-2 mt-3 px-4 py-2.5 text-sm font-medium text-white bg-accent border-0 rounded-lg cursor-pointer hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                      >
+                        {generatingUrl === detail.job.url ? (
+                          <Loader2
+                            className="w-4 h-4 animate-spin"
+                            aria-hidden
+                          />
+                        ) : (
+                          <FileText className="w-4 h-4" aria-hidden />
+                        )}
+                        {generatingUrl === detail.job.url
+                          ? "Generating…"
+                          : "Yes, generate"}
+                      </button>
                     )}
-                    {applyingUrl === detail.job.url
-                      ? 'Starting…'
-                      : pipeline?.status === 'pending' || pipeline?.status === 'running'
-                        ? 'Applying…'
-                        : 'Apply'}
-                  </button>
-                  <p className="text-sm text-text-muted mt-1.5">
-                    Uses your saved documents if you already generated them, or generates them first. Then you review
-                    and submit your application on Handshake.
-                  </p>
-                </div>
+                  </div>
+                )}
+
+                {showGenerate && (
+                  <div>
+                    <button
+                      type="button"
+                      disabled={
+                        !!generatingUrl ||
+                        !!applyingUrl ||
+                        pipeline?.status === "pending" ||
+                        pipeline?.status === "running"
+                      }
+                      onClick={() => {
+                        if (cannotApply) return;
+                        detail.job.url && handleGenerate(detail.job.url!);
+                      }}
+                      className="inline-flex items-center gap-2 w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-white bg-accent border-0 rounded-lg cursor-pointer hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                    >
+                      {generatingUrl === detail.job.url ? (
+                        <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
+                      ) : (
+                        <FileText className="w-4 h-4" aria-hidden />
+                      )}
+                      {generatingUrl === detail.job.url
+                        ? "Generating…"
+                        : pipeline?.status === "pending" ||
+                            pipeline?.status === "running"
+                          ? "Processing…"
+                          : "Generate resume and other documents"}
+                    </button>
+                    <p className="text-sm text-text-muted mt-1.5">
+                      Creates a tailored resume and cover letter for this job
+                      and saves them. You can leave and come back later to
+                      review and apply.
+                    </p>
+                  </div>
+                )}
+                {showApply && (
+                  <div>
+                    <button
+                      type="button"
+                      disabled={
+                        !!applyingUrl ||
+                        !!generatingUrl ||
+                        pipeline?.status === "pending" ||
+                        pipeline?.status === "running"
+                      }
+                      onClick={() => {
+                        if (cannotApply) return;
+                        detail.job.url && handleApply(detail.job.url!);
+                      }}
+                      className="inline-flex items-center gap-2 w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-white bg-accent border-0 rounded-lg cursor-pointer hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                    >
+                      {applyingUrl === detail.job.url ? (
+                        <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
+                      ) : (
+                        <Send className="w-4 h-4" aria-hidden />
+                      )}
+                      {applyingUrl === detail.job.url
+                        ? "Starting…"
+                        : pipeline?.status === "pending" ||
+                            pipeline?.status === "running"
+                          ? "Applying…"
+                          : pipeline?.status === "failed"
+                            ? "Re-apply"
+                            : "Apply"}
+                    </button>
+                    <p className="text-sm text-text-muted mt-1.5">
+                      Uses your saved documents if you already generated them,
+                      or generates them first. Then you review and submit your
+                      application on Handshake.
+                    </p>
+                  </div>
+                )}
               </div>
               {detail.job.url && (
                 <a
@@ -282,13 +376,18 @@ export function DiscoverJobDetailPage() {
 
             {detail.job.description && (
               <section className="mb-6">
-                <h2 className="text-sm font-semibold text-text mb-2">Description</h2>
+                <h2 className="text-sm font-semibold text-text mb-2">
+                  Description
+                </h2>
                 <div
                   className={`text-sm text-text whitespace-pre-wrap rounded-lg p-3 bg-card border border-border overflow-y-auto ${
-                    descriptionExpanded ? '' : 'max-h-48'
+                    descriptionExpanded ? "" : "max-h-48"
                   }`}
                 >
-                  {detail.job.description.slice(0, descriptionExpanded ? undefined : 5000)}
+                  {detail.job.description.slice(
+                    0,
+                    descriptionExpanded ? undefined : 5000,
+                  )}
                 </div>
                 {detail.job.description.length > 5000 && (
                   <button
@@ -296,7 +395,7 @@ export function DiscoverJobDetailPage() {
                     onClick={() => setDescriptionExpanded((e) => !e)}
                     className="text-sm text-accent mt-2 hover:underline focus:outline-none focus:ring-2 focus:ring-accent/20 rounded"
                   >
-                    {descriptionExpanded ? 'Show less' : 'Show more'}
+                    {descriptionExpanded ? "Show less" : "Show more"}
                   </button>
                 )}
               </section>
@@ -304,38 +403,73 @@ export function DiscoverJobDetailPage() {
 
             <section className="space-y-4">
               {detail.userState?.appliedAt && (
-                <p className="text-sm text-text-muted inline-flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600" aria-hidden />
-                  Applied at {detail.userState.appliedAt}
-                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="text-sm text-text-muted inline-flex items-center gap-2">
+                    <CheckCircle
+                      className="w-4 h-4 text-green-600"
+                      aria-hidden
+                    />
+                    Applied at {detail.userState.appliedAt}
+                  </p>
+                  {detail.pipelineJob?.id && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenReview(true)}
+                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-text bg-input border border-border rounded-lg hover:bg-border focus:outline-none focus:ring-2 focus:ring-accent/20"
+                    >
+                      <FileText className="w-4 h-4" aria-hidden />
+                      Preview resume & cover
+                    </button>
+                  )}
+                </div>
               )}
-              {detail.hasResume && (
+              {detail.hasResume && !detail.userState?.appliedAt && (
                 <p className="text-sm text-text-muted">Resume on file</p>
               )}
               {pipeline && (
                 <div className="rounded-xl p-4 bg-card border border-border">
-                  <h3 className="text-sm font-semibold text-text mb-2">Application status</h3>
+                  <h3 className="text-sm font-semibold text-text mb-2">
+                    Application status
+                  </h3>
                   <div className="flex items-center gap-2 flex-wrap">
-                    {pipeline.status === 'pending' || pipeline.status === 'running' ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-accent" aria-hidden />
-                    ) : pipeline.status === 'awaiting_approval' ? (
+                    {pipeline.status === "pending" ||
+                    pipeline.status === "running" ? (
+                      <Loader2
+                        className="w-4 h-4 animate-spin text-accent"
+                        aria-hidden
+                      />
+                    ) : pipeline.status === "awaiting_approval" ? (
                       <Clock className="w-4 h-4 text-accent" aria-hidden />
-                    ) : pipeline.status === 'done' ? (
-                      <CheckCircle className="w-4 h-4 text-green-600" aria-hidden />
-                    ) : pipeline.status === 'failed' ? (
-                      <AlertCircle className="w-4 h-4 text-danger" aria-hidden />
+                    ) : pipeline.status === "done" ? (
+                      <CheckCircle
+                        className="w-4 h-4 text-green-600"
+                        aria-hidden
+                      />
+                    ) : pipeline.status === "failed" ? (
+                      <AlertCircle
+                        className="w-4 h-4 text-danger"
+                        aria-hidden
+                      />
                     ) : null}
                     <span className="text-sm text-text capitalize">
-                      {pipeline.status.replace(/_/g, ' ')}
+                      {pipeline.status.replace(/_/g, " ")}
                     </span>
                   </div>
-                  {(pipeline.status === 'pending' || pipeline.status === 'running') && pipeline.phase && (
-                    <p className="text-sm text-text-muted mt-1">{pipeline.phase}</p>
-                  )}
-                  {(pipeline.status === 'pending' || pipeline.status === 'running') && !pipeline.phase && (
-                    <p className="text-sm text-text-muted mt-1">Processing…</p>
-                  )}
-                  {pipeline.status === 'awaiting_approval' && (
+                  {(pipeline.status === "pending" ||
+                    pipeline.status === "running") &&
+                    pipeline.phase && (
+                      <p className="text-sm text-text-muted mt-1">
+                        {pipeline.phase}
+                      </p>
+                    )}
+                  {(pipeline.status === "pending" ||
+                    pipeline.status === "running") &&
+                    !pipeline.phase && (
+                      <p className="text-sm text-text-muted mt-1">
+                        Processing…
+                      </p>
+                    )}
+                  {pipeline.status === "awaiting_approval" && (
                     <div className="mt-3">
                       <button
                         type="button"
@@ -347,11 +481,50 @@ export function DiscoverJobDetailPage() {
                       </button>
                     </div>
                   )}
-                  {pipeline.status === 'done' && pipeline.userMessage && (
-                    <p className="text-sm text-text mt-2">{pipeline.userMessage}</p>
+                  {pipeline.status === "done" && pipeline.userMessage && (
+                    <p className="text-sm text-text mt-2">
+                      {pipeline.userMessage}
+                    </p>
                   )}
-                  {pipeline.status === 'failed' && pipeline.error && (
-                    <p className="text-sm text-danger mt-2">{pipeline.error}</p>
+                  {pipeline.status === "failed" && (
+                    <>
+                      <p className="text-sm text-danger mt-2">
+                        {pipeline.error ?? "Application failed."}
+                      </p>
+                      {pipeline.retryAllowed === false && (
+                        <>
+                          {!hasResume ? (
+                            <p className="text-sm text-text-muted mt-1">
+                              We can&apos;t apply to this job through the app.
+                              You can still generate a resume and cover letter
+                              to use elsewhere.
+                            </p>
+                          ) : (
+                            <>
+                              <p className="text-sm text-text-muted mt-1">
+                                We couldn&apos;t submit to this job. Your
+                                generated documents are below.
+                              </p>
+                              {detail.pipelineJob?.id && (
+                                <div className="mt-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenReview(true)}
+                                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-text bg-input border border-border rounded-lg hover:bg-border focus:outline-none focus:ring-2 focus:ring-accent/20"
+                                  >
+                                    <ClipboardList
+                                      className="w-4 h-4"
+                                      aria-hidden
+                                    />
+                                    Preview documents
+                                  </button>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </>
+                      )}
+                    </>
                   )}
                 </div>
               )}
@@ -372,6 +545,7 @@ export function DiscoverJobDetailPage() {
             artifacts={reviewArtifacts.artifacts}
             onApproved={handleReviewApproved}
             onCancelled={handleReviewCancelled}
+            previewOnly={reviewArtifacts.previewOnly}
           />
         </div>
       )}

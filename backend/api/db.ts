@@ -174,6 +174,7 @@ export async function ensureDataTables(): Promise<void> {
   await pool.query(CHAT_MESSAGES_TABLE_SQL);
   await pool.query(CHAT_MESSAGES_INDEX_SQL);
   await pool.query('ALTER TABLE pipeline_jobs ADD COLUMN IF NOT EXISTS phase text DEFAULT NULL');
+  await pool.query('ALTER TABLE pipeline_jobs ADD COLUMN IF NOT EXISTS error_code text');
   await pool.query("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS automation_level text DEFAULT 'review'");
   await pool.query("ALTER TABLE pipeline_jobs ADD COLUMN IF NOT EXISTS automation_level text DEFAULT 'review'");
   await pool.query('ALTER TABLE pipeline_jobs ADD COLUMN IF NOT EXISTS artifacts jsonb');

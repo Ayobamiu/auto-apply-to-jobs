@@ -12,6 +12,7 @@ export const CODES = {
   PREFLIGHT_FAILED: 'PREFLIGHT_FAILED',
   SCRAPE_TIMEOUT: 'SCRAPE_TIMEOUT',
   MISSING_API_KEY: 'MISSING_API_KEY',
+  NOT_SUPPORTED_SITE: 'NOT_SUPPORTED_SITE',
 } as const;
 
 export type AppErrorCode = (typeof CODES)[keyof typeof CODES];
@@ -27,7 +28,19 @@ const DEFAULT_MESSAGES: Record<AppErrorCode, string> = {
   [CODES.PREFLIGHT_FAILED]: 'Preflight check failed.',
   [CODES.SCRAPE_TIMEOUT]: 'Job scrape timed out. Try SCRAPE_HEADED=1 or check the page.',
   [CODES.MISSING_API_KEY]: 'OPENAI_API_KEY is required (or pass apiKey in options).',
+  [CODES.NOT_SUPPORTED_SITE]: 'This job or site is not supported for apply.',
 };
+
+/** Codes that mean "do not show Re-apply" in Discover / do not retry. */
+export const NON_RETRYABLE_FAILURE_CODES: readonly string[] = [
+  CODES.APPLY_EXTERNALLY,
+  CODES.JOB_NOT_FOUND,
+  CODES.NOT_SUPPORTED_SITE,
+] as const;
+
+export function isNonRetryableFailureCode(code: string | null): boolean {
+  return code != null && NON_RETRYABLE_FAILURE_CODES.includes(code);
+}
 
 export class AppError extends Error {
   code: AppErrorCode;

@@ -15,9 +15,11 @@ interface ReviewViewProps {
   artifacts: PipelineArtifacts;
   onApproved: () => void;
   onCancelled: () => void;
+  /** When true, show only preview(s) + Close; no edit UI or Approve/Save. */
+  previewOnly?: boolean;
 }
 
-export function ReviewView({ jobId, artifacts, onApproved, onCancelled }: ReviewViewProps) {
+export function ReviewView({ jobId, artifacts, onApproved, onCancelled, previewOnly = false }: ReviewViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const resumeFormRef = useRef<ReturnType<typeof createResumeForm> | null>(null);
@@ -87,23 +89,24 @@ export function ReviewView({ jobId, artifacts, onApproved, onCancelled }: Review
     [close]
   );
 
-  // Mount imperative resume form and preview
+  // Mount imperative resume form and preview (or preview only when previewOnly)
   useEffect(() => {
-    if (!showResume || !resumeFormContainerRef.current || !resumePreviewContainerRef.current)
-      return;
-    resumeFormRef.current = createResumeForm(
-      resumeFormContainerRef.current,
-      artifacts.resume ?? {}
-    );
+    if (!showResume || !resumePreviewContainerRef.current) return;
     resumePreviewRef.current = createResumePreview(
       resumePreviewContainerRef.current,
       artifacts.resume ?? null
     );
+    if (!previewOnly && resumeFormContainerRef.current) {
+      resumeFormRef.current = createResumeForm(
+        resumeFormContainerRef.current,
+        artifacts.resume ?? {}
+      );
+    }
     return () => {
       resumeFormRef.current = null;
       resumePreviewRef.current = null;
     };
-  }, [showResume, jobId, artifacts.resume]);
+  }, [showResume, jobId, artifacts.resume, previewOnly]);
 
   // Debounced resume form input -> preview
   useEffect(() => {
@@ -127,12 +130,16 @@ export function ReviewView({ jobId, artifacts, onApproved, onCancelled }: Review
       container.removeEventListener('input', onInput);
       if (debounceTimerRef.current !== null) window.clearTimeout(debounceTimerRef.current);
     };
-  }, [showResume]);
+  }, [showResume, previewOnly]);
 
-  // Mount cover letter editor
+  // Mount cover letter editor (or set cover preview content when previewOnly)
   useEffect(() => {
+    if (!showCover) return;
+    if (previewOnly && coverPreviewContainerRef.current) {
+      coverPreviewContainerRef.current.textContent = artifacts.cover?.text ?? '';
+      return;
+    }
     if (
-      !showCover ||
       !coverEditorContainerRef.current ||
       !coverPreviewContainerRef.current
     )
@@ -145,7 +152,7 @@ export function ReviewView({ jobId, artifacts, onApproved, onCancelled }: Review
     return () => {
       coverEditorRef.current = null;
     };
-  }, [showCover, jobId, artifacts.cover?.text]);
+  }, [showCover, jobId, artifacts.cover?.text, previewOnly]);
 
   return (
     <div
@@ -158,22 +165,26 @@ export function ReviewView({ jobId, artifacts, onApproved, onCancelled }: Review
       <div className="bg-card border border-border rounded-xl max-w-[1120px] w-full max-h-full flex flex-col">
         <header className="flex items-center justify-between gap-3 py-4 px-5 border-b border-border">
           <div>
-            <h2 className="text-lg font-semibold text-text">Review before we apply</h2>
+            <h2 className="text-lg font-semibold text-text">
+              {previewOnly ? 'Preview documents' : 'Review before we apply'}
+            </h2>
             <p className="mt-1 text-[13px] text-text-muted">
-              Make last-minute tweaks to your resume and cover letter. This is what will be sent
-              for <span className="font-medium text-text">{artifacts.jobTitle || 'this job'}</span>.
+              {previewOnly
+                ? 'Resume and cover letter generated for this job.'
+                : `Make last-minute tweaks to your resume and cover letter. This is what will be sent for ${artifacts.jobTitle || 'this job'}.`}
             </p>
           </div>
           <button
             type="button"
             className="py-1.5 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border"
-            aria-label="Back to chat"
+            aria-label={previewOnly ? 'Close' : 'Back to chat'}
             onClick={close}
           >
-            Back to chat
+            {previewOnly ? 'Close' : 'Back to chat'}
           </button>
         </header>
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)] gap-4 py-4 px-5 min-h-0">
+        <div className={`flex-1 grid gap-4 py-4 px-5 min-h-0 ${previewOnly ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)]'}`}>
+          {!previewOnly && (
           <section className="flex flex-col gap-4 overflow-y-auto pr-1" aria-label="Edit documents">
             {showResume && (
               <div className="rounded-lg border border-border p-3 bg-page">
@@ -204,7 +215,8 @@ export function ReviewView({ jobId, artifacts, onApproved, onCancelled }: Review
               </div>
             )}
           </section>
-          <section className="flex flex-col gap-3 overflow-y-auto pl-1" aria-label="Preview documents">
+          )}
+          <section className={`flex flex-col gap-3 overflow-y-auto ${previewOnly ? '' : 'pl-1'}`} aria-label="Preview documents">
             <div className="mb-1">
               <h3 className="text-sm font-medium text-text">What we&apos;ll send</h3>
               <p className="text-xs text-text-muted mt-0.5">This preview uses the same layout as the PDF we generate.</p>
@@ -216,17 +228,23 @@ export function ReviewView({ jobId, artifacts, onApproved, onCancelled }: Review
           </section>
         </div>
         <footer className="py-2.5 px-5 pb-3.5 border-t border-border flex items-center justify-between gap-3">
-          {error && <div className="text-xs text-danger">{error}</div>}
+          {!previewOnly && error && <div className="text-xs text-danger">{error}</div>}
           <div className="flex flex-wrap gap-2 justify-end">
-            <button type="button" className="py-2 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border disabled:opacity-60" onClick={handleSave} disabled={busy}>Save changes</button>
-            {showResume && (
-              <button type="button" className="py-2 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border disabled:opacity-60" onClick={async () => { setError(null); try { await downloadPipelineArtifactPdf(jobId, 'resume'); } catch (err) { setError(err instanceof Error ? err.message : 'Download failed.'); } }} disabled={busy}>Download resume PDF</button>
+            {previewOnly ? (
+              <button type="button" className="py-2 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border" onClick={close}>Close</button>
+            ) : (
+              <>
+                <button type="button" className="py-2 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border disabled:opacity-60" onClick={handleSave} disabled={busy}>Save changes</button>
+                {showResume && (
+                  <button type="button" className="py-2 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border disabled:opacity-60" onClick={async () => { setError(null); try { await downloadPipelineArtifactPdf(jobId, 'resume'); } catch (err) { setError(err instanceof Error ? err.message : 'Download failed.'); } }} disabled={busy}>Download resume PDF</button>
+                )}
+                {showCover && (
+                  <button type="button" className="py-2 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border disabled:opacity-60" onClick={async () => { setError(null); try { await downloadPipelineArtifactPdf(jobId, 'cover'); } catch (err) { setError(err instanceof Error ? err.message : 'Download failed.'); } }} disabled={busy}>Download cover PDF</button>
+                )}
+                <button type="button" className="py-2 px-3.5 bg-accent border border-accent rounded-lg text-on-primary text-[13px] cursor-pointer hover:bg-accent-hover hover:border-accent-hover disabled:opacity-60" onClick={handleApprove} disabled={busy}>Looks good – apply</button>
+                <button type="button" className="py-2 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border disabled:opacity-60" onClick={close} disabled={busy}>Cancel</button>
+              </>
             )}
-            {showCover && (
-              <button type="button" className="py-2 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border disabled:opacity-60" onClick={async () => { setError(null); try { await downloadPipelineArtifactPdf(jobId, 'cover'); } catch (err) { setError(err instanceof Error ? err.message : 'Download failed.'); } }} disabled={busy}>Download cover PDF</button>
-            )}
-            <button type="button" className="py-2 px-3.5 bg-accent border border-accent rounded-lg text-on-primary text-[13px] cursor-pointer hover:bg-accent-hover hover:border-accent-hover disabled:opacity-60" onClick={handleApprove} disabled={busy}>Looks good – apply</button>
-            <button type="button" className="py-2 px-3.5 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer hover:bg-border disabled:opacity-60" onClick={close} disabled={busy}>Cancel</button>
           </div>
         </footer>
       </div>

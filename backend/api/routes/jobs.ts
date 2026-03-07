@@ -9,6 +9,7 @@ import { getUserJobState } from '../../data/user-job-state.js';
 import { getResumeForJob } from '../../data/job-artifacts.js';
 import { getLatestPipelineJobByJobUrl } from '../../data/pipeline-jobs.js';
 import { normalizePipelineOutcome, getPipelineOutcomeMessage } from '../../shared/pipeline-outcome.js';
+import { isNonRetryableFailureCode } from '../../shared/errors.js';
 
 export async function getJobs(req: Request, res: Response): Promise<void> {
   const userId = req.userId;
@@ -90,6 +91,8 @@ export async function getJobsDetail(req: Request, res: Response): Promise<void> 
             phase: pipelineJob.phase ?? null,
             result: pipelineJob.result,
             error: pipelineJob.error,
+            error_code: pipelineJob.error_code ?? null,
+            retryAllowed: !isNonRetryableFailureCode(pipelineJob.error_code ?? null),
             createdAt: pipelineJob.created_at,
             updatedAt: pipelineJob.updated_at,
             userMessage,
