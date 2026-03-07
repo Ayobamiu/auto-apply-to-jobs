@@ -233,7 +233,7 @@ export function DiscoverJobDetailPage() {
           </div>
         ) : detail ? (
           <>
-            <div className="flex gap-4 mb-6">
+            <div className="flex gap-4 mb-6 items-center">
               {detail.job.companyLogoUrl ? (
                 <img
                   src={detail.job.companyLogoUrl}
@@ -269,12 +269,19 @@ export function DiscoverJobDetailPage() {
                   )}
                 </div>
               </div>
+              {detail.job.url && (
+                <a
+                  href={detail.job.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="w-6 h-6 text-accent" aria-hidden />
+                </a>
+              )}
             </div>
 
+            {/* Next steps */}
             <section className="mb-6">
-              <h2 className="text-sm font-semibold text-text mb-3">
-                Next steps
-              </h2>
               <div className="flex flex-col gap-4">
                 {cannotApply && (
                   <div className="rounded-xl p-4 bg-card border border-border">
@@ -316,90 +323,87 @@ export function DiscoverJobDetailPage() {
                   </div>
                 )}
 
-                {showGenerate && (
-                  <div>
-                    <button
-                      type="button"
-                      disabled={
-                        !!generatingUrl ||
-                        !!applyingUrl ||
-                        pipeline?.status === "pending" ||
-                        pipeline?.status === "running"
-                      }
-                      onClick={() => {
-                        if (cannotApply) return;
-                        detail.job.url && handleGenerate(detail.job.url!);
-                      }}
-                      className="inline-flex items-center gap-2 w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-white bg-accent border-0 rounded-lg cursor-pointer hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                    >
-                      {generatingUrl === detail.job.url ? (
-                        <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
-                      ) : (
-                        <FileText className="w-4 h-4" aria-hidden />
-                      )}
-                      {generatingUrl === detail.job.url
-                        ? "Generating…"
-                        : pipeline?.status === "pending" ||
-                            pipeline?.status === "running"
-                          ? "Processing…"
-                          : "Generate resume and other documents"}
-                    </button>
-                    <p className="text-sm text-text-muted mt-1.5">
-                      Creates a tailored resume and cover letter for this job
-                      and saves them. You can leave and come back later to
-                      review and apply.
-                    </p>
-                  </div>
-                )}
-                {showApply && (
-                  <div>
-                    <button
-                      type="button"
-                      disabled={
-                        !!applyingUrl ||
-                        !!generatingUrl ||
-                        pipeline?.status === "pending" ||
-                        pipeline?.status === "running"
-                      }
-                      onClick={() => {
-                        if (cannotApply) return;
-                        detail.job.url && handleApply(detail.job.url!);
-                      }}
-                      className="inline-flex items-center gap-2 w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-white bg-accent border-0 rounded-lg cursor-pointer hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                    >
-                      {applyingUrl === detail.job.url ? (
-                        <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
-                      ) : (
-                        <Send className="w-4 h-4" aria-hidden />
-                      )}
-                      {applyingUrl === detail.job.url
-                        ? "Starting…"
-                        : pipeline?.status === "pending" ||
-                            pipeline?.status === "running"
-                          ? "Applying…"
-                          : pipeline?.status === "failed"
-                            ? "Re-apply"
-                            : "Apply"}
-                    </button>
-                    <p className="text-sm text-text-muted mt-1.5">
-                      Uses your saved documents if you already generated them,
-                      or generates them first. Then you review and submit your
-                      application on Handshake.
-                    </p>
-                  </div>
-                )}
+                <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {showGenerate && (
+                    <div className="w-full">
+                      <button
+                        type="button"
+                        disabled={
+                          !!generatingUrl ||
+                          !!applyingUrl ||
+                          pipeline?.status === "pending" ||
+                          pipeline?.status === "running"
+                        }
+                        onClick={() => {
+                          if (cannotApply) return;
+                          detail.job.url && handleGenerate(detail.job.url!);
+                        }}
+                        className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 text-sm font-medium text-white bg-accent border-0 rounded-lg cursor-pointer hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                      >
+                        {generatingUrl === detail.job.url ? (
+                          <Loader2
+                            className="w-4 h-4 animate-spin"
+                            aria-hidden
+                          />
+                        ) : (
+                          <FileText className="w-4 h-4" aria-hidden />
+                        )}
+                        {generatingUrl === detail.job.url
+                          ? "Generating…"
+                          : pipeline?.status === "pending" ||
+                              pipeline?.status === "running"
+                            ? "Processing…"
+                            : "Generate resume and other documents"}
+                      </button>
+                      <p className="text-xs text-text-muted mt-1.5">
+                        Creates a tailored resume and cover letter for this job
+                        and saves them. You can leave and come back later to
+                        review and apply.
+                      </p>
+                    </div>
+                  )}
+                  {showApply && (
+                    <div className="w-full ">
+                      <button
+                        type="button"
+                        disabled={
+                          !!applyingUrl ||
+                          !!generatingUrl ||
+                          pipeline?.status === "pending" ||
+                          pipeline?.status === "running"
+                        }
+                        onClick={() => {
+                          if (cannotApply) return;
+                          detail.job.url && handleApply(detail.job.url!);
+                        }}
+                        className="inline-flex items-center gap-2 w-full justify-center px-4 py-2.5 text-sm font-medium text-white bg-accent border-0 rounded-lg cursor-pointer hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                      >
+                        {applyingUrl === detail.job.url ? (
+                          <Loader2
+                            className="w-4 h-4 animate-spin"
+                            aria-hidden
+                          />
+                        ) : (
+                          <Send className="w-4 h-4" aria-hidden />
+                        )}
+                        {applyingUrl === detail.job.url
+                          ? "Starting…"
+                          : pipeline?.status === "pending" ||
+                              pipeline?.status === "running"
+                            ? "Applying…"
+                            : pipeline?.status === "failed"
+                              ? "Re-apply"
+                              : "Apply"}
+                      </button>
+                      <p className="text-xs text-text-muted mt-1.5">
+                        Uses your saved documents if you already generated them,
+                        or generates them first. Then you review and submit your
+                        application.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-              {detail.job.url && (
-                <a
-                  href={detail.job.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 mt-2 px-4 py-2 text-sm font-medium text-text-muted bg-transparent border border-border rounded-lg no-underline hover:bg-input hover:text-text focus:outline-none focus:ring-2 focus:ring-accent/20"
-                >
-                  <ExternalLink className="w-4 h-4" aria-hidden />
-                  Open on Handshake
-                </a>
-              )}
             </section>
 
             {scrapingDetail && (
@@ -409,32 +413,6 @@ export function DiscoverJobDetailPage() {
                   <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
                 </p>
               </div>
-            )}
-            {detail.job.description && (
-              <section className="mb-6">
-                <h2 className="text-sm font-semibold text-text mb-2">
-                  Description
-                </h2>
-                <div
-                  className={`text-sm text-text whitespace-pre-wrap rounded-lg p-3 bg-card border border-border overflow-y-auto ${
-                    descriptionExpanded ? "" : "max-h-48"
-                  }`}
-                >
-                  {detail.job.description.slice(
-                    0,
-                    descriptionExpanded ? undefined : 5000,
-                  )}
-                </div>
-                {detail.job.description.length > 5000 && (
-                  <button
-                    type="button"
-                    onClick={() => setDescriptionExpanded((e) => !e)}
-                    className="text-sm text-accent mt-2 hover:underline focus:outline-none focus:ring-2 focus:ring-accent/20 rounded"
-                  >
-                    {descriptionExpanded ? "Show less" : "Show more"}
-                  </button>
-                )}
-              </section>
             )}
 
             <section className="space-y-4">
@@ -565,6 +543,33 @@ export function DiscoverJobDetailPage() {
                 </div>
               )}
             </section>
+
+            {detail.job.description && (
+              <section className="mb-6">
+                <h2 className="text-sm font-semibold text-text mb-2">
+                  Description
+                </h2>
+                <div
+                  className={`text-sm text-text whitespace-pre-wrap rounded-lg p-3 bg-card border border-border overflow-y-auto ${
+                    descriptionExpanded ? "" : "max-h-48"
+                  }`}
+                >
+                  {detail.job.description.slice(
+                    0,
+                    descriptionExpanded ? undefined : 5000,
+                  )}
+                </div>
+                {detail.job.description.length > 5000 && (
+                  <button
+                    type="button"
+                    onClick={() => setDescriptionExpanded((e) => !e)}
+                    className="text-sm text-accent mt-2 hover:underline focus:outline-none focus:ring-2 focus:ring-accent/20 rounded"
+                  >
+                    {descriptionExpanded ? "Show less" : "Show more"}
+                  </button>
+                )}
+              </section>
+            )}
           </>
         ) : null}
       </main>
