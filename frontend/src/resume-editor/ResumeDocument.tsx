@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { EditableText } from "./EditableText";
 import { setResumePath } from "./utils";
+import { Sparkles } from "lucide-react";
 
 function getStr(obj: unknown, key: string): string {
   if (obj == null || typeof obj !== "object") return "";
@@ -94,6 +95,26 @@ export interface ResumeDocumentProps {
   onChange: (resume: Record<string, unknown>) => void;
   compact?: boolean;
   readOnly?: boolean;
+  selectedNode?:
+    | {
+        path: string;
+        label: string;
+        data: string;
+        type: "block" | "highlight";
+      }
+    | null
+    | undefined;
+  setSelectedNode?: (
+    node:
+      | {
+          path: string;
+          label: string;
+          data: string;
+          type: "block" | "highlight";
+        }
+      | null
+      | undefined,
+  ) => void;
 }
 
 export function ResumeDocument({
@@ -101,6 +122,8 @@ export function ResumeDocument({
   onChange,
   compact = false,
   readOnly = false,
+  selectedNode,
+  setSelectedNode,
 }: ResumeDocumentProps) {
   const onCommit = (path: string, value: string) => {
     onChange(setResumePath(resume, path, value));
@@ -138,6 +161,68 @@ export function ResumeDocument({
   const [skillLevelExpanded, setSkillLevelExpanded] = useState<Set<number>>(
     new Set(),
   );
+
+  const SectionWrapper = ({
+    path,
+    label,
+    data,
+    children,
+    type = "block",
+  }: {
+    path: string;
+    label: string;
+    data: string;
+    children: React.ReactNode;
+    type?: "block" | "highlight";
+  }) => {
+    const isSelected = selectedNode?.path === path;
+
+    const handleSelect = (e: React.MouseEvent<HTMLDivElement>) => {
+      // Prevent a highlight click from triggering a parent experience block click
+      e.stopPropagation();
+
+      if (isSelected) {
+        // Toggle off: if clicked again, reset focus to null or a general state
+        setSelectedNode?.(null);
+      } else {
+        setSelectedNode?.({ path, label, data, type });
+      }
+    };
+
+    return (
+      <div
+        onClick={handleSelect}
+        className={`relative cursor-pointer transition-all duration-300 ${type === "highlight" ? "rounded-lg" : "rounded-xl"}
+          ${type === "block" ? "p-0 border-2 mb-2" : "p-0 border"}
+          ${
+            isSelected
+              ? "border-slate-900 bg-slate-50/80 shadow-sm ring-1 ring-slate-900/10"
+              : "border-transparent hover:border-slate-200"
+          }
+        `}
+      >
+        {/* Label Badge: Only show for larger blocks, not individual highlights */}
+        {isSelected && type === "block" && (
+          <span className="absolute -top-3 left-4 z-20 bg-slate-900 text-white text-[10px] px-2 py-0.5 rounded-full uppercase tracking-widest font-bold animate-in fade-in zoom-in duration-200">
+            AI FOCUS: {label}
+          </span>
+        )}
+
+        {/* Indicator for individual highlight selection */}
+        {isSelected && type === "highlight" && (
+          <div className="absolute -left-6 top-1/2 -translate-y-1/2 z-30">
+            <div className="flex items-center justify-center w-5 h-5 bg-slate-600 text-amber-300 rounded-full shadow-lg animate-in zoom-in spin-in-90 duration-300">
+              <Sparkles size={12} fill="currentColor" />
+            </div>
+            {/* Connecting line to the text */}
+            <div className="absolute left-5 top-1/2 -translate-y-1/2 w-2 h-[2px] bg-slate-900/20" />
+          </div>
+        )}
+
+        {children}
+      </div>
+    );
+  };
 
   const showBasicsOptional =
     basicsOptionalExpanded ||
@@ -430,25 +515,50 @@ export function ResumeDocument({
             className={`flex flex-col text-gray-900 ${compact ? "gap-2" : "gap-3"}`}
           >
             <header className="text-center">
-              <h1 className="text-lg md:text-xl font-semibold text-gray-900">
-                {getStr(basics, "name") || "\u00A0"}
-              </h1>
-              {contactLine && (
-                <div className="flex flex-wrap justify-center items-baseline gap-x-0 mt-0.5 text-sm text-gray-600">
-                  {contactLine}
-                </div>
-              )}
-              <div className="mt-1.5 text-left">
-                {getStr(basics, "label") ? (
-                  <p className="text-sm font-semibold text-gray-900">
-                    {getStr(basics, "label")}
-                  </p>
-                ) : null}
-                {getStr(basics, "summary") ? (
-                  <div className="mt-0.5 text-sm">
-                    {getStr(basics, "summary")}
+              <SectionWrapper
+                path="basics.name"
+                label="Name"
+                data={getStr(basics, "name")}
+              >
+                <h1 className="text-lg md:text-xl font-semibold text-gray-900">
+                  {getStr(basics, "name") || "\u00A0"}
+                </h1>
+              </SectionWrapper>
+
+              <SectionWrapper
+                path="basics.contact"
+                label="Contact and Social Links"
+                data={contactLine?.join(", ") || ""}
+              >
+                {contactLine && (
+                  <div className="flex flex-wrap justify-center items-baseline gap-x-0 mt-0.5 text-sm text-gray-600">
+                    {contactLine}
                   </div>
-                ) : null}
+                )}
+              </SectionWrapper>
+              <div className="mt-1.5 text-left">
+                <SectionWrapper
+                  path="basics.label"
+                  label="Title / Label"
+                  data={getStr(basics, "label")}
+                >
+                  {getStr(basics, "label") ? (
+                    <p className="text-sm font-semibold text-gray-900">
+                      {getStr(basics, "label")}
+                    </p>
+                  ) : null}
+                </SectionWrapper>
+                <SectionWrapper
+                  path="basics.summary"
+                  label="Professional Summary"
+                  data={getStr(basics, "summary")}
+                >
+                  {getStr(basics, "summary") ? (
+                    <div className="mt-0.5 text-sm">
+                      {getStr(basics, "summary")}
+                    </div>
+                  ) : null}
+                </SectionWrapper>
               </div>
             </header>
             {work.length > 0 && (
@@ -463,36 +573,51 @@ export function ResumeDocument({
                   );
                   const hasMeta = loc || start || end;
                   return (
-                    <div key={i} className={compact ? "mb-2" : "mb-3"}>
-                      <p className="text-sm">
-                        <DisplayText
-                          value={getStr(entry, "position")}
-                          className="text-gray-700"
-                        />
-                        {getStr(entry, "position") && getStr(entry, "name")
-                          ? sepP()
-                          : null}
-                        <DisplayText
-                          value={getStr(entry, "name")}
-                          className="font-semibold"
-                        />
-                        {hasMeta ? sepP() : null}
-                        <DisplayText value={loc} className="text-gray-500" />
-                        {loc && (start || end) ? sepP() : null}
-                        <span className="text-gray-500">
-                          {start}
-                          {start && end ? " – " : ""}
-                          {end}
-                        </span>
-                      </p>
-                      {highlights.length > 0 && (
-                        <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2 space-y-0.5">
-                          {highlights.map((h, j) => (
-                            <li key={j}>{h}</li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
+                    <SectionWrapper
+                      key={i}
+                      path={`work.[${i}]`}
+                      label={`Experience: ${getStr(entry, "name").slice(0, 10)}...`}
+                      data={JSON.stringify(entry)}
+                    >
+                      <div className={compact ? "mb-2" : "mb-3"}>
+                        <p className="text-sm">
+                          <DisplayText
+                            value={getStr(entry, "position")}
+                            className="text-gray-700"
+                          />
+                          {getStr(entry, "position") && getStr(entry, "name")
+                            ? sepP()
+                            : null}
+                          <DisplayText
+                            value={getStr(entry, "name")}
+                            className="font-semibold"
+                          />
+                          {hasMeta ? sepP() : null}
+                          <DisplayText value={loc} className="text-gray-500" />
+                          {loc && (start || end) ? sepP() : null}
+                          <span className="text-gray-500">
+                            {start}
+                            {start && end ? " – " : ""}
+                            {end}
+                          </span>
+                        </p>
+                        {highlights.length > 0 && (
+                          <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2 space-y-0.5">
+                            {highlights.map((h, j) => (
+                              <SectionWrapper
+                                key={j}
+                                path={`work[${i}].highlights[${j}]`}
+                                label="Specific Achievement"
+                                data={h}
+                                type="highlight"
+                              >
+                                <li>{h}</li>
+                              </SectionWrapper>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </SectionWrapper>
                   );
                 })}
               </section>
@@ -501,39 +626,54 @@ export function ResumeDocument({
               <section className="resume-section">
                 <h2 className={sectionHeading}>Volunteer</h2>
                 {volunteer.map((entry, i) => (
-                  <div key={i} className={compact ? "mb-2" : "mb-3"}>
-                    <p className="text-sm">
-                      <DisplayText
-                        value={getStr(entry, "position")}
-                        className="text-gray-700"
-                      />
-                      {getStr(entry, "position") &&
-                      getStr(entry, "organization")
-                        ? sepP()
-                        : null}
-                      <DisplayText
-                        value={getStr(entry, "organization")}
-                        className="font-semibold"
-                      />
-                    </p>
-                    <p className="text-gray-500 text-sm mt-0.5">
-                      {getStr(entry, "startDate")}
-                      {getStr(entry, "startDate") && getStr(entry, "endDate")
-                        ? " – "
-                        : ""}
-                      {getStr(entry, "endDate")}
-                    </p>
-                    {getArr<string>(entry, "highlights").filter(Boolean)
-                      .length > 0 && (
-                      <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2">
-                        {getArr<string>(entry, "highlights")
-                          .filter(Boolean)
-                          .map((h, j) => (
-                            <li key={j}>{h}</li>
-                          ))}
-                      </ul>
-                    )}
-                  </div>
+                  <SectionWrapper
+                    key={i}
+                    path={`volunteer.[${i}]`}
+                    label={`Volunteer: ${getStr(entry, "organization").slice(0, 10)}...`}
+                    data={JSON.stringify(entry)}
+                  >
+                    <div className={compact ? "mb-2" : "mb-3"}>
+                      <p className="text-sm">
+                        <DisplayText
+                          value={getStr(entry, "position")}
+                          className="text-gray-700"
+                        />
+                        {getStr(entry, "position") &&
+                        getStr(entry, "organization")
+                          ? sepP()
+                          : null}
+                        <DisplayText
+                          value={getStr(entry, "organization")}
+                          className="font-semibold"
+                        />
+                      </p>
+                      <p className="text-gray-500 text-sm mt-0.5">
+                        {getStr(entry, "startDate")}
+                        {getStr(entry, "startDate") && getStr(entry, "endDate")
+                          ? " – "
+                          : ""}
+                        {getStr(entry, "endDate")}
+                      </p>
+                      {getArr<string>(entry, "highlights").filter(Boolean)
+                        .length > 0 && (
+                        <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2">
+                          {getArr<string>(entry, "highlights")
+                            .filter(Boolean)
+                            .map((h, j) => (
+                              <SectionWrapper
+                                key={j}
+                                path={`volunteer[${i}].highlights[${j}]`}
+                                label="Volunteer Highlight"
+                                data={h}
+                                type="highlight"
+                              >
+                                <li key={j}>{h}</li>
+                              </SectionWrapper>
+                            ))}
+                        </ul>
+                      )}
+                    </div>
+                  </SectionWrapper>
                 ))}
               </section>
             )}
@@ -541,27 +681,33 @@ export function ResumeDocument({
               <section className="resume-section">
                 <h2 className={sectionHeading}>Education</h2>
                 {education.map((entry, i) => (
-                  <div key={i} className={compact ? "mb-2" : "mb-3"}>
-                    <p className="font-semibold text-sm">
-                      <DisplayText value={getStr(entry, "institution")} />
-                    </p>
-                    <p className="text-gray-600 text-sm mt-0.5">
-                      <DisplayText value={getStr(entry, "studyType")} />
-                      {getStr(entry, "studyType") && getStr(entry, "area")
-                        ? ", "
-                        : null}
-                      <DisplayText value={getStr(entry, "area")} />
-                      {getStr(entry, "area") &&
-                      (getStr(entry, "startDate") || getStr(entry, "endDate"))
-                        ? " · "
-                        : null}
-                      {getStr(entry, "startDate")}
-                      {getStr(entry, "startDate") && getStr(entry, "endDate")
-                        ? " – "
-                        : ""}
-                      {getStr(entry, "endDate")}
-                    </p>
-                  </div>
+                  <SectionWrapper
+                    path={`education.[${i}]`}
+                    label={`Education: ${getStr(entry, "institution").slice(0, 10)}...`}
+                    data={JSON.stringify(entry)}
+                  >
+                    <div key={i} className={compact ? "mb-2" : "mb-3"}>
+                      <p className="font-semibold text-sm">
+                        <DisplayText value={getStr(entry, "institution")} />
+                      </p>
+                      <p className="text-gray-600 text-sm mt-0.5">
+                        <DisplayText value={getStr(entry, "studyType")} />
+                        {getStr(entry, "studyType") && getStr(entry, "area")
+                          ? ", "
+                          : null}
+                        <DisplayText value={getStr(entry, "area")} />
+                        {getStr(entry, "area") &&
+                        (getStr(entry, "startDate") || getStr(entry, "endDate"))
+                          ? " · "
+                          : null}
+                        {getStr(entry, "startDate")}
+                        {getStr(entry, "startDate") && getStr(entry, "endDate")
+                          ? " – "
+                          : ""}
+                        {getStr(entry, "endDate")}
+                      </p>
+                    </div>
+                  </SectionWrapper>
                 ))}
               </section>
             )}
@@ -569,21 +715,36 @@ export function ResumeDocument({
               <section className="resume-section">
                 <h2 className={sectionHeading}>Projects</h2>
                 {projects.map((entry, i) => (
-                  <div key={i} className={compact ? "mb-2" : "mb-3"}>
-                    <p className="font-semibold text-sm">
-                      <DisplayText value={getStr(entry, "name")} />
-                    </p>
-                    {getArr<string>(entry, "highlights").filter(Boolean)
-                      .length > 0 && (
-                      <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2">
-                        {getArr<string>(entry, "highlights")
-                          .filter(Boolean)
-                          .map((h, j) => (
-                            <li key={j}>{h}</li>
-                          ))}
-                      </ul>
-                    )}
-                  </div>
+                  <SectionWrapper
+                    key={i}
+                    path={`projects.[${i}]`}
+                    label={`Project: ${getStr(entry, "name").slice(0, 10)}...`}
+                    data={JSON.stringify(entry)}
+                  >
+                    <div key={i} className={compact ? "mb-2" : "mb-3"}>
+                      <p className="font-semibold text-sm">
+                        <DisplayText value={getStr(entry, "name")} />
+                      </p>
+                      {getArr<string>(entry, "highlights").filter(Boolean)
+                        .length > 0 && (
+                        <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2">
+                          {getArr<string>(entry, "highlights")
+                            .filter(Boolean)
+                            .map((h, j) => (
+                              <SectionWrapper
+                                key={j}
+                                path={`projects[${i}].highlights[${j}]`}
+                                label="Project Highlight"
+                                data={h}
+                                type="highlight"
+                              >
+                                <li>{h}</li>
+                              </SectionWrapper>
+                            ))}
+                        </ul>
+                      )}
+                    </div>
+                  </SectionWrapper>
                 ))}
               </section>
             )}
@@ -595,25 +756,39 @@ export function ResumeDocument({
                   const kwStr = kws.join(", ");
                   if (compact) {
                     return (
-                      <div key={i} className="mb-1.5 text-sm">
-                        <DisplayText
-                          value={getStr(entry, "name")}
-                          className="font-semibold"
-                        />
-                        {getStr(entry, "name") && kwStr ? ": " : null}
-                        {kwStr || null}
-                      </div>
+                      <SectionWrapper
+                        key={i}
+                        path={`skills.[${i}]`}
+                        label={`Skill: ${getStr(entry, "name").slice(0, 10)}...`}
+                        data={JSON.stringify(entry)}
+                      >
+                        <div className="mb-1.5 text-sm">
+                          <DisplayText
+                            value={getStr(entry, "name")}
+                            className="font-semibold"
+                          />
+                          {getStr(entry, "name") && kwStr ? ": " : null}
+                          {kwStr || null}
+                        </div>
+                      </SectionWrapper>
                     );
                   }
                   return (
-                    <div key={i} className="mb-3">
-                      <p className="font-semibold text-sm">
-                        <DisplayText value={getStr(entry, "name")} />
-                      </p>
-                      <p className="text-gray-700 text-sm mt-0.5">
-                        {kwStr || "\u00A0"}
-                      </p>
-                    </div>
+                    <SectionWrapper
+                      key={i}
+                      path={`skills.[${i}]`}
+                      label={`Skill: ${getStr(entry, "name").slice(0, 10)}...`}
+                      data={JSON.stringify(entry)}
+                    >
+                      <div className="mb-3">
+                        <p className="font-semibold text-sm">
+                          <DisplayText value={getStr(entry, "name")} />
+                        </p>
+                        <p className="text-gray-700 text-sm mt-0.5">
+                          {kwStr || "\u00A0"}
+                        </p>
+                      </div>
+                    </SectionWrapper>
                   );
                 })}
               </section>
@@ -622,13 +797,17 @@ export function ResumeDocument({
               <section className="resume-section">
                 <h2 className={sectionHeading}>Languages</h2>
                 {languages.map((entry, i) => (
-                  <div
+                  <SectionWrapper
                     key={i}
-                    className={`${compact ? "mb-1.5" : "mb-3"} text-sm`}
+                    path={`languages.[${i}]`}
+                    label={`Language: ${getStr(entry, "language").slice(0, 10)}...`}
+                    data={JSON.stringify(entry)}
                   >
-                    <DisplayText value={getStr(entry, "language")} /> —{" "}
-                    <DisplayText value={getStr(entry, "fluency")} />
-                  </div>
+                    <div className={`${compact ? "mb-1.5" : "mb-3"} text-sm`}>
+                      <DisplayText value={getStr(entry, "language")} /> —{" "}
+                      <DisplayText value={getStr(entry, "fluency")} />
+                    </div>
+                  </SectionWrapper>
                 ))}
               </section>
             )}
@@ -636,23 +815,27 @@ export function ResumeDocument({
               <section className="resume-section">
                 <h2 className={sectionHeading}>Certificates</h2>
                 {certificates.map((entry, i) => (
-                  <div
+                  <SectionWrapper
                     key={i}
-                    className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}
+                    path={`certificates.[${i}]`}
+                    label={`Certificate: ${getStr(entry, "name").slice(0, 10)}...`}
+                    data={JSON.stringify(entry)}
                   >
-                    <DisplayText
-                      value={getStr(entry, "name")}
-                      className="font-semibold"
-                    />
-                    {getStr(entry, "name") && getStr(entry, "issuer")
-                      ? " – "
-                      : null}
-                    <DisplayText value={getStr(entry, "issuer")} />
-                    {getStr(entry, "issuer") && getStr(entry, "date")
-                      ? ", "
-                      : null}
-                    <DisplayText value={getStr(entry, "date")} />
-                  </div>
+                    <div className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}>
+                      <DisplayText
+                        value={getStr(entry, "name")}
+                        className="font-semibold"
+                      />
+                      {getStr(entry, "name") && getStr(entry, "issuer")
+                        ? " – "
+                        : null}
+                      <DisplayText value={getStr(entry, "issuer")} />
+                      {getStr(entry, "issuer") && getStr(entry, "date")
+                        ? ", "
+                        : null}
+                      <DisplayText value={getStr(entry, "date")} />
+                    </div>
+                  </SectionWrapper>
                 ))}
               </section>
             )}
@@ -660,28 +843,32 @@ export function ResumeDocument({
               <section className="resume-section">
                 <h2 className={sectionHeading}>Awards</h2>
                 {awards.map((entry, i) => (
-                  <div
+                  <SectionWrapper
                     key={i}
-                    className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}
+                    path={`awards.[${i}]`}
+                    label={`Award: ${getStr(entry, "title").slice(0, 10)}...`}
+                    data={JSON.stringify(entry)}
                   >
-                    <DisplayText
-                      value={getStr(entry, "title")}
-                      className="font-semibold"
-                    />
-                    {getStr(entry, "title") && getStr(entry, "awarder")
-                      ? " – "
-                      : null}
-                    <DisplayText value={getStr(entry, "awarder")} />
-                    {getStr(entry, "awarder") && getStr(entry, "date")
-                      ? ", "
-                      : null}
-                    <DisplayText value={getStr(entry, "date")} />
-                    {getStr(entry, "summary") ? (
-                      <p className="text-gray-700 mt-0.5">
-                        {getStr(entry, "summary")}
-                      </p>
-                    ) : null}
-                  </div>
+                    <div className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}>
+                      <DisplayText
+                        value={getStr(entry, "title")}
+                        className="font-semibold"
+                      />
+                      {getStr(entry, "title") && getStr(entry, "awarder")
+                        ? " – "
+                        : null}
+                      <DisplayText value={getStr(entry, "awarder")} />
+                      {getStr(entry, "awarder") && getStr(entry, "date")
+                        ? ", "
+                        : null}
+                      <DisplayText value={getStr(entry, "date")} />
+                      {getStr(entry, "summary") ? (
+                        <p className="text-gray-700 mt-0.5">
+                          {getStr(entry, "summary")}
+                        </p>
+                      ) : null}
+                    </div>
+                  </SectionWrapper>
                 ))}
               </section>
             )}
@@ -689,28 +876,33 @@ export function ResumeDocument({
               <section className="resume-section">
                 <h2 className={sectionHeading}>Publications</h2>
                 {publications.map((entry, i) => (
-                  <div
+                  <SectionWrapper
                     key={i}
-                    className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}
+                    path={`publications.[${i}]`}
+                    label={`Publication: ${getStr(entry, "name").slice(0, 10)}...`}
+                    data={JSON.stringify(entry)}
                   >
-                    <DisplayText
-                      value={getStr(entry, "name")}
-                      className="font-semibold"
-                    />
-                    {getStr(entry, "name") && getStr(entry, "publisher")
-                      ? " – "
-                      : null}
-                    <DisplayText value={getStr(entry, "publisher")} />
-                    {getStr(entry, "publisher") && getStr(entry, "releaseDate")
-                      ? ", "
-                      : null}
-                    <DisplayText value={getStr(entry, "releaseDate")} />
-                    {getStr(entry, "summary") ? (
-                      <p className="text-gray-700 mt-0.5">
-                        {getStr(entry, "summary")}
-                      </p>
-                    ) : null}
-                  </div>
+                    <div className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}>
+                      <DisplayText
+                        value={getStr(entry, "name")}
+                        className="font-semibold"
+                      />
+                      {getStr(entry, "name") && getStr(entry, "publisher")
+                        ? " – "
+                        : null}
+                      <DisplayText value={getStr(entry, "publisher")} />
+                      {getStr(entry, "publisher") &&
+                      getStr(entry, "releaseDate")
+                        ? ", "
+                        : null}
+                      <DisplayText value={getStr(entry, "releaseDate")} />
+                      {getStr(entry, "summary") ? (
+                        <p className="text-gray-700 mt-0.5">
+                          {getStr(entry, "summary")}
+                        </p>
+                      ) : null}
+                    </div>
+                  </SectionWrapper>
                 ))}
               </section>
             )}
@@ -722,17 +914,21 @@ export function ResumeDocument({
                     .filter(Boolean)
                     .join(", ");
                   return (
-                    <div
+                    <SectionWrapper
                       key={i}
-                      className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}
+                      path={`interests.[${i}]`}
+                      label={`Interest: ${getStr(entry, "name").slice(0, 10)}...`}
+                      data={JSON.stringify(entry)}
                     >
-                      <DisplayText
-                        value={getStr(entry, "name")}
-                        className="font-semibold"
-                      />
-                      {getStr(entry, "name") && kw ? ": " : null}
-                      {kw || null}
-                    </div>
+                      <div className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}>
+                        <DisplayText
+                          value={getStr(entry, "name")}
+                          className="font-semibold"
+                        />
+                        {getStr(entry, "name") && kw ? ": " : null}
+                        {kw || null}
+                      </div>
+                    </SectionWrapper>
                   );
                 })}
               </section>
@@ -741,16 +937,23 @@ export function ResumeDocument({
               <section className="resume-section">
                 <h2 className={sectionHeading}>References</h2>
                 {references.map((entry, i) => (
-                  <div key={i} className={compact ? "mb-1.5" : "mb-3"}>
-                    <p className="font-semibold text-sm">
-                      <DisplayText value={getStr(entry, "name")} />
-                    </p>
-                    {getStr(entry, "reference") ? (
-                      <p className="text-sm text-gray-700 mt-0.5">
-                        {getStr(entry, "reference")}
+                  <SectionWrapper
+                    key={i}
+                    path={`references.[${i}]`}
+                    label={`Reference: ${getStr(entry, "name").slice(0, 10)}...`}
+                    data={JSON.stringify(entry)}
+                  >
+                    <div className={compact ? "mb-1.5" : "mb-3"}>
+                      <p className="font-semibold text-sm">
+                        <DisplayText value={getStr(entry, "name")} />
                       </p>
-                    ) : null}
-                  </div>
+                      {getStr(entry, "reference") ? (
+                        <p className="text-sm text-gray-700 mt-0.5">
+                          {getStr(entry, "reference")}
+                        </p>
+                      ) : null}
+                    </div>
+                  </SectionWrapper>
                 ))}
               </section>
             )}

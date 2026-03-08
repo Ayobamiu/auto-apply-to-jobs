@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import initialResume from "../sample-resume.json";
 import { ResumeDocument } from "./ResumeDocument";
 import { Check, Send, Sparkles, XIcon } from "lucide-react";
@@ -39,7 +39,12 @@ export function ResumeEditorApp() {
 
   const handleGenerate = async () => {
     setIsGenerating(true);
-
+    const prompt = `
+    Context: User is editing their "${selectedNode?.label}" section.
+    Input Data: ${JSON.stringify(selectedNode?.data)}
+    Task: ${aiInput}
+    Output: Return a JSON object matching the schema for this section only.
+  `;
     // Simulate API Call
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
@@ -50,6 +55,25 @@ export function ResumeEditorApp() {
     setTimeout(() => setIsSuccess(false), 2000);
   };
 
+  // state to track what the AI is focusing on
+  const [selectedNode, setSelectedNode] = useState<
+    | {
+        path: string;
+        label: string;
+        data: string;
+        type: "block" | "highlight";
+      }
+    | null
+    | undefined
+  >(undefined);
+  console.log("selectedNode", selectedNode);
+
+  useEffect(() => {
+    if (selectedNode && selectedNode.type === "highlight") {
+      setAiOpen(true); // Automatically open the AI drawer when a bullet is clicked
+    }
+  }, [selectedNode]);
+
   return (
     <div className="min-h-screen bg-white text-gray-900 flex flex-col">
       <div className="flex-1 overflow-auto px-4 py-4 md:max-w-3xl md:mx-auto md:px-6 md:py-5 w-full">
@@ -58,6 +82,8 @@ export function ResumeEditorApp() {
           onChange={handleChange}
           compact={mode === "preview"}
           readOnly={mode === "preview"}
+          selectedNode={selectedNode}
+          setSelectedNode={setSelectedNode}
         />
       </div>
       {/* Floating buttons — bottom-right */}
@@ -154,12 +180,15 @@ export function ResumeEditorApp() {
           )}
         </button>
       </div>
-      {/* AI Assistant */}
+
       {/* AI Assistant Button */}
       <div className="no-print fixed bottom-6 lg:left-1/2 left-6 lg:-translate-x-1/2 z-50">
         {!aiOpen && (
           <button
-            onClick={() => setAiOpen(true)}
+            onClick={() => {
+              setAiOpen(true);
+              setMode("preview");
+            }}
             className="group relative h-14 px-8 flex items-center gap-3 rounded-full 
                bg-[#0f172a] text-white overflow-hidden transition-all duration-300
                hover:ring-2 hover:ring-slate-400 hover:ring-offset-2 hover:ring-offset-white"
@@ -253,7 +282,13 @@ export function ResumeEditorApp() {
                     </>
                   ) : (
                     <>
-                      <span>Generate</span>
+                      {selectedNode ? (
+                        <span>
+                          Improve "{selectedNode.label.slice(0, 10)}..."
+                        </span>
+                      ) : (
+                        <span>Generate</span>
+                      )}
                       <Send
                         size={16}
                         className="opacity-70 group-hover:translate-x-1 transition-transform"
