@@ -2,32 +2,13 @@ import { useState, useCallback, useEffect } from "react";
 import initialResume from "../sample-resume.json";
 import { ResumeDocument } from "./ResumeDocument";
 import { Check, Send, Sparkles, XIcon } from "lucide-react";
+import { useAiEditor } from "../hooks/useAiEditor";
+import { ReviewBar } from "../components/ReviewBar";
+import { pathToReviewLabel } from "./utils";
 
 const STORAGE_KEY = "auto-apply-resume-editor-draft";
 
-function loadResumeFromStorage(): Record<string, unknown> {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return initialResume as Record<string, unknown>;
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object"
-      ? parsed
-      : (initialResume as Record<string, unknown>);
-  } catch {
-    return initialResume as Record<string, unknown>;
-  }
-}
-
 export function ResumeEditorApp() {
-  const [resume, setResume] = useState<Record<string, unknown>>(
-    loadResumeFromStorage,
-  );
-  const [mode, setMode] = useState<"edit" | "preview">("preview");
-  const [aiOpen, setAiOpen] = useState(false);
-  const [aiInput, setAiInput] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-
   const handleChange = useCallback((next: Record<string, unknown>) => {
     setResume(next);
     try {
@@ -37,24 +18,164 @@ export function ResumeEditorApp() {
     }
   }, []);
 
+  const {
+    resume,
+    proposedChange,
+    handleAiUpdate,
+    setResume,
+    commitChange,
+    discardChange,
+  } = useAiEditor(initialResume, handleChange);
+
+  const [mode, setMode] = useState<"edit" | "preview">("preview");
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiInput, setAiInput] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+
   const handleGenerate = async () => {
+    if (!aiInput && !selectedNode) return;
+
     setIsGenerating(true);
-    const prompt = `
-    Context: User is editing their "${selectedNode?.label}" section.
-    Input Data: ${JSON.stringify(selectedNode?.data)}
-    Task: ${aiInput}
-    Output: Return a JSON object matching the schema for this section only.
-  `;
-    // Simulate API Call
+
+    // 1. Simulate API Latency
     await new Promise((resolve) => setTimeout(resolve, 2000));
+    const responses = {
+      // 1. UPDATE: Leaf node (Specific bullet point)
+      response1: {
+        results: [
+          {
+            path: "work[0].highlights[0]",
+            action: "update",
+            proposed:
+              "Architected patient-facing eligibility verification flows in React/Node.js, automating manual checks to reduce clinic workload by 40%. Updated the highlights to include the new feature.",
+          },
+        ],
+      },
+
+      // 2. UPDATE: String field (Summary)
+      response2: {
+        results: [
+          {
+            path: "basics.summary",
+            action: "update",
+            proposed:
+              "Software Engineer focused on healthcare innovation. Skilled in building scalable full-stack systems, AI-driven document parsing, and clinical workflow automation with a focus on real-world impact.",
+          },
+        ],
+      },
+
+      // 3. UPDATE: Full Object (Core Extract role)
+      response3: {
+        results: [
+          {
+            path: "work[1]",
+            action: "update",
+            proposed: {
+              name: "Core Extract",
+              position: "Lead Software Engineer",
+              startDate: "2025-09-01",
+              highlights: [
+                "Spearheaded a multi-stage document parsing system using Python, Rust, and ML to structure medical data.",
+                "Increased OCR accuracy by 25% by integrating layout models and domain-specific validation pipelines.",
+                "Mentored junior developers on Rust integration and performance optimization.",
+              ],
+            },
+          },
+        ],
+      },
+
+      // 4. UPDATE: Array Object (Skills category)
+      response4: {
+        results: [
+          {
+            path: "skills[0]",
+            action: "update",
+            proposed: {
+              name: "Full-Stack Development",
+              keywords: [
+                "TypeScript",
+                "Node.js",
+                "React",
+                "Python",
+                "Rust",
+                "PostgreSQL",
+                "GraphQL",
+                "Docker",
+                "Tailwind CSS",
+                "shadcn UI",
+                "SWR",
+                "Zustand",
+              ],
+            },
+          },
+        ],
+      },
+
+      // 5. INSERT: Brand New Section (Volunteer)
+      // Use this to test if your UI renders the "Volunteer" header when it was previously empty
+      response5: {
+        results: [
+          {
+            path: "volunteer[3]",
+            action: "insert",
+            proposed: {
+              organization: "Acme Inc",
+              position: "Volunteer Software Engineer",
+              url: "https://acme.org",
+              startDate: "2026-02-01",
+              summary:
+                "Contributed to open-source healthcare tooling and community outreach.",
+              highlights: [
+                "Developed a community portal using Next.js",
+                "Assisted in data migration for local non-profits",
+              ],
+            },
+          },
+        ],
+      },
+
+      // 6. INSERT: Adding to an existing list (Project)
+      // Tests if your push logic adds to the end of the array correctly
+      response6: {
+        results: [
+          {
+            path: "projects[3]", // If projects[] is empty, this is the first
+            action: "insert",
+            proposed: {
+              name: "AI Resume Parser",
+              description:
+                "A high-performance tool built with Rust to structure unstructured PDF data.",
+              highlights: [
+                "Implemented custom OCR pipeline",
+                "Reduced parsing latency by 60%",
+              ],
+              keywords: ["Rust", "Wasm", "AI"],
+              startDate: "2026-01-01",
+            },
+          },
+        ],
+      },
+    };
+
+    let mockResponse = responses.response6;
+    // if (selectedNode?.path === "basics.summary") {
+    //   mockResponse = responses.response2; // Summary rewrite
+    // } else if (selectedNode?.path.includes("highlights")) {
+    //   mockResponse = responses.response1; // Specific bullet point
+    // } else if (selectedNode?.path === "work[1]") {
+    //   mockResponse = responses.response3; // Whole job update
+    // } else {
+    //   mockResponse = responses.response4; // Default to skills
+    // }
+
+    // 3. Trigger the Aura Flow
+    // This calls the AJV validation and sets the proposedChange state
+    await handleAiUpdate(mockResponse);
 
     setIsGenerating(false);
-    setIsSuccess(true);
-
-    // Revert back to "Generate" after 2 seconds
-    setTimeout(() => setIsSuccess(false), 2000);
+    setAiOpen(false); // Close the command box to show the diff
   };
-
   // state to track what the AI is focusing on
   const [selectedNode, setSelectedNode] = useState<
     | {
@@ -76,7 +197,9 @@ export function ResumeEditorApp() {
 
   return (
     <div className="min-h-screen bg-white text-gray-900 flex flex-col">
-      <div className="flex-1 overflow-auto px-4 py-4 md:max-w-3xl md:mx-auto md:px-6 md:py-5 w-full">
+      <div
+        className={`flex-1 overflow-auto px-4 py-4 md:max-w-3xl md:mx-auto md:px-6 md:py-5 w-full ${proposedChange ? "pb-24" : ""}`}
+      >
         <ResumeDocument
           resume={resume}
           onChange={handleChange}
@@ -84,7 +207,15 @@ export function ResumeEditorApp() {
           readOnly={mode === "preview"}
           selectedNode={selectedNode}
           setSelectedNode={setSelectedNode}
+          proposedChange={proposedChange}
         />
+        {proposedChange && (
+          <ReviewBar
+            onAccept={commitChange}
+            onDiscard={discardChange}
+            sectionLabel={pathToReviewLabel(proposedChange.path)}
+          />
+        )}
       </div>
       {/* Floating buttons — bottom-right */}
       <div className="no-print fixed bottom-6 right-6 z-10 flex items-center gap-3">
@@ -181,8 +312,10 @@ export function ResumeEditorApp() {
         </button>
       </div>
 
-      {/* AI Assistant Button */}
-      <div className="no-print fixed bottom-6 lg:left-1/2 left-6 lg:-translate-x-1/2 z-50">
+      {/* AI Assistant Button — moves up when ReviewBar is visible */}
+      <div
+        className={`no-print fixed lg:left-1/2 left-6 lg:-translate-x-1/2 z-40 transition-[bottom] duration-200 ${proposedChange ? "bottom-24" : "bottom-6"}`}
+      >
         {!aiOpen && (
           <button
             onClick={() => {

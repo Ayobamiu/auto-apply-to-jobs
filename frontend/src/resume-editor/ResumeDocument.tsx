@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { EditableText } from "./EditableText";
-import { setResumePath } from "./utils";
+import { setResumePath, getProposedValueForPath, normalizePath } from "./utils";
 import { Sparkles } from "lucide-react";
+import { DiffView } from "../components/DiffView";
 
 function getStr(obj: unknown, key: string): string {
   if (obj == null || typeof obj !== "object") return "";
@@ -115,6 +116,7 @@ export interface ResumeDocumentProps {
       | null
       | undefined,
   ) => void;
+  proposedChange?: any;
 }
 
 export function ResumeDocument({
@@ -124,6 +126,7 @@ export function ResumeDocument({
   readOnly = false,
   selectedNode,
   setSelectedNode,
+  proposedChange, // From useAiEditor hook
 }: ResumeDocumentProps) {
   const onCommit = (path: string, value: string) => {
     onChange(setResumePath(resume, path, value));
@@ -176,6 +179,9 @@ export function ResumeDocument({
     type?: "block" | "highlight";
   }) => {
     const isSelected = selectedNode?.path === path;
+    const isBlockLevelProposed =
+      proposedChange != null &&
+      normalizePath(proposedChange.path) === normalizePath(path);
 
     const handleSelect = (e: React.MouseEvent<HTMLDivElement>) => {
       // Prevent a highlight click from triggering a parent experience block click
@@ -193,17 +199,18 @@ export function ResumeDocument({
       <div
         onClick={handleSelect}
         className={`relative cursor-pointer transition-all duration-300 ${type === "highlight" ? "rounded-lg" : "rounded-xl"}
-          ${type === "block" ? "p-0 border-2 mb-2" : "p-0 border"}
+          ${type === "block" ? "p-0 border-2" : "p-0 border"}
           ${
             isSelected
               ? "border-slate-900 bg-slate-50/80 shadow-sm ring-1 ring-slate-900/10"
               : "border-transparent hover:border-slate-200"
           }
+          ${isBlockLevelProposed ? "ring-2 ring-emerald-400/80 bg-emerald-50/30 shadow-[0_0_0_1px_rgba(52,211,153,0.3)]" : ""}
         `}
       >
         {/* Label Badge: Only show for larger blocks, not individual highlights */}
         {isSelected && type === "block" && (
-          <span className="absolute -top-3 left-4 z-20 bg-slate-900 text-white text-[10px] px-2 py-0.5 rounded-full uppercase tracking-widest font-bold animate-in fade-in zoom-in duration-200">
+          <span className="absolute -top-3 left-4 z-20 bg-slate-900 text-white text-[10px]  py-0.5 rounded-full uppercase tracking-widest font-bold animate-in fade-in zoom-in duration-200">
             AI FOCUS: {label}
           </span>
         )}
@@ -224,6 +231,28 @@ export function ResumeDocument({
     );
   };
 
+  /** Renders a field with optional diff when this path (or a parent) has a proposed change. Supports recursive drill: if proposedChange is at work[1], work[1].position gets proposed from proposedChange.proposed.position. */
+  const renderField = (path: string, defaultValue: string) => {
+    const match = getProposedValueForPath(path, proposedChange ?? null);
+    if (!match) return <span>{defaultValue}</span>;
+
+    const { proposed, isExact } = match;
+    // Only show word-level diff for string leaves; block-level (object/array) is handled by section aura
+    if (typeof proposed !== "string") return <span>{defaultValue}</span>;
+
+    const showAura = isExact;
+    return (
+      <span className="relative inline">
+        {showAura && (
+          <span
+            className="absolute -inset-1 bg-emerald-50/60 border border-emerald-200 border-dashed rounded -z-10"
+            aria-hidden
+          />
+        )}
+        <DiffView original={defaultValue} proposed={proposed} />
+      </span>
+    );
+  };
   const showBasicsOptional =
     basicsOptionalExpanded ||
     hasAnyOptionalBasicsContent(basics, location, profiles);
@@ -507,7 +536,7 @@ export function ResumeDocument({
             [],
           )
         : null;
-
+    const summary = getStr(getObj(resume, "basics"), "summary");
     return (
       <div className="flex justify-center">
         <div className="resume-page ">
@@ -553,9 +582,9 @@ export function ResumeDocument({
                   label="Professional Summary"
                   data={getStr(basics, "summary")}
                 >
-                  {getStr(basics, "summary") ? (
+                  {renderField("basics.summary", summary) ? (
                     <div className="mt-0.5 text-sm">
-                      {getStr(basics, "summary")}
+                      {renderField("basics.summary", summary)}
                     </div>
                   ) : null}
                 </SectionWrapper>
@@ -575,47 +604,105 @@ export function ResumeDocument({
                   return (
                     <SectionWrapper
                       key={i}
-                      path={`work.[${i}]`}
+                      path={`work[${i}]`}
                       label={`Experience: ${getStr(entry, "name").slice(0, 10)}...`}
                       data={JSON.stringify(entry)}
                     >
                       <div className={compact ? "mb-2" : "mb-3"}>
                         <p className="text-sm">
-                          <DisplayText
-                            value={getStr(entry, "position")}
-                            className="text-gray-700"
-                          />
+                          <span className="text-gray-700">
+                            {renderField(
+                              `work[${i}].position`,
+                              getStr(entry, "position"),
+                            )}
+                          </span>
                           {getStr(entry, "position") && getStr(entry, "name")
                             ? sepP()
                             : null}
-                          <DisplayText
-                            value={getStr(entry, "name")}
-                            className="font-semibold"
-                          />
+                          <span className="font-semibold">
+                            {renderField(
+                              `work[${i}].name`,
+                              getStr(entry, "name"),
+                            )}
+                          </span>
                           {hasMeta ? sepP() : null}
-                          <DisplayText value={loc} className="text-gray-500" />
+                          <span className="text-gray-500">
+                            {renderField(`work[${i}].location`, loc)}
+                          </span>
                           {loc && (start || end) ? sepP() : null}
                           <span className="text-gray-500">
-                            {start}
+                            {renderField(`work[${i}].startDate`, start)}
                             {start && end ? " – " : ""}
-                            {end}
+                            {renderField(`work[${i}].endDate`, end)}
                           </span>
                         </p>
-                        {highlights.length > 0 && (
-                          <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2 space-y-0.5">
-                            {highlights.map((h, j) => (
-                              <SectionWrapper
-                                key={j}
-                                path={`work[${i}].highlights[${j}]`}
-                                label="Specific Achievement"
-                                data={h}
-                                type="highlight"
-                              >
-                                <li>{h}</li>
-                              </SectionWrapper>
-                            ))}
-                          </ul>
-                        )}
+                        {(() => {
+                          const blockMatch = getProposedValueForPath(
+                            `work[${i}]`,
+                            proposedChange ?? null,
+                          );
+                          const proposedHighlights =
+                            blockMatch &&
+                            typeof blockMatch.proposed === "object" &&
+                            blockMatch.proposed != null &&
+                            "highlights" in blockMatch.proposed
+                              ? ((
+                                  blockMatch.proposed as {
+                                    highlights?: string[];
+                                  }
+                                ).highlights ?? [])
+                              : [];
+                          const hasHighlights =
+                            highlights.length > 0 ||
+                            proposedHighlights.length > 0;
+                          if (!hasHighlights) return null;
+                          const extraProposed = proposedHighlights
+                            .slice(highlights.length)
+                            .filter(Boolean);
+                          return (
+                            <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2 space-y-0.5">
+                              {highlights.map((h, j) => {
+                                const currentPath = `work[${i}].highlights[${j}]`;
+                                const match = getProposedValueForPath(
+                                  currentPath,
+                                  proposedChange ?? null,
+                                );
+                                const proposedStr =
+                                  match && typeof match.proposed === "string"
+                                    ? match.proposed
+                                    : null;
+                                return (
+                                  <SectionWrapper
+                                    key={j}
+                                    path={`work[${i}].highlights[${j}]`}
+                                    label="Specific Achievement"
+                                    data={h}
+                                    type="highlight"
+                                  >
+                                    {proposedStr != null ? (
+                                      <li>
+                                        <DiffView
+                                          original={h}
+                                          proposed={proposedStr}
+                                        />
+                                      </li>
+                                    ) : (
+                                      <li>{h}</li>
+                                    )}
+                                  </SectionWrapper>
+                                );
+                              })}
+                              {extraProposed.map((text, k) => (
+                                <li
+                                  key={`add-${k}`}
+                                  className="bg-emerald-50/80 text-emerald-900 border-l-2 border-emerald-300 pl-1 -ml-0.5 rounded"
+                                >
+                                  {text}
+                                </li>
+                              ))}
+                            </ul>
+                          );
+                        })()}
                       </div>
                     </SectionWrapper>
                   );
@@ -628,7 +715,7 @@ export function ResumeDocument({
                 {volunteer.map((entry, i) => (
                   <SectionWrapper
                     key={i}
-                    path={`volunteer.[${i}]`}
+                    path={`volunteer[${i}]`}
                     label={`Volunteer: ${getStr(entry, "organization").slice(0, 10)}...`}
                     data={JSON.stringify(entry)}
                   >
@@ -682,7 +769,7 @@ export function ResumeDocument({
                 <h2 className={sectionHeading}>Education</h2>
                 {education.map((entry, i) => (
                   <SectionWrapper
-                    path={`education.[${i}]`}
+                    path={`education[${i}]`}
                     label={`Education: ${getStr(entry, "institution").slice(0, 10)}...`}
                     data={JSON.stringify(entry)}
                   >
@@ -717,7 +804,7 @@ export function ResumeDocument({
                 {projects.map((entry, i) => (
                   <SectionWrapper
                     key={i}
-                    path={`projects.[${i}]`}
+                    path={`projects[${i}]`}
                     label={`Project: ${getStr(entry, "name").slice(0, 10)}...`}
                     data={JSON.stringify(entry)}
                   >
@@ -754,11 +841,28 @@ export function ResumeDocument({
                 {skills.map((entry, i) => {
                   const kws = getArr<string>(entry, "keywords").filter(Boolean);
                   const kwStr = kws.join(", ");
+                  const currentPath = `skills[${i}].keywords`;
+                  const match = getProposedValueForPath(
+                    currentPath,
+                    proposedChange ?? null,
+                  );
+                  const proposedKeywords =
+                    match && Array.isArray(match.proposed)
+                      ? (match.proposed as string[]).join(", ")
+                      : null;
+                  console.log({
+                    kwStr,
+                    proposedKeywords,
+                    proposedChange,
+                    match,
+                    currentPath,
+                  });
+
                   if (compact) {
                     return (
                       <SectionWrapper
                         key={i}
-                        path={`skills.[${i}]`}
+                        path={`skills[${i}]`}
                         label={`Skill: ${getStr(entry, "name").slice(0, 10)}...`}
                         data={JSON.stringify(entry)}
                       >
@@ -767,8 +871,15 @@ export function ResumeDocument({
                             value={getStr(entry, "name")}
                             className="font-semibold"
                           />
-                          {getStr(entry, "name") && kwStr ? ": " : null}
-                          {kwStr || null}
+                          {/* {getStr(entry, "name") && kwStr ? ": " : null} */}
+                          {proposedKeywords != null ? (
+                            <DiffView
+                              original={kwStr}
+                              proposed={proposedKeywords}
+                            />
+                          ) : (
+                            kwStr || null
+                          )}
                         </div>
                       </SectionWrapper>
                     );
@@ -776,7 +887,7 @@ export function ResumeDocument({
                   return (
                     <SectionWrapper
                       key={i}
-                      path={`skills.[${i}]`}
+                      path={`skills[${i}]`}
                       label={`Skill: ${getStr(entry, "name").slice(0, 10)}...`}
                       data={JSON.stringify(entry)}
                     >
@@ -799,7 +910,7 @@ export function ResumeDocument({
                 {languages.map((entry, i) => (
                   <SectionWrapper
                     key={i}
-                    path={`languages.[${i}]`}
+                    path={`languages[${i}]`}
                     label={`Language: ${getStr(entry, "language").slice(0, 10)}...`}
                     data={JSON.stringify(entry)}
                   >
@@ -817,7 +928,7 @@ export function ResumeDocument({
                 {certificates.map((entry, i) => (
                   <SectionWrapper
                     key={i}
-                    path={`certificates.[${i}]`}
+                    path={`certificates[${i}]`}
                     label={`Certificate: ${getStr(entry, "name").slice(0, 10)}...`}
                     data={JSON.stringify(entry)}
                   >
@@ -845,7 +956,7 @@ export function ResumeDocument({
                 {awards.map((entry, i) => (
                   <SectionWrapper
                     key={i}
-                    path={`awards.[${i}]`}
+                    path={`awards[${i}]`}
                     label={`Award: ${getStr(entry, "title").slice(0, 10)}...`}
                     data={JSON.stringify(entry)}
                   >
@@ -878,7 +989,7 @@ export function ResumeDocument({
                 {publications.map((entry, i) => (
                   <SectionWrapper
                     key={i}
-                    path={`publications.[${i}]`}
+                    path={`publications[${i}]`}
                     label={`Publication: ${getStr(entry, "name").slice(0, 10)}...`}
                     data={JSON.stringify(entry)}
                   >
@@ -916,7 +1027,7 @@ export function ResumeDocument({
                   return (
                     <SectionWrapper
                       key={i}
-                      path={`interests.[${i}]`}
+                      path={`interests[${i}]`}
                       label={`Interest: ${getStr(entry, "name").slice(0, 10)}...`}
                       data={JSON.stringify(entry)}
                     >
@@ -939,7 +1050,7 @@ export function ResumeDocument({
                 {references.map((entry, i) => (
                   <SectionWrapper
                     key={i}
-                    path={`references.[${i}]`}
+                    path={`references[${i}]`}
                     label={`Reference: ${getStr(entry, "name").slice(0, 10)}...`}
                     data={JSON.stringify(entry)}
                   >
