@@ -424,441 +424,464 @@ export function ResumeDocument({
         : null;
 
     return (
-      <div
-        className={`flex flex-col text-gray-900 ${compact ? "gap-2" : "gap-3"}`}
-      >
-        <header className="text-center">
-          <h1 className="text-lg md:text-xl font-semibold text-gray-900">
-            {getStr(basics, "name") || "\u00A0"}
-          </h1>
-          {contactLine && (
-            <div className="flex flex-wrap justify-center items-baseline gap-x-0 mt-0.5 text-sm text-gray-600">
-              {contactLine}
-            </div>
-          )}
-          <div className="mt-1.5 text-left">
-            {getStr(basics, "label") ? (
-              <p className="text-sm font-semibold text-gray-900">
-                {getStr(basics, "label")}
-              </p>
-            ) : null}
-            {getStr(basics, "summary") ? (
-              <div className="mt-0.5 text-sm">{getStr(basics, "summary")}</div>
-            ) : null}
-          </div>
-        </header>
-        {work.length > 0 && (
-          <section>
-            <h2 className={sectionHeading}>Experience</h2>
-            {work.map((entry, i) => {
-              const loc = getStr(entry, "location");
-              const start = getStr(entry, "startDate");
-              const end = getStr(entry, "endDate");
-              const highlights = getArr<string>(entry, "highlights").filter(
-                Boolean,
-              );
-              const hasMeta = loc || start || end;
-              return (
-                <div key={i} className={compact ? "mb-2" : "mb-3"}>
-                  <p className="text-sm">
-                    <DisplayText
-                      value={getStr(entry, "position")}
-                      className="text-gray-700"
-                    />
-                    {getStr(entry, "position") && getStr(entry, "name")
-                      ? sepP()
-                      : null}
-                    <DisplayText
-                      value={getStr(entry, "name")}
-                      className="font-semibold"
-                    />
-                    {hasMeta ? sepP() : null}
-                    <DisplayText value={loc} className="text-gray-500" />
-                    {loc && (start || end) ? sepP() : null}
-                    <span className="text-gray-500">
-                      {start}
-                      {start && end ? " – " : ""}
-                      {end}
-                    </span>
-                  </p>
-                  {highlights.length > 0 && (
-                    <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2 space-y-0.5">
-                      {highlights.map((h, j) => (
-                        <li key={j}>{h}</li>
-                      ))}
-                    </ul>
-                  )}
+      <div className="flex justify-center">
+        <div className="resume-page ">
+          <div
+            className={`flex flex-col text-gray-900 ${compact ? "gap-2" : "gap-3"}`}
+          >
+            <header className="text-center">
+              <h1 className="text-lg md:text-xl font-semibold text-gray-900">
+                {getStr(basics, "name") || "\u00A0"}
+              </h1>
+              {contactLine && (
+                <div className="flex flex-wrap justify-center items-baseline gap-x-0 mt-0.5 text-sm text-gray-600">
+                  {contactLine}
                 </div>
-              );
-            })}
-          </section>
-        )}
-        {volunteer.length > 0 && (
-          <section>
-            <h2 className={sectionHeading}>Volunteer</h2>
-            {volunteer.map((entry, i) => (
-              <div key={i} className={compact ? "mb-2" : "mb-3"}>
-                <p className="text-sm">
-                  <DisplayText
-                    value={getStr(entry, "position")}
-                    className="text-gray-700"
-                  />
-                  {getStr(entry, "position") && getStr(entry, "organization")
-                    ? sepP()
-                    : null}
-                  <DisplayText
-                    value={getStr(entry, "organization")}
-                    className="font-semibold"
-                  />
-                </p>
-                <p className="text-gray-500 text-sm mt-0.5">
-                  {getStr(entry, "startDate")}
-                  {getStr(entry, "startDate") && getStr(entry, "endDate")
-                    ? " – "
-                    : ""}
-                  {getStr(entry, "endDate")}
-                </p>
-                {getArr<string>(entry, "highlights").filter(Boolean).length >
-                  0 && (
-                  <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2">
-                    {getArr<string>(entry, "highlights")
-                      .filter(Boolean)
-                      .map((h, j) => (
-                        <li key={j}>{h}</li>
-                      ))}
-                  </ul>
-                )}
-              </div>
-            ))}
-          </section>
-        )}
-        {education.length > 0 && (
-          <section>
-            <h2 className={sectionHeading}>Education</h2>
-            {education.map((entry, i) => (
-              <div key={i} className={compact ? "mb-2" : "mb-3"}>
-                <p className="font-semibold text-sm">
-                  <DisplayText value={getStr(entry, "institution")} />
-                </p>
-                <p className="text-gray-600 text-sm mt-0.5">
-                  <DisplayText value={getStr(entry, "studyType")} />
-                  {getStr(entry, "studyType") && getStr(entry, "area")
-                    ? ", "
-                    : null}
-                  <DisplayText value={getStr(entry, "area")} />
-                  {getStr(entry, "area") &&
-                  (getStr(entry, "startDate") || getStr(entry, "endDate"))
-                    ? " · "
-                    : null}
-                  {getStr(entry, "startDate")}
-                  {getStr(entry, "startDate") && getStr(entry, "endDate")
-                    ? " – "
-                    : ""}
-                  {getStr(entry, "endDate")}
-                </p>
-              </div>
-            ))}
-          </section>
-        )}
-        {projects.length > 0 && (
-          <section>
-            <h2 className={sectionHeading}>Projects</h2>
-            {projects.map((entry, i) => (
-              <div key={i} className={compact ? "mb-2" : "mb-3"}>
-                <p className="font-semibold text-sm">
-                  <DisplayText value={getStr(entry, "name")} />
-                </p>
-                {getArr<string>(entry, "highlights").filter(Boolean).length >
-                  0 && (
-                  <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2">
-                    {getArr<string>(entry, "highlights")
-                      .filter(Boolean)
-                      .map((h, j) => (
-                        <li key={j}>{h}</li>
-                      ))}
-                  </ul>
-                )}
-              </div>
-            ))}
-          </section>
-        )}
-        {skills.length > 0 && (
-          <section>
-            <h2 className={sectionHeading}>Skills</h2>
-            {skills.map((entry, i) => {
-              const kws = getArr<string>(entry, "keywords").filter(Boolean);
-              const kwStr = kws.join(", ");
-              if (compact) {
-                return (
-                  <div key={i} className="mb-1.5 text-sm">
-                    <DisplayText
-                      value={getStr(entry, "name")}
-                      className="font-semibold"
-                    />
-                    {getStr(entry, "name") && kwStr ? ": " : null}
-                    {kwStr || null}
+              )}
+              <div className="mt-1.5 text-left">
+                {getStr(basics, "label") ? (
+                  <p className="text-sm font-semibold text-gray-900">
+                    {getStr(basics, "label")}
+                  </p>
+                ) : null}
+                {getStr(basics, "summary") ? (
+                  <div className="mt-0.5 text-sm">
+                    {getStr(basics, "summary")}
                   </div>
-                );
-              }
-              return (
-                <div key={i} className="mb-3">
-                  <p className="font-semibold text-sm">
-                    <DisplayText value={getStr(entry, "name")} />
-                  </p>
-                  <p className="text-gray-700 text-sm mt-0.5">
-                    {kwStr || "\u00A0"}
-                  </p>
-                </div>
-              );
-            })}
-          </section>
-        )}
-        {languages.length > 0 && (
-          <section>
-            <h2 className={sectionHeading}>Languages</h2>
-            {languages.map((entry, i) => (
-              <div key={i} className={`${compact ? "mb-1.5" : "mb-3"} text-sm`}>
-                <DisplayText value={getStr(entry, "language")} /> —{" "}
-                <DisplayText value={getStr(entry, "fluency")} />
-              </div>
-            ))}
-          </section>
-        )}
-        {certificates.length > 0 && (
-          <section>
-            <h2 className={sectionHeading}>Certificates</h2>
-            {certificates.map((entry, i) => (
-              <div key={i} className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}>
-                <DisplayText
-                  value={getStr(entry, "name")}
-                  className="font-semibold"
-                />
-                {getStr(entry, "name") && getStr(entry, "issuer")
-                  ? " – "
-                  : null}
-                <DisplayText value={getStr(entry, "issuer")} />
-                {getStr(entry, "issuer") && getStr(entry, "date") ? ", " : null}
-                <DisplayText value={getStr(entry, "date")} />
-              </div>
-            ))}
-          </section>
-        )}
-        {awards.length > 0 && (
-          <section>
-            <h2 className={sectionHeading}>Awards</h2>
-            {awards.map((entry, i) => (
-              <div key={i} className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}>
-                <DisplayText
-                  value={getStr(entry, "title")}
-                  className="font-semibold"
-                />
-                {getStr(entry, "title") && getStr(entry, "awarder")
-                  ? " – "
-                  : null}
-                <DisplayText value={getStr(entry, "awarder")} />
-                {getStr(entry, "awarder") && getStr(entry, "date")
-                  ? ", "
-                  : null}
-                <DisplayText value={getStr(entry, "date")} />
-                {getStr(entry, "summary") ? (
-                  <p className="text-gray-700 mt-0.5">
-                    {getStr(entry, "summary")}
-                  </p>
                 ) : null}
               </div>
-            ))}
-          </section>
-        )}
-        {publications.length > 0 && (
-          <section>
-            <h2 className={sectionHeading}>Publications</h2>
-            {publications.map((entry, i) => (
-              <div key={i} className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}>
-                <DisplayText
-                  value={getStr(entry, "name")}
-                  className="font-semibold"
-                />
-                {getStr(entry, "name") && getStr(entry, "publisher")
-                  ? " – "
-                  : null}
-                <DisplayText value={getStr(entry, "publisher")} />
-                {getStr(entry, "publisher") && getStr(entry, "releaseDate")
-                  ? ", "
-                  : null}
-                <DisplayText value={getStr(entry, "releaseDate")} />
-                {getStr(entry, "summary") ? (
-                  <p className="text-gray-700 mt-0.5">
-                    {getStr(entry, "summary")}
-                  </p>
-                ) : null}
-              </div>
-            ))}
-          </section>
-        )}
-        {interests.length > 0 && (
-          <section>
-            <h2 className={sectionHeading}>Interests</h2>
-            {interests.map((entry, i) => {
-              const kw = getArr<string>(entry, "keywords")
-                .filter(Boolean)
-                .join(", ");
-              return (
-                <div
-                  key={i}
-                  className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}
-                >
-                  <DisplayText
-                    value={getStr(entry, "name")}
-                    className="font-semibold"
-                  />
-                  {getStr(entry, "name") && kw ? ": " : null}
-                  {kw || null}
-                </div>
-              );
-            })}
-          </section>
-        )}
-        {references.length > 0 && (
-          <section>
-            <h2 className={sectionHeading}>References</h2>
-            {references.map((entry, i) => (
-              <div key={i} className={compact ? "mb-1.5" : "mb-3"}>
-                <p className="font-semibold text-sm">
-                  <DisplayText value={getStr(entry, "name")} />
-                </p>
-                {getStr(entry, "reference") ? (
-                  <p className="text-sm text-gray-700 mt-0.5">
-                    {getStr(entry, "reference")}
-                  </p>
-                ) : null}
-              </div>
-            ))}
-          </section>
-        )}
+            </header>
+            {work.length > 0 && (
+              <section className="resume-section">
+                <h2 className={sectionHeading}>Experience</h2>
+                {work.map((entry, i) => {
+                  const loc = getStr(entry, "location");
+                  const start = getStr(entry, "startDate");
+                  const end = getStr(entry, "endDate");
+                  const highlights = getArr<string>(entry, "highlights").filter(
+                    Boolean,
+                  );
+                  const hasMeta = loc || start || end;
+                  return (
+                    <div key={i} className={compact ? "mb-2" : "mb-3"}>
+                      <p className="text-sm">
+                        <DisplayText
+                          value={getStr(entry, "position")}
+                          className="text-gray-700"
+                        />
+                        {getStr(entry, "position") && getStr(entry, "name")
+                          ? sepP()
+                          : null}
+                        <DisplayText
+                          value={getStr(entry, "name")}
+                          className="font-semibold"
+                        />
+                        {hasMeta ? sepP() : null}
+                        <DisplayText value={loc} className="text-gray-500" />
+                        {loc && (start || end) ? sepP() : null}
+                        <span className="text-gray-500">
+                          {start}
+                          {start && end ? " – " : ""}
+                          {end}
+                        </span>
+                      </p>
+                      {highlights.length > 0 && (
+                        <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2 space-y-0.5">
+                          {highlights.map((h, j) => (
+                            <li key={j}>{h}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })}
+              </section>
+            )}
+            {volunteer.length > 0 && (
+              <section className="resume-section">
+                <h2 className={sectionHeading}>Volunteer</h2>
+                {volunteer.map((entry, i) => (
+                  <div key={i} className={compact ? "mb-2" : "mb-3"}>
+                    <p className="text-sm">
+                      <DisplayText
+                        value={getStr(entry, "position")}
+                        className="text-gray-700"
+                      />
+                      {getStr(entry, "position") &&
+                      getStr(entry, "organization")
+                        ? sepP()
+                        : null}
+                      <DisplayText
+                        value={getStr(entry, "organization")}
+                        className="font-semibold"
+                      />
+                    </p>
+                    <p className="text-gray-500 text-sm mt-0.5">
+                      {getStr(entry, "startDate")}
+                      {getStr(entry, "startDate") && getStr(entry, "endDate")
+                        ? " – "
+                        : ""}
+                      {getStr(entry, "endDate")}
+                    </p>
+                    {getArr<string>(entry, "highlights").filter(Boolean)
+                      .length > 0 && (
+                      <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2">
+                        {getArr<string>(entry, "highlights")
+                          .filter(Boolean)
+                          .map((h, j) => (
+                            <li key={j}>{h}</li>
+                          ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </section>
+            )}
+            {education.length > 0 && (
+              <section className="resume-section">
+                <h2 className={sectionHeading}>Education</h2>
+                {education.map((entry, i) => (
+                  <div key={i} className={compact ? "mb-2" : "mb-3"}>
+                    <p className="font-semibold text-sm">
+                      <DisplayText value={getStr(entry, "institution")} />
+                    </p>
+                    <p className="text-gray-600 text-sm mt-0.5">
+                      <DisplayText value={getStr(entry, "studyType")} />
+                      {getStr(entry, "studyType") && getStr(entry, "area")
+                        ? ", "
+                        : null}
+                      <DisplayText value={getStr(entry, "area")} />
+                      {getStr(entry, "area") &&
+                      (getStr(entry, "startDate") || getStr(entry, "endDate"))
+                        ? " · "
+                        : null}
+                      {getStr(entry, "startDate")}
+                      {getStr(entry, "startDate") && getStr(entry, "endDate")
+                        ? " – "
+                        : ""}
+                      {getStr(entry, "endDate")}
+                    </p>
+                  </div>
+                ))}
+              </section>
+            )}
+            {projects.length > 0 && (
+              <section className="resume-section">
+                <h2 className={sectionHeading}>Projects</h2>
+                {projects.map((entry, i) => (
+                  <div key={i} className={compact ? "mb-2" : "mb-3"}>
+                    <p className="font-semibold text-sm">
+                      <DisplayText value={getStr(entry, "name")} />
+                    </p>
+                    {getArr<string>(entry, "highlights").filter(Boolean)
+                      .length > 0 && (
+                      <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2">
+                        {getArr<string>(entry, "highlights")
+                          .filter(Boolean)
+                          .map((h, j) => (
+                            <li key={j}>{h}</li>
+                          ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </section>
+            )}
+            {skills.length > 0 && (
+              <section className="resume-section">
+                <h2 className={sectionHeading}>Skills</h2>
+                {skills.map((entry, i) => {
+                  const kws = getArr<string>(entry, "keywords").filter(Boolean);
+                  const kwStr = kws.join(", ");
+                  if (compact) {
+                    return (
+                      <div key={i} className="mb-1.5 text-sm">
+                        <DisplayText
+                          value={getStr(entry, "name")}
+                          className="font-semibold"
+                        />
+                        {getStr(entry, "name") && kwStr ? ": " : null}
+                        {kwStr || null}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={i} className="mb-3">
+                      <p className="font-semibold text-sm">
+                        <DisplayText value={getStr(entry, "name")} />
+                      </p>
+                      <p className="text-gray-700 text-sm mt-0.5">
+                        {kwStr || "\u00A0"}
+                      </p>
+                    </div>
+                  );
+                })}
+              </section>
+            )}
+            {languages.length > 0 && (
+              <section className="resume-section">
+                <h2 className={sectionHeading}>Languages</h2>
+                {languages.map((entry, i) => (
+                  <div
+                    key={i}
+                    className={`${compact ? "mb-1.5" : "mb-3"} text-sm`}
+                  >
+                    <DisplayText value={getStr(entry, "language")} /> —{" "}
+                    <DisplayText value={getStr(entry, "fluency")} />
+                  </div>
+                ))}
+              </section>
+            )}
+            {certificates.length > 0 && (
+              <section className="resume-section">
+                <h2 className={sectionHeading}>Certificates</h2>
+                {certificates.map((entry, i) => (
+                  <div
+                    key={i}
+                    className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}
+                  >
+                    <DisplayText
+                      value={getStr(entry, "name")}
+                      className="font-semibold"
+                    />
+                    {getStr(entry, "name") && getStr(entry, "issuer")
+                      ? " – "
+                      : null}
+                    <DisplayText value={getStr(entry, "issuer")} />
+                    {getStr(entry, "issuer") && getStr(entry, "date")
+                      ? ", "
+                      : null}
+                    <DisplayText value={getStr(entry, "date")} />
+                  </div>
+                ))}
+              </section>
+            )}
+            {awards.length > 0 && (
+              <section className="resume-section">
+                <h2 className={sectionHeading}>Awards</h2>
+                {awards.map((entry, i) => (
+                  <div
+                    key={i}
+                    className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}
+                  >
+                    <DisplayText
+                      value={getStr(entry, "title")}
+                      className="font-semibold"
+                    />
+                    {getStr(entry, "title") && getStr(entry, "awarder")
+                      ? " – "
+                      : null}
+                    <DisplayText value={getStr(entry, "awarder")} />
+                    {getStr(entry, "awarder") && getStr(entry, "date")
+                      ? ", "
+                      : null}
+                    <DisplayText value={getStr(entry, "date")} />
+                    {getStr(entry, "summary") ? (
+                      <p className="text-gray-700 mt-0.5">
+                        {getStr(entry, "summary")}
+                      </p>
+                    ) : null}
+                  </div>
+                ))}
+              </section>
+            )}
+            {publications.length > 0 && (
+              <section className="resume-section">
+                <h2 className={sectionHeading}>Publications</h2>
+                {publications.map((entry, i) => (
+                  <div
+                    key={i}
+                    className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}
+                  >
+                    <DisplayText
+                      value={getStr(entry, "name")}
+                      className="font-semibold"
+                    />
+                    {getStr(entry, "name") && getStr(entry, "publisher")
+                      ? " – "
+                      : null}
+                    <DisplayText value={getStr(entry, "publisher")} />
+                    {getStr(entry, "publisher") && getStr(entry, "releaseDate")
+                      ? ", "
+                      : null}
+                    <DisplayText value={getStr(entry, "releaseDate")} />
+                    {getStr(entry, "summary") ? (
+                      <p className="text-gray-700 mt-0.5">
+                        {getStr(entry, "summary")}
+                      </p>
+                    ) : null}
+                  </div>
+                ))}
+              </section>
+            )}
+            {interests.length > 0 && (
+              <section className="resume-section">
+                <h2 className={sectionHeading}>Interests</h2>
+                {interests.map((entry, i) => {
+                  const kw = getArr<string>(entry, "keywords")
+                    .filter(Boolean)
+                    .join(", ");
+                  return (
+                    <div
+                      key={i}
+                      className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}
+                    >
+                      <DisplayText
+                        value={getStr(entry, "name")}
+                        className="font-semibold"
+                      />
+                      {getStr(entry, "name") && kw ? ": " : null}
+                      {kw || null}
+                    </div>
+                  );
+                })}
+              </section>
+            )}
+            {references.length > 0 && (
+              <section className="resume-section">
+                <h2 className={sectionHeading}>References</h2>
+                {references.map((entry, i) => (
+                  <div key={i} className={compact ? "mb-1.5" : "mb-3"}>
+                    <p className="font-semibold text-sm">
+                      <DisplayText value={getStr(entry, "name")} />
+                    </p>
+                    {getStr(entry, "reference") ? (
+                      <p className="text-sm text-gray-700 mt-0.5">
+                        {getStr(entry, "reference")}
+                      </p>
+                    ) : null}
+                  </div>
+                ))}
+              </section>
+            )}
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div
-      className={`flex flex-col text-gray-900 ${compact ? "gap-2" : "gap-3"}`}
-    >
-      {/* Basics — centered, two lines, single contact line */}
-      <header className="text-center">
-        <h1 className="text-lg md:text-xl font-semibold text-gray-900">
-          <EditableText
-            value={getStr(basics, "name")}
-            path="basics.name"
-            onCommit={onCommit}
-            className="font-semibold"
-          />
-        </h1>
-        <div className="flex flex-wrap justify-center items-baseline gap-x-0 mt-0.5 text-sm text-gray-600">
-          {getStr(location, "city") !== "" ||
-          getStr(location, "region") !== "" ||
-          contactLocationRevealed ? (
-            <>
+    <div className="flex justify-center">
+      <div className="resume-page ">
+        <div
+          className={`flex flex-col text-gray-900 ${compact ? "gap-2" : "gap-3"}`}
+        >
+          {/* Basics — centered, two lines, single contact line */}
+          <header className="text-center">
+            <h1 className="text-lg md:text-xl font-semibold text-gray-900">
               <EditableText
-                value={getStr(location, "city")}
-                path="basics.location.city"
+                value={getStr(basics, "name")}
+                path="basics.name"
                 onCommit={onCommit}
-                placeholder="City"
+                className="font-semibold"
               />
-              {getStr(location, "city") && getStr(location, "region") ? (
-                <span className="text-gray-400">, </span>
-              ) : null}
-              <EditableText
-                value={getStr(location, "region")}
-                path="basics.location.region"
-                onCommit={onCommit}
-                placeholder="Region"
-              />
-              {sep()}
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                className={addBtn}
-                onClick={() => setContactLocationRevealed(true)}
-              >
-                + Add location
-              </button>
-              {sep()}
-            </>
-          )}
-          <EditableText
-            value={getStr(basics, "phone")}
-            path="basics.phone"
-            onCommit={onCommit}
-            placeholder="Phone"
-          />
-          {sep()}
-          <EditableText
-            value={getStr(basics, "email")}
-            path="basics.email"
-            onCommit={onCommit}
-            placeholder="Email"
-          />
-          {profiles.length > 0
-            ? profiles.map((pro, pi) => (
-                <span key={pi} className="contents">
-                  {sep()}
+            </h1>
+            <div className="flex flex-wrap justify-center items-baseline gap-x-0 mt-0.5 text-sm text-gray-600">
+              {getStr(location, "city") !== "" ||
+              getStr(location, "region") !== "" ||
+              contactLocationRevealed ? (
+                <>
                   <EditableText
-                    value={getStr(pro, "url")}
-                    path={`basics.profiles.${pi}.url`}
+                    value={getStr(location, "city")}
+                    path="basics.location.city"
                     onCommit={onCommit}
-                    placeholder="URL"
+                    placeholder="City"
                   />
-                </span>
-              ))
-            : [
-                sep(),
-                <EditableText
-                  key="website"
-                  value={getStr(basics, "url")}
-                  path="basics.url"
-                  onCommit={onCommit}
-                  placeholder="Website"
-                />,
-              ]}
-        </div>
-        {!showBasicsOptional && (
-          <div className="mt-1 flex justify-center">
-            <button
-              type="button"
-              className={addBtn}
-              onClick={() => setBasicsOptionalExpanded(true)}
-            >
-              + Add address, photo or social links
-            </button>
-          </div>
-        )}
-        {showBasicsOptional && (
-          <>
-            {/* City, region, website are only on the contact line above — no duplicate here */}
-            {showAddress ? (
-              <div className="mt-0.5 text-sm text-gray-600">
-                <EditableText
-                  value={getStr(location, "address")}
-                  path="basics.location.address"
-                  onCommit={onCommit}
-                  placeholder="Address"
-                  className="block"
-                />
+                  {getStr(location, "city") && getStr(location, "region") ? (
+                    <span className="text-gray-400">, </span>
+                  ) : null}
+                  <EditableText
+                    value={getStr(location, "region")}
+                    path="basics.location.region"
+                    onCommit={onCommit}
+                    placeholder="Region"
+                  />
+                  {sep()}
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className={addBtn}
+                    onClick={() => setContactLocationRevealed(true)}
+                  >
+                    + Add location
+                  </button>
+                  {sep()}
+                </>
+              )}
+              <EditableText
+                value={getStr(basics, "phone")}
+                path="basics.phone"
+                onCommit={onCommit}
+                placeholder="Phone"
+              />
+              {sep()}
+              <EditableText
+                value={getStr(basics, "email")}
+                path="basics.email"
+                onCommit={onCommit}
+                placeholder="Email"
+              />
+              {profiles.length > 0
+                ? profiles.map((pro, pi) => (
+                    <span key={pi} className="contents">
+                      {sep()}
+                      <EditableText
+                        value={getStr(pro, "url")}
+                        path={`basics.profiles.${pi}.url`}
+                        onCommit={onCommit}
+                        placeholder="URL"
+                      />
+                    </span>
+                  ))
+                : [
+                    sep(),
+                    <EditableText
+                      key="website"
+                      value={getStr(basics, "url")}
+                      path="basics.url"
+                      onCommit={onCommit}
+                      placeholder="Website"
+                    />,
+                  ]}
+            </div>
+            {!showBasicsOptional && (
+              <div className="mt-1 flex justify-center">
+                <button
+                  type="button"
+                  className={addBtn}
+                  onClick={() => setBasicsOptionalExpanded(true)}
+                >
+                  + Add address, photo or social links
+                </button>
               </div>
-            ) : (
-              <button
-                type="button"
-                className={addBtn}
-                onClick={() =>
-                  setBasicsExtraRevealed((s) => new Set(s).add("address"))
-                }
-              >
-                + Add address
-              </button>
             )}
-            {/* {showImage ? (
+            {showBasicsOptional && (
+              <>
+                {/* City, region, website are only on the contact line above — no duplicate here */}
+                {showAddress ? (
+                  <div className="mt-0.5 text-sm text-gray-600">
+                    <EditableText
+                      value={getStr(location, "address")}
+                      path="basics.location.address"
+                      onCommit={onCommit}
+                      placeholder="Address"
+                      className="block"
+                    />
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className={addBtn}
+                    onClick={() =>
+                      setBasicsExtraRevealed((s) => new Set(s).add("address"))
+                    }
+                  >
+                    + Add address
+                  </button>
+                )}
+                {/* {showImage ? (
               <p className="mt-0.5 text-sm text-gray-600">
                 <EditableText
                   value={getStr(basics, "image")}
@@ -878,1150 +901,304 @@ export function ResumeDocument({
                 + Add photo
               </button>
             )} */}
-            <div className="mt-2">
-              {profiles.map((pro, pi) => (
-                <div
-                  key={pi}
-                  className="flex flex-wrap items-center gap-2 mb-1"
-                >
-                  <EditableText
-                    value={getStr(pro, "network")}
-                    path={`basics.profiles.${pi}.network`}
-                    onCommit={onCommit}
-                    placeholder="Network"
-                    className="text-sm"
-                  />
-                  <EditableText
-                    value={getStr(pro, "username")}
-                    path={`basics.profiles.${pi}.username`}
-                    onCommit={onCommit}
-                    placeholder="Username"
-                    className="text-sm"
-                  />
-                  <EditableText
-                    value={getStr(pro, "url")}
-                    path={`basics.profiles.${pi}.url`}
-                    onCommit={onCommit}
-                    placeholder="URL"
-                    className="text-sm"
-                  />
-                  <button
-                    type="button"
-                    className={removeBtn}
-                    onClick={() => removeProfile(pi)}
-                    aria-label="Remove profile"
-                  >
-                    Remove
-                  </button>
+                <div className="mt-2">
+                  {profiles.map((pro, pi) => (
+                    <div
+                      key={pi}
+                      className="flex flex-wrap items-center gap-2 mb-1"
+                    >
+                      <EditableText
+                        value={getStr(pro, "network")}
+                        path={`basics.profiles.${pi}.network`}
+                        onCommit={onCommit}
+                        placeholder="Network"
+                        className="text-sm"
+                      />
+                      <EditableText
+                        value={getStr(pro, "username")}
+                        path={`basics.profiles.${pi}.username`}
+                        onCommit={onCommit}
+                        placeholder="Username"
+                        className="text-sm"
+                      />
+                      <EditableText
+                        value={getStr(pro, "url")}
+                        path={`basics.profiles.${pi}.url`}
+                        onCommit={onCommit}
+                        placeholder="URL"
+                        className="text-sm"
+                      />
+                      <button
+                        type="button"
+                        className={removeBtn}
+                        onClick={() => removeProfile(pi)}
+                        aria-label="Remove profile"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <button type="button" className={addBtn} onClick={addProfile}>
-              + Add social media profile
-            </button>
-          </>
-        )}
-        {/* Label is the title of the summary section (e.g. "Software Engineer"); left-aligned */}
-        <div className="mt-1.5 text-left">
-          <p className="text-sm font-semibold text-gray-900">
-            <EditableText
-              value={getStr(basics, "label")}
-              path="basics.label"
-              onCommit={onCommit}
-              placeholder="Label (e.g. Software Engineer)"
-              className="font-semibold"
-            />
-          </p>
-          <div className="mt-0.5 text-sm">
-            <EditableText
-              value={getStr(basics, "summary")}
-              path="basics.summary"
-              onCommit={onCommit}
-              multiline
-              placeholder="Summary"
-              className="block w-full"
-            />
-          </div>
-        </div>
-      </header>
-
-      {/* Work — denser: Position | Company, then Location | Start – End */}
-      <section>
-        <h2 className={sectionHeading}>Experience</h2>
-        {work.map((entry, i) => {
-          const showWorkOptional =
-            workOptionalExpanded.has(i) || hasAnyOptionalWorkContent(entry);
-          const workEntryClass = compact ? "mb-2" : "mb-3";
-          return (
-            <div key={i} className={workEntryClass}>
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <div className="flex flex-wrap items-baseline gap-x-1.5 text-sm">
-                  <span className="text-gray-700">
-                    <EditableText
-                      value={getStr(entry, "position")}
-                      path={`work.${i}.position`}
-                      onCommit={onCommit}
-                      placeholder="Position"
-                    />
-                  </span>
-                  <span
-                    className="text-gray-400 select-none mx-0.5"
-                    aria-hidden
-                  >
-                    |
-                  </span>
-                  <span className="font-semibold">
-                    <EditableText
-                      value={getStr(entry, "name")}
-                      path={`work.${i}.name`}
-                      onCommit={onCommit}
-                      placeholder="Company"
-                    />
-                  </span>
-                  <span
-                    className="text-gray-400 select-none mx-0.5"
-                    aria-hidden
-                  >
-                    |
-                  </span>
-                  <span className="text-gray-500">
-                    <EditableText
-                      value={getStr(entry, "location")}
-                      path={`work.${i}.location`}
-                      onCommit={onCommit}
-                      placeholder="Location"
-                    />
-                  </span>
-                  <span
-                    className="text-gray-400 select-none mx-0.5"
-                    aria-hidden
-                  >
-                    |
-                  </span>
-                  <span className="text-gray-500">
-                    <EditableText
-                      value={getStr(entry, "startDate")}
-                      path={`work.${i}.startDate`}
-                      onCommit={onCommit}
-                      className="text-sm"
-                    />
-                    {" – "}
-                    <EditableText
-                      value={getStr(entry, "endDate")}
-                      path={`work.${i}.endDate`}
-                      onCommit={onCommit}
-                      className="text-sm"
-                    />
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  className={removeBtn}
-                  onClick={() => removeWork(i)}
-                  aria-label="Remove experience"
-                >
-                  Remove
+                <button type="button" className={addBtn} onClick={addProfile}>
+                  + Add social media profile
                 </button>
+              </>
+            )}
+            {/* Label is the title of the summary section (e.g. "Software Engineer"); left-aligned */}
+            <div className="mt-1.5 text-left">
+              <p className="text-sm font-semibold text-gray-900">
+                <EditableText
+                  value={getStr(basics, "label")}
+                  path="basics.label"
+                  onCommit={onCommit}
+                  placeholder="Label (e.g. Software Engineer)"
+                  className="font-semibold"
+                />
+              </p>
+              <div className="mt-0.5 text-sm">
+                <EditableText
+                  value={getStr(basics, "summary")}
+                  path="basics.summary"
+                  onCommit={onCommit}
+                  multiline
+                  placeholder="Summary"
+                  className="block w-full"
+                />
               </div>
-              {!showWorkOptional && (
-                <button
-                  type="button"
-                  className={addBtn}
-                  onClick={() =>
-                    setWorkOptionalExpanded((s) => new Set(s).add(i))
-                  }
-                >
-                  + Add location, company link or summary
-                </button>
-              )}
-              {showWorkOptional && (
-                <>
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-gray-600">
-                    <EditableText
-                      value={getStr(entry, "location")}
-                      path={`work.${i}.location`}
-                      onCommit={onCommit}
-                      placeholder="Location"
-                    />
-                    <EditableText
-                      value={getStr(entry, "url")}
-                      path={`work.${i}.url`}
-                      onCommit={onCommit}
-                      placeholder="Company URL"
-                    />
-                  </div>
-                  <p className="text-sm text-gray-600 mt-0.5">
-                    <EditableText
-                      value={getStr(entry, "description")}
-                      path={`work.${i}.description`}
-                      onCommit={onCommit}
-                      placeholder="Company description"
-                    />
-                  </p>
-                  <p className="text-sm text-gray-700 mt-0.5">
-                    <EditableText
-                      value={getStr(entry, "summary")}
-                      path={`work.${i}.summary`}
-                      onCommit={onCommit}
-                      multiline
-                      placeholder="Role summary"
-                      className="block"
-                    />
-                  </p>
-                </>
-              )}
-              <ul className="list-disc list-inside space-y-0.5 mt-0.5 text-sm text-gray-700 ml-2">
-                {getArr<string>(entry, "highlights").map((bullet, j) => (
-                  <li key={j} className="flex items-start gap-1">
-                    <EditableText
-                      value={bullet}
-                      path={`work.${i}.highlights.${j}`}
-                      onCommit={onCommit}
-                      className="flex-1"
-                    />
+            </div>
+          </header>
+
+          {/* Work — denser: Position | Company, then Location | Start – End */}
+          <section className="resume-section">
+            <h2 className={sectionHeading}>Experience</h2>
+            {work.map((entry, i) => {
+              const showWorkOptional =
+                workOptionalExpanded.has(i) || hasAnyOptionalWorkContent(entry);
+              const workEntryClass = compact ? "mb-2" : "mb-3";
+              return (
+                <div key={i} className={workEntryClass}>
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <div className="flex flex-wrap items-baseline gap-x-1.5 text-sm">
+                      <span className="text-gray-700">
+                        <EditableText
+                          value={getStr(entry, "position")}
+                          path={`work.${i}.position`}
+                          onCommit={onCommit}
+                          placeholder="Position"
+                        />
+                      </span>
+                      <span
+                        className="text-gray-400 select-none mx-0.5"
+                        aria-hidden
+                      >
+                        |
+                      </span>
+                      <span className="font-semibold">
+                        <EditableText
+                          value={getStr(entry, "name")}
+                          path={`work.${i}.name`}
+                          onCommit={onCommit}
+                          placeholder="Company"
+                        />
+                      </span>
+                      <span
+                        className="text-gray-400 select-none mx-0.5"
+                        aria-hidden
+                      >
+                        |
+                      </span>
+                      <span className="text-gray-500">
+                        <EditableText
+                          value={getStr(entry, "location")}
+                          path={`work.${i}.location`}
+                          onCommit={onCommit}
+                          placeholder="Location"
+                        />
+                      </span>
+                      <span
+                        className="text-gray-400 select-none mx-0.5"
+                        aria-hidden
+                      >
+                        |
+                      </span>
+                      <span className="text-gray-500">
+                        <EditableText
+                          value={getStr(entry, "startDate")}
+                          path={`work.${i}.startDate`}
+                          onCommit={onCommit}
+                          className="text-sm"
+                        />
+                        {" – "}
+                        <EditableText
+                          value={getStr(entry, "endDate")}
+                          path={`work.${i}.endDate`}
+                          onCommit={onCommit}
+                          className="text-sm"
+                        />
+                      </span>
+                    </div>
                     <button
                       type="button"
-                      className="shrink-0 text-red-600 hover:text-red-700 text-xs min-h-[44px] inline-flex items-center touch-manipulation"
-                      onClick={() =>
-                        removeHighlight(
-                          `work.${i}.highlights`,
-                          getArr<string>(entry, "highlights"),
-                          j,
-                        )
-                      }
-                      aria-label="Remove bullet"
+                      className={removeBtn}
+                      onClick={() => removeWork(i)}
+                      aria-label="Remove experience"
                     >
-                      ×
+                      Remove
                     </button>
-                  </li>
-                ))}
-                <li className="list-none">
-                  <button
-                    type="button"
-                    className={addBtn}
-                    onClick={() =>
-                      addHighlight(
-                        `work.${i}.highlights`,
-                        getArr<string>(entry, "highlights"),
-                      )
-                    }
-                  >
-                    + Add bullet
-                  </button>
-                </li>
-              </ul>
-            </div>
-          );
-        })}
-        <button type="button" className={addBtn} onClick={addWork}>
-          + Add experience
-        </button>
-      </section>
-
-      {/* Volunteer — same density as Work: Position at Organization, then Location | Start – End */}
-      <section>
-        <h2 className={sectionHeading}>Volunteer</h2>
-        {volunteer.map((entry, i) => (
-          <div key={i} className={compact ? "mb-2" : "mb-3"}>
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <div className="flex flex-wrap items-baseline gap-x-1.5">
-                <span className="text-sm text-gray-700">
-                  <EditableText
-                    value={getStr(entry, "position")}
-                    path={`volunteer.${i}.position`}
-                    onCommit={onCommit}
-                    placeholder="Role"
-                  />
-                </span>
-                <span className="text-gray-400 select-none mx-0.5" aria-hidden>
-                  |
-                </span>
-                <span className="font-semibold text-sm">
-                  <EditableText
-                    value={getStr(entry, "organization")}
-                    path={`volunteer.${i}.organization`}
-                    onCommit={onCommit}
-                    placeholder="Organization"
-                  />
-                </span>
-              </div>
-              <button
-                type="button"
-                className={removeBtn}
-                onClick={() => removeVolunteer(i)}
-                aria-label="Remove volunteer"
-              >
-                Remove
-              </button>
-            </div>
-            <p className="text-gray-500 text-sm mt-0.5">
-              <EditableText
-                value={getStr(entry, "startDate")}
-                path={`volunteer.${i}.startDate`}
-                onCommit={onCommit}
-                className="text-sm"
-              />
-              {" – "}
-              <EditableText
-                value={getStr(entry, "endDate")}
-                path={`volunteer.${i}.endDate`}
-                onCommit={onCommit}
-                className="text-sm"
-              />
-            </p>
-            <p className="text-sm text-gray-600 mt-0.5">
-              <EditableText
-                value={getStr(entry, "url")}
-                path={`volunteer.${i}.url`}
-                onCommit={onCommit}
-                placeholder="URL"
-              />
-            </p>
-            <p className="text-sm text-gray-700 mt-0.5">
-              <EditableText
-                value={getStr(entry, "summary")}
-                path={`volunteer.${i}.summary`}
-                onCommit={onCommit}
-                multiline
-                placeholder="Summary"
-                className="block"
-              />
-            </p>
-            <ul className="list-disc list-inside space-y-0.5 mt-0.5 text-sm text-gray-700 ml-2">
-              {getArr<string>(entry, "highlights").map((bullet, j) => (
-                <li key={j} className="flex items-start gap-1">
-                  <EditableText
-                    value={bullet}
-                    path={`volunteer.${i}.highlights.${j}`}
-                    onCommit={onCommit}
-                    className="flex-1"
-                  />
-                  <button
-                    type="button"
-                    className="shrink-0 text-red-600 hover:text-red-700 text-xs min-h-[44px] inline-flex items-center touch-manipulation"
-                    onClick={() =>
-                      removeHighlight(
-                        `volunteer.${i}.highlights`,
-                        getArr<string>(entry, "highlights"),
-                        j,
-                      )
-                    }
-                    aria-label="Remove bullet"
-                  >
-                    ×
-                  </button>
-                </li>
-              ))}
-              <li className="list-none">
-                <button
-                  type="button"
-                  className={addBtn}
-                  onClick={() =>
-                    addHighlight(
-                      `volunteer.${i}.highlights`,
-                      getArr<string>(entry, "highlights"),
-                    )
-                  }
-                >
-                  + Add bullet
-                </button>
-              </li>
-            </ul>
-          </div>
-        ))}
-        <button type="button" className={addBtn} onClick={addVolunteer}>
-          + Add volunteer experience
-        </button>
-      </section>
-
-      {/* Education — denser: institution · area, then dates (or studyType, area · dates when expanded) */}
-      <section>
-        <h2 className={sectionHeading}>Education</h2>
-        {education.map((entry, i) => {
-          const showEducationOptional =
-            educationOptionalExpanded.has(i) ||
-            hasAnyOptionalEducationContent(entry);
-          const entryClass = compact ? "mb-2" : "mb-3";
-          return (
-            <div
-              key={i}
-              className={`${entryClass} flex flex-wrap items-start justify-between gap-2`}
-            >
-              <div>
-                <span className="font-semibold text-sm">
-                  <EditableText
-                    value={getStr(entry, "institution")}
-                    path={`education.${i}.institution`}
-                    onCommit={onCommit}
-                  />
-                </span>
-                {!showEducationOptional && (
-                  <span className="text-gray-600 text-sm ml-1">
-                    <EditableText
-                      value={getStr(entry, "area")}
-                      path={`education.${i}.area`}
-                      onCommit={onCommit}
-                      placeholder="Area"
-                    />
-                  </span>
-                )}
-                {showEducationOptional ? (
-                  <span className="text-gray-600 text-sm ml-1">
-                    <EditableText
-                      value={getStr(entry, "studyType")}
-                      path={`education.${i}.studyType`}
-                      onCommit={onCommit}
-                      placeholder="Study type"
-                    />
-                    {", "}
-                    <EditableText
-                      value={getStr(entry, "area")}
-                      path={`education.${i}.area`}
-                      onCommit={onCommit}
-                      placeholder="Area"
-                    />
-                    {" · "}
-                    <EditableText
-                      value={getStr(entry, "startDate")}
-                      path={`education.${i}.startDate`}
-                      onCommit={onCommit}
-                      className="text-sm"
-                    />
-                    {" – "}
-                    <EditableText
-                      value={getStr(entry, "endDate")}
-                      path={`education.${i}.endDate`}
-                      onCommit={onCommit}
-                      className="text-sm"
-                    />
-                  </span>
-                ) : (
-                  <span className="text-gray-500 text-sm block mt-0.5">
-                    <EditableText
-                      value={getStr(entry, "startDate")}
-                      path={`education.${i}.startDate`}
-                      onCommit={onCommit}
-                      className="text-sm"
-                    />
-                    {" – "}
-                    <EditableText
-                      value={getStr(entry, "endDate")}
-                      path={`education.${i}.endDate`}
-                      onCommit={onCommit}
-                      className="text-sm"
-                    />
-                  </span>
-                )}
-                {!showEducationOptional && (
-                  <button
-                    type="button"
-                    className={addBtn}
-                    onClick={() =>
-                      setEducationOptionalExpanded((s) => new Set(s).add(i))
-                    }
-                  >
-                    + Add URL, degree type, GPA or courses
-                  </button>
-                )}
-                {showEducationOptional && (
-                  <>
-                    <p className="text-sm text-gray-500 mt-0.5">
-                      <EditableText
-                        value={getStr(entry, "score")}
-                        path={`education.${i}.score`}
-                        onCommit={onCommit}
-                        placeholder="Score (e.g. GPA)"
-                      />
-                    </p>
-                    <p className="text-sm text-gray-600 mt-0.5">
-                      <EditableText
-                        value={getStr(entry, "url")}
-                        path={`education.${i}.url`}
-                        onCommit={onCommit}
-                        placeholder="Institution URL"
-                      />
-                    </p>
-                    <div className="text-sm text-gray-600 mt-0.5">
-                      {getArr<string>(entry, "courses").map((c, ci) => (
-                        <span
-                          key={ci}
-                          className="inline-flex items-center gap-1 mr-2"
+                  </div>
+                  {!showWorkOptional && (
+                    <button
+                      type="button"
+                      className={addBtn}
+                      onClick={() =>
+                        setWorkOptionalExpanded((s) => new Set(s).add(i))
+                      }
+                    >
+                      + Add location, company link or summary
+                    </button>
+                  )}
+                  {showWorkOptional && (
+                    <>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-gray-600">
+                        <EditableText
+                          value={getStr(entry, "location")}
+                          path={`work.${i}.location`}
+                          onCommit={onCommit}
+                          placeholder="Location"
+                        />
+                        <EditableText
+                          value={getStr(entry, "url")}
+                          path={`work.${i}.url`}
+                          onCommit={onCommit}
+                          placeholder="Company URL"
+                        />
+                      </div>
+                      <p className="text-sm text-gray-600 mt-0.5">
+                        <EditableText
+                          value={getStr(entry, "description")}
+                          path={`work.${i}.description`}
+                          onCommit={onCommit}
+                          placeholder="Company description"
+                        />
+                      </p>
+                      <p className="text-sm text-gray-700 mt-0.5">
+                        <EditableText
+                          value={getStr(entry, "summary")}
+                          path={`work.${i}.summary`}
+                          onCommit={onCommit}
+                          multiline
+                          placeholder="Role summary"
+                          className="block"
+                        />
+                      </p>
+                    </>
+                  )}
+                  <ul className="list-disc list-inside space-y-0.5 mt-0.5 text-sm text-gray-700 ml-2">
+                    {getArr<string>(entry, "highlights").map((bullet, j) => (
+                      <li key={j} className="flex items-start gap-1">
+                        <EditableText
+                          value={bullet}
+                          path={`work.${i}.highlights.${j}`}
+                          onCommit={onCommit}
+                          className="flex-1"
+                        />
+                        <button
+                          type="button"
+                          className="shrink-0 text-red-600 hover:text-red-700 text-xs min-h-[44px] inline-flex items-center touch-manipulation"
+                          onClick={() =>
+                            removeHighlight(
+                              `work.${i}.highlights`,
+                              getArr<string>(entry, "highlights"),
+                              j,
+                            )
+                          }
+                          aria-label="Remove bullet"
                         >
-                          <EditableText
-                            value={c}
-                            path={`education.${i}.courses.${ci}`}
-                            onCommit={onCommit}
-                            className="text-sm"
-                          />
-                          <button
-                            type="button"
-                            className="text-red-600 hover:text-red-700 text-xs"
-                            onClick={() =>
-                              onChange(
-                                setResumePath(
-                                  resume,
-                                  `education.${i}.courses`,
-                                  getArr<string>(entry, "courses").filter(
-                                    (_, idx) => idx !== ci,
-                                  ),
-                                ),
-                              )
-                            }
-                            aria-label="Remove course"
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
+                          ×
+                        </button>
+                      </li>
+                    ))}
+                    <li className="list-none">
                       <button
                         type="button"
                         className={addBtn}
                         onClick={() =>
                           addHighlight(
-                            `education.${i}.courses`,
-                            getArr<string>(entry, "courses"),
+                            `work.${i}.highlights`,
+                            getArr<string>(entry, "highlights"),
                           )
                         }
                       >
-                        + Add course
+                        + Add bullet
                       </button>
-                    </div>
-                  </>
-                )}
-              </div>
-              <button
-                type="button"
-                className={removeBtn}
-                onClick={() => removeEducation(i)}
-                aria-label="Remove education"
-              >
-                Remove
-              </button>
-            </div>
-          );
-        })}
-        <button type="button" className={addBtn} onClick={addEducation}>
-          + Add education
-        </button>
-      </section>
-
-      {/* Projects */}
-      <section>
-        <h2 className={sectionHeading}>Projects</h2>
-        {projects.map((entry, i) => {
-          const showProjectsOptional =
-            projectsOptionalExpanded.has(i) ||
-            hasAnyOptionalProjectContent(entry);
-          return (
-            <div key={i} className="mb-3">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="font-semibold text-sm">
-                  <EditableText
-                    value={getStr(entry, "name")}
-                    path={`projects.${i}.name`}
-                    onCommit={onCommit}
-                  />
-                </span>
-                <button
-                  type="button"
-                  className={removeBtn}
-                  onClick={() => removeProject(i)}
-                  aria-label="Remove project"
-                >
-                  Remove
-                </button>
-              </div>
-              {!showProjectsOptional && (
-                <button
-                  type="button"
-                  className={addBtn}
-                  onClick={() =>
-                    setProjectsOptionalExpanded((s) => new Set(s).add(i))
-                  }
-                >
-                  + Add description, dates, link or roles
-                </button>
-              )}
-              {showProjectsOptional && (
-                <>
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-gray-600 mt-0.5">
-                    <EditableText
-                      value={getStr(entry, "startDate")}
-                      path={`projects.${i}.startDate`}
-                      onCommit={onCommit}
-                      placeholder="Start"
-                    />
-                    <EditableText
-                      value={getStr(entry, "endDate")}
-                      path={`projects.${i}.endDate`}
-                      onCommit={onCommit}
-                      placeholder="End"
-                    />
-                    <EditableText
-                      value={getStr(entry, "url")}
-                      path={`projects.${i}.url`}
-                      onCommit={onCommit}
-                      placeholder="URL"
-                    />
-                    <EditableText
-                      value={getStr(entry, "entity")}
-                      path={`projects.${i}.entity`}
-                      onCommit={onCommit}
-                      placeholder="Entity"
-                    />
-                    <EditableText
-                      value={getStr(entry, "type")}
-                      path={`projects.${i}.type`}
-                      onCommit={onCommit}
-                      placeholder="Type"
-                    />
-                  </div>
-                  <p className="text-sm text-gray-600 mt-0.5">
-                    <EditableText
-                      value={getStr(entry, "description")}
-                      path={`projects.${i}.description`}
-                      onCommit={onCommit}
-                      placeholder="Description"
-                    />
-                  </p>
-                  <div className="text-sm text-gray-600 mt-0.5 flex flex-wrap gap-1.5">
-                    {getArr<string>(entry, "keywords").map((kw, ki) => (
-                      <span
-                        key={ki}
-                        className="inline-flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded"
-                      >
-                        <EditableText
-                          value={kw}
-                          path={`projects.${i}.keywords.${ki}`}
-                          onCommit={onCommit}
-                          className="text-sm"
-                        />
-                        <button
-                          type="button"
-                          className="text-red-600 hover:text-red-700"
-                          onClick={() =>
-                            onChange(
-                              setResumePath(
-                                resume,
-                                `projects.${i}.keywords`,
-                                getArr<string>(entry, "keywords").filter(
-                                  (_, idx) => idx !== ki,
-                                ),
-                              ),
-                            )
-                          }
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                    <button
-                      type="button"
-                      className={addBtn}
-                      onClick={() =>
-                        addHighlight(
-                          `projects.${i}.keywords`,
-                          getArr<string>(entry, "keywords"),
-                        )
-                      }
-                    >
-                      + keyword
-                    </button>
-                  </div>
-                  <div className="text-sm text-gray-600 mt-0.5 flex flex-wrap gap-1.5">
-                    {getArr<string>(entry, "roles").map((r, ri) => (
-                      <span key={ri} className="inline-flex items-center gap-1">
-                        <EditableText
-                          value={r}
-                          path={`projects.${i}.roles.${ri}`}
-                          onCommit={onCommit}
-                          className="text-sm"
-                        />
-                        <button
-                          type="button"
-                          className="text-red-600 hover:text-red-700"
-                          onClick={() =>
-                            onChange(
-                              setResumePath(
-                                resume,
-                                `projects.${i}.roles`,
-                                getArr<string>(entry, "roles").filter(
-                                  (_, idx) => idx !== ri,
-                                ),
-                              ),
-                            )
-                          }
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                    <button
-                      type="button"
-                      className={addBtn}
-                      onClick={() =>
-                        addHighlight(
-                          `projects.${i}.roles`,
-                          getArr<string>(entry, "roles"),
-                        )
-                      }
-                    >
-                      + role
-                    </button>
-                  </div>
-                </>
-              )}
-              <ul className="list-disc list-inside space-y-0.5 mt-0.5 text-sm text-gray-700 ml-2">
-                {getArr<string>(entry, "highlights").map((bullet, j) => (
-                  <li key={j} className="flex items-start gap-1">
-                    <EditableText
-                      value={bullet}
-                      path={`projects.${i}.highlights.${j}`}
-                      onCommit={onCommit}
-                      className="flex-1"
-                    />
-                    <button
-                      type="button"
-                      className="shrink-0 text-red-600 hover:text-red-700 text-xs min-h-[44px] inline-flex items-center touch-manipulation"
-                      onClick={() =>
-                        removeHighlight(
-                          `projects.${i}.highlights`,
-                          getArr<string>(entry, "highlights"),
-                          j,
-                        )
-                      }
-                      aria-label="Remove bullet"
-                    >
-                      ×
-                    </button>
-                  </li>
-                ))}
-                <li className="list-none">
-                  <button
-                    type="button"
-                    className={addBtn}
-                    onClick={() =>
-                      addHighlight(
-                        `projects.${i}.highlights`,
-                        getArr<string>(entry, "highlights"),
-                      )
-                    }
-                  >
-                    + Add bullet
-                  </button>
-                </li>
-              </ul>
-            </div>
-          );
-        })}
-        <button type="button" className={addBtn} onClick={addProject}>
-          + Add project
-        </button>
-      </section>
-
-      {/* Skills — tags (default) or inline one line per category when compact */}
-      <section>
-        <h2 className={sectionHeading}>Skills</h2>
-        {skills.map((entry, i) => {
-          const keywords = getArr<string>(entry, "keywords");
-          const showLevel =
-            getStr(entry, "level") !== "" || skillLevelExpanded.has(i);
-          const keywordsInline = keywords.join(", ");
-          const onKeywordsCommit = (path: string, value: string) => {
-            const next = value
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean);
-            onChange(setResumePath(resume, `skills.${i}.keywords`, next));
-          };
-          if (compact) {
-            return (
-              <div
-                key={i}
-                className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2"
-              >
-                <span className="text-sm">
-                  <span className="font-semibold">
-                    <EditableText
-                      value={getStr(entry, "name")}
-                      path={`skills.${i}.name`}
-                      onCommit={onCommit}
-                      placeholder="Category"
-                    />
-                  </span>
-                  <span className="text-gray-500 mx-1">: </span>
-                  <EditableText
-                    value={keywordsInline}
-                    path={`skills.${i}.keywords`}
-                    onCommit={onKeywordsCommit}
-                    placeholder="keyword1, keyword2"
-                    className="text-gray-700"
-                  />
-                </span>
-                <button
-                  type="button"
-                  className={removeBtn}
-                  onClick={() => removeSkillCategory(i)}
-                  aria-label="Remove skill category"
-                >
-                  Remove
-                </button>
-              </div>
-            );
-          }
-          return (
-            <div key={i} className="mb-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-semibold text-sm">
-                  <EditableText
-                    value={getStr(entry, "name")}
-                    path={`skills.${i}.name`}
-                    onCommit={onCommit}
-                    placeholder="Category name"
-                  />
-                </span>
-                {showLevel && (
-                  <span className="text-gray-500 text-sm">
-                    <EditableText
-                      value={getStr(entry, "level")}
-                      path={`skills.${i}.level`}
-                      onCommit={onCommit}
-                      placeholder="Level"
-                    />
-                  </span>
-                )}
-                {!showLevel && (
-                  <button
-                    type="button"
-                    className={addBtn}
-                    onClick={() =>
-                      setSkillLevelExpanded((s) => new Set(s).add(i))
-                    }
-                  >
-                    + Add level
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className={removeBtn}
-                  onClick={() => removeSkillCategory(i)}
-                  aria-label="Remove skill category"
-                >
-                  Remove
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-1.5 mt-0.5">
-                {keywords.map((kw, j) => (
-                  <span
-                    key={j}
-                    className="inline-flex items-center gap-1 bg-gray-100 px-2 py-1 rounded text-sm min-h-[44px]"
-                  >
-                    <EditableText
-                      value={kw}
-                      path={`skills.${i}.keywords.${j}`}
-                      onCommit={onCommit}
-                      className="text-sm py-1"
-                    />
-                    <button
-                      type="button"
-                      className="text-red-600 hover:text-red-700 touch-manipulation"
-                      onClick={() =>
-                        removeHighlight(`skills.${i}.keywords`, keywords, j)
-                      }
-                      aria-label="Remove keyword"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-                <button
-                  type="button"
-                  className={addBtn}
-                  onClick={() => addHighlight(`skills.${i}.keywords`, keywords)}
-                >
-                  + keyword
-                </button>
-              </div>
-            </div>
-          );
-        })}
-        <button type="button" className={addBtn} onClick={addSkillCategory}>
-          + Add skill category
-        </button>
-      </section>
-
-      {/* Languages — already one line; tighter when compact */}
-      <section>
-        <h2 className={sectionHeading}>Languages</h2>
-        {languages.map((entry, i) => (
-          <div
-            key={i}
-            className={`${compact ? "mb-1.5" : "mb-3"} flex flex-wrap items-center justify-between gap-2`}
-          >
-            <span className="text-sm">
-              <EditableText
-                value={getStr(entry, "language")}
-                path={`languages.${i}.language`}
-                onCommit={onCommit}
-                placeholder="Language"
-              />
-              {" — "}
-              <EditableText
-                value={getStr(entry, "fluency")}
-                path={`languages.${i}.fluency`}
-                onCommit={onCommit}
-                placeholder="Fluency"
-              />
-            </span>
-            <button
-              type="button"
-              className={removeBtn}
-              onClick={() => removeLanguage(i)}
-              aria-label="Remove language"
-            >
-              Remove
+                    </li>
+                  </ul>
+                </div>
+              );
+            })}
+            <button type="button" className={addBtn} onClick={addWork}>
+              + Add experience
             </button>
-          </div>
-        ))}
-        <button type="button" className={addBtn} onClick={addLanguage}>
-          + Add language
-        </button>
-      </section>
+          </section>
 
-      {/* Certificates — one line when compact: Name – Issuer, Date */}
-      <section>
-        <h2 className={sectionHeading}>Certificates</h2>
-        {certificates.map((entry, i) => (
-          <div key={i} className={compact ? "mb-1.5" : "mb-3"}>
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <span className="text-sm">
-                <span className="font-semibold">
+          {/* Volunteer — same density as Work: Position at Organization, then Location | Start – End */}
+          <section className="resume-section">
+            <h2 className={sectionHeading}>Volunteer</h2>
+            {volunteer.map((entry, i) => (
+              <div key={i} className={compact ? "mb-2" : "mb-3"}>
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <div className="flex flex-wrap items-baseline gap-x-1.5">
+                    <span className="text-sm text-gray-700">
+                      <EditableText
+                        value={getStr(entry, "position")}
+                        path={`volunteer.${i}.position`}
+                        onCommit={onCommit}
+                        placeholder="Role"
+                      />
+                    </span>
+                    <span
+                      className="text-gray-400 select-none mx-0.5"
+                      aria-hidden
+                    >
+                      |
+                    </span>
+                    <span className="font-semibold text-sm">
+                      <EditableText
+                        value={getStr(entry, "organization")}
+                        path={`volunteer.${i}.organization`}
+                        onCommit={onCommit}
+                        placeholder="Organization"
+                      />
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className={removeBtn}
+                    onClick={() => removeVolunteer(i)}
+                    aria-label="Remove volunteer"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <p className="text-gray-500 text-sm mt-0.5">
                   <EditableText
-                    value={getStr(entry, "name")}
-                    path={`certificates.${i}.name`}
+                    value={getStr(entry, "startDate")}
+                    path={`volunteer.${i}.startDate`}
                     onCommit={onCommit}
-                    placeholder="Certificate name"
+                    className="text-sm"
                   />
-                </span>
-                {compact && (
-                  <>
-                    <span className="text-gray-500 mx-1">–</span>
-                    <EditableText
-                      value={getStr(entry, "issuer")}
-                      path={`certificates.${i}.issuer`}
-                      onCommit={onCommit}
-                      placeholder="Issuer"
-                      className="text-gray-600"
-                    />
-                    <span className="text-gray-500 mx-1">,</span>
-                    <EditableText
-                      value={getStr(entry, "date")}
-                      path={`certificates.${i}.date`}
-                      onCommit={onCommit}
-                      placeholder="Date"
-                      className="text-gray-600"
-                    />
-                  </>
-                )}
-              </span>
-              <button
-                type="button"
-                className={removeBtn}
-                onClick={() => removeCertificate(i)}
-                aria-label="Remove certificate"
-              >
-                Remove
-              </button>
-            </div>
-            {!compact && (
-              <p className="text-sm text-gray-600 mt-0.5">
-                <EditableText
-                  value={getStr(entry, "issuer")}
-                  path={`certificates.${i}.issuer`}
-                  onCommit={onCommit}
-                  placeholder="Issuer"
-                />
-                {" · "}
-                <EditableText
-                  value={getStr(entry, "date")}
-                  path={`certificates.${i}.date`}
-                  onCommit={onCommit}
-                  placeholder="Date"
-                />
-                {" · "}
-                <EditableText
-                  value={getStr(entry, "url")}
-                  path={`certificates.${i}.url`}
-                  onCommit={onCommit}
-                  placeholder="URL"
-                />
-              </p>
-            )}
-          </div>
-        ))}
-        <button type="button" className={addBtn} onClick={addCertificate}>
-          + Add certificate
-        </button>
-      </section>
-
-      {/* Awards — one line when compact: Title – Awarder, Date */}
-      <section>
-        <h2 className={sectionHeading}>Awards</h2>
-        {awards.map((entry, i) => (
-          <div key={i} className={compact ? "mb-1.5" : "mb-3"}>
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <span className="text-sm">
-                <span className="font-semibold">
+                  {" – "}
                   <EditableText
-                    value={getStr(entry, "title")}
-                    path={`awards.${i}.title`}
+                    value={getStr(entry, "endDate")}
+                    path={`volunteer.${i}.endDate`}
                     onCommit={onCommit}
-                    placeholder="Award title"
-                  />
-                </span>
-                {compact ? (
-                  <>
-                    <span className="text-gray-500 mx-1">–</span>
-                    <EditableText
-                      value={getStr(entry, "awarder")}
-                      path={`awards.${i}.awarder`}
-                      onCommit={onCommit}
-                      placeholder="Awarder"
-                      className="text-gray-600"
-                    />
-                    <span className="text-gray-500 mx-1">,</span>
-                    <EditableText
-                      value={getStr(entry, "date")}
-                      path={`awards.${i}.date`}
-                      onCommit={onCommit}
-                      placeholder="Date"
-                      className="text-gray-600"
-                    />
-                  </>
-                ) : null}
-              </span>
-              <button
-                type="button"
-                className={removeBtn}
-                onClick={() => removeAward(i)}
-                aria-label="Remove award"
-              >
-                Remove
-              </button>
-            </div>
-            {!compact && (
-              <>
-                <p className="text-sm text-gray-600 mt-0.5">
-                  <EditableText
-                    value={getStr(entry, "awarder")}
-                    path={`awards.${i}.awarder`}
-                    onCommit={onCommit}
-                    placeholder="Awarder"
-                  />
-                  {" · "}
-                  <EditableText
-                    value={getStr(entry, "date")}
-                    path={`awards.${i}.date`}
-                    onCommit={onCommit}
-                    placeholder="Date"
+                    className="text-sm"
                   />
                 </p>
-                <p className="text-sm text-gray-700 mt-0.5">
-                  <EditableText
-                    value={getStr(entry, "summary")}
-                    path={`awards.${i}.summary`}
-                    onCommit={onCommit}
-                    multiline
-                    placeholder="Summary"
-                    className="block"
-                  />
-                </p>
-              </>
-            )}
-            {compact && getStr(entry, "summary") && (
-              <p className="text-sm text-gray-700 mt-0.5">
-                <EditableText
-                  value={getStr(entry, "summary")}
-                  path={`awards.${i}.summary`}
-                  onCommit={onCommit}
-                  multiline
-                  placeholder="Summary"
-                  className="block"
-                />
-              </p>
-            )}
-          </div>
-        ))}
-        <button type="button" className={addBtn} onClick={addAward}>
-          + Add award
-        </button>
-      </section>
-
-      {/* Publications — one line when compact: Name – Publisher, Date */}
-      <section>
-        <h2 className={sectionHeading}>Publications</h2>
-        {publications.map((entry, i) => (
-          <div key={i} className={compact ? "mb-1.5" : "mb-3"}>
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <span className="text-sm">
-                <span className="font-semibold">
-                  <EditableText
-                    value={getStr(entry, "name")}
-                    path={`publications.${i}.name`}
-                    onCommit={onCommit}
-                    placeholder="Publication name"
-                  />
-                </span>
-                {compact ? (
-                  <>
-                    <span className="text-gray-500 mx-1">–</span>
-                    <EditableText
-                      value={getStr(entry, "publisher")}
-                      path={`publications.${i}.publisher`}
-                      onCommit={onCommit}
-                      placeholder="Publisher"
-                      className="text-gray-600"
-                    />
-                    <span className="text-gray-500 mx-1">,</span>
-                    <EditableText
-                      value={getStr(entry, "releaseDate")}
-                      path={`publications.${i}.releaseDate`}
-                      onCommit={onCommit}
-                      placeholder="Date"
-                      className="text-gray-600"
-                    />
-                  </>
-                ) : null}
-              </span>
-              <button
-                type="button"
-                className={removeBtn}
-                onClick={() => removePublication(i)}
-                aria-label="Remove publication"
-              >
-                Remove
-              </button>
-            </div>
-            {!compact && (
-              <>
                 <p className="text-sm text-gray-600 mt-0.5">
-                  <EditableText
-                    value={getStr(entry, "publisher")}
-                    path={`publications.${i}.publisher`}
-                    onCommit={onCommit}
-                    placeholder="Publisher"
-                  />
-                  {" · "}
-                  <EditableText
-                    value={getStr(entry, "releaseDate")}
-                    path={`publications.${i}.releaseDate`}
-                    onCommit={onCommit}
-                    placeholder="Date"
-                  />
-                  {" · "}
                   <EditableText
                     value={getStr(entry, "url")}
-                    path={`publications.${i}.url`}
+                    path={`volunteer.${i}.url`}
                     onCommit={onCommit}
                     placeholder="URL"
                   />
@@ -2029,186 +1206,1049 @@ export function ResumeDocument({
                 <p className="text-sm text-gray-700 mt-0.5">
                   <EditableText
                     value={getStr(entry, "summary")}
-                    path={`publications.${i}.summary`}
+                    path={`volunteer.${i}.summary`}
                     onCommit={onCommit}
                     multiline
                     placeholder="Summary"
                     className="block"
                   />
                 </p>
-              </>
-            )}
-            {compact && getStr(entry, "summary") && (
-              <p className="text-sm text-gray-700 mt-0.5">
-                <EditableText
-                  value={getStr(entry, "summary")}
-                  path={`publications.${i}.summary`}
-                  onCommit={onCommit}
-                  multiline
-                  placeholder="Summary"
-                  className="block"
-                />
-              </p>
-            )}
-          </div>
-        ))}
-        <button type="button" className={addBtn} onClick={addPublication}>
-          + Add publication
-        </button>
-      </section>
-
-      {/* Interests — one line when compact: Name: kw1, kw2 */}
-      <section>
-        <h2 className={sectionHeading}>Interests</h2>
-        {interests.map((entry, i) => {
-          const kw = getArr<string>(entry, "keywords");
-          const keywordsInline = kw.join(", ");
-          const onInterestKeywordsCommit = (path: string, value: string) => {
-            const next = value
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean);
-            onChange(setResumePath(resume, `interests.${i}.keywords`, next));
-          };
-          if (compact) {
-            return (
-              <div
-                key={i}
-                className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2"
-              >
-                <span className="text-sm">
-                  <span className="font-semibold">
-                    <EditableText
-                      value={getStr(entry, "name")}
-                      path={`interests.${i}.name`}
-                      onCommit={onCommit}
-                      placeholder="Interest"
-                    />
-                  </span>
-                  <span className="text-gray-500 mx-1">: </span>
-                  <EditableText
-                    value={keywordsInline}
-                    path={`interests.${i}.keywords`}
-                    onCommit={onInterestKeywordsCommit}
-                    placeholder="keyword1, keyword2"
-                    className="text-gray-700"
-                  />
-                </span>
-                <button
-                  type="button"
-                  className={removeBtn}
-                  onClick={() => removeInterest(i)}
-                  aria-label="Remove interest"
-                >
-                  Remove
-                </button>
-              </div>
-            );
-          }
-          return (
-            <div key={i} className="mb-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-semibold text-sm">
-                  <EditableText
-                    value={getStr(entry, "name")}
-                    path={`interests.${i}.name`}
-                    onCommit={onCommit}
-                    placeholder="Interest name"
-                  />
-                </span>
-                <button
-                  type="button"
-                  className={removeBtn}
-                  onClick={() => removeInterest(i)}
-                  aria-label="Remove interest"
-                >
-                  Remove
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-1.5 mt-0.5">
-                {kw.map((k, ki) => (
-                  <span
-                    key={ki}
-                    className="inline-flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded text-sm"
-                  >
-                    <EditableText
-                      value={k}
-                      path={`interests.${i}.keywords.${ki}`}
-                      onCommit={onCommit}
-                      className="text-sm"
-                    />
+                <ul className="list-disc list-inside space-y-0.5 mt-0.5 text-sm text-gray-700 ml-2">
+                  {getArr<string>(entry, "highlights").map((bullet, j) => (
+                    <li key={j} className="flex items-start gap-1">
+                      <EditableText
+                        value={bullet}
+                        path={`volunteer.${i}.highlights.${j}`}
+                        onCommit={onCommit}
+                        className="flex-1"
+                      />
+                      <button
+                        type="button"
+                        className="shrink-0 text-red-600 hover:text-red-700 text-xs min-h-[44px] inline-flex items-center touch-manipulation"
+                        onClick={() =>
+                          removeHighlight(
+                            `volunteer.${i}.highlights`,
+                            getArr<string>(entry, "highlights"),
+                            j,
+                          )
+                        }
+                        aria-label="Remove bullet"
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                  <li className="list-none">
                     <button
                       type="button"
-                      className="text-red-600 hover:text-red-700"
+                      className={addBtn}
                       onClick={() =>
-                        onChange(
-                          setResumePath(
-                            resume,
-                            `interests.${i}.keywords`,
-                            kw.filter((_, idx) => idx !== ki),
-                          ),
+                        addHighlight(
+                          `volunteer.${i}.highlights`,
+                          getArr<string>(entry, "highlights"),
                         )
                       }
                     >
-                      ×
+                      + Add bullet
                     </button>
-                  </span>
-                ))}
+                  </li>
+                </ul>
+              </div>
+            ))}
+            <button type="button" className={addBtn} onClick={addVolunteer}>
+              + Add volunteer experience
+            </button>
+          </section>
+
+          {/* Education — denser: institution · area, then dates (or studyType, area · dates when expanded) */}
+          <section className="resume-section">
+            <h2 className={sectionHeading}>Education</h2>
+            {education.map((entry, i) => {
+              const showEducationOptional =
+                educationOptionalExpanded.has(i) ||
+                hasAnyOptionalEducationContent(entry);
+              const entryClass = compact ? "mb-2" : "mb-3";
+              return (
+                <div
+                  key={i}
+                  className={`${entryClass} flex flex-wrap items-start justify-between gap-2`}
+                >
+                  <div>
+                    <span className="font-semibold text-sm">
+                      <EditableText
+                        value={getStr(entry, "institution")}
+                        path={`education.${i}.institution`}
+                        onCommit={onCommit}
+                      />
+                    </span>
+                    {!showEducationOptional && (
+                      <span className="text-gray-600 text-sm ml-1">
+                        <EditableText
+                          value={getStr(entry, "area")}
+                          path={`education.${i}.area`}
+                          onCommit={onCommit}
+                          placeholder="Area"
+                        />
+                      </span>
+                    )}
+                    {showEducationOptional ? (
+                      <span className="text-gray-600 text-sm ml-1">
+                        <EditableText
+                          value={getStr(entry, "studyType")}
+                          path={`education.${i}.studyType`}
+                          onCommit={onCommit}
+                          placeholder="Study type"
+                        />
+                        {", "}
+                        <EditableText
+                          value={getStr(entry, "area")}
+                          path={`education.${i}.area`}
+                          onCommit={onCommit}
+                          placeholder="Area"
+                        />
+                        {" · "}
+                        <EditableText
+                          value={getStr(entry, "startDate")}
+                          path={`education.${i}.startDate`}
+                          onCommit={onCommit}
+                          className="text-sm"
+                        />
+                        {" – "}
+                        <EditableText
+                          value={getStr(entry, "endDate")}
+                          path={`education.${i}.endDate`}
+                          onCommit={onCommit}
+                          className="text-sm"
+                        />
+                      </span>
+                    ) : (
+                      <span className="text-gray-500 text-sm block mt-0.5">
+                        <EditableText
+                          value={getStr(entry, "startDate")}
+                          path={`education.${i}.startDate`}
+                          onCommit={onCommit}
+                          className="text-sm"
+                        />
+                        {" – "}
+                        <EditableText
+                          value={getStr(entry, "endDate")}
+                          path={`education.${i}.endDate`}
+                          onCommit={onCommit}
+                          className="text-sm"
+                        />
+                      </span>
+                    )}
+                    {!showEducationOptional && (
+                      <button
+                        type="button"
+                        className={addBtn}
+                        onClick={() =>
+                          setEducationOptionalExpanded((s) => new Set(s).add(i))
+                        }
+                      >
+                        + Add URL, degree type, GPA or courses
+                      </button>
+                    )}
+                    {showEducationOptional && (
+                      <>
+                        <p className="text-sm text-gray-500 mt-0.5">
+                          <EditableText
+                            value={getStr(entry, "score")}
+                            path={`education.${i}.score`}
+                            onCommit={onCommit}
+                            placeholder="Score (e.g. GPA)"
+                          />
+                        </p>
+                        <p className="text-sm text-gray-600 mt-0.5">
+                          <EditableText
+                            value={getStr(entry, "url")}
+                            path={`education.${i}.url`}
+                            onCommit={onCommit}
+                            placeholder="Institution URL"
+                          />
+                        </p>
+                        <div className="text-sm text-gray-600 mt-0.5">
+                          {getArr<string>(entry, "courses").map((c, ci) => (
+                            <span
+                              key={ci}
+                              className="inline-flex items-center gap-1 mr-2"
+                            >
+                              <EditableText
+                                value={c}
+                                path={`education.${i}.courses.${ci}`}
+                                onCommit={onCommit}
+                                className="text-sm"
+                              />
+                              <button
+                                type="button"
+                                className="text-red-600 hover:text-red-700 text-xs"
+                                onClick={() =>
+                                  onChange(
+                                    setResumePath(
+                                      resume,
+                                      `education.${i}.courses`,
+                                      getArr<string>(entry, "courses").filter(
+                                        (_, idx) => idx !== ci,
+                                      ),
+                                    ),
+                                  )
+                                }
+                                aria-label="Remove course"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                          <button
+                            type="button"
+                            className={addBtn}
+                            onClick={() =>
+                              addHighlight(
+                                `education.${i}.courses`,
+                                getArr<string>(entry, "courses"),
+                              )
+                            }
+                          >
+                            + Add course
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className={removeBtn}
+                    onClick={() => removeEducation(i)}
+                    aria-label="Remove education"
+                  >
+                    Remove
+                  </button>
+                </div>
+              );
+            })}
+            <button type="button" className={addBtn} onClick={addEducation}>
+              + Add education
+            </button>
+          </section>
+
+          {/* Projects */}
+          <section className="resume-section">
+            <h2 className={sectionHeading}>Projects</h2>
+            {projects.map((entry, i) => {
+              const showProjectsOptional =
+                projectsOptionalExpanded.has(i) ||
+                hasAnyOptionalProjectContent(entry);
+              return (
+                <div key={i} className="mb-3">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="font-semibold text-sm">
+                      <EditableText
+                        value={getStr(entry, "name")}
+                        path={`projects.${i}.name`}
+                        onCommit={onCommit}
+                      />
+                    </span>
+                    <button
+                      type="button"
+                      className={removeBtn}
+                      onClick={() => removeProject(i)}
+                      aria-label="Remove project"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  {!showProjectsOptional && (
+                    <button
+                      type="button"
+                      className={addBtn}
+                      onClick={() =>
+                        setProjectsOptionalExpanded((s) => new Set(s).add(i))
+                      }
+                    >
+                      + Add description, dates, link or roles
+                    </button>
+                  )}
+                  {showProjectsOptional && (
+                    <>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-gray-600 mt-0.5">
+                        <EditableText
+                          value={getStr(entry, "startDate")}
+                          path={`projects.${i}.startDate`}
+                          onCommit={onCommit}
+                          placeholder="Start"
+                        />
+                        <EditableText
+                          value={getStr(entry, "endDate")}
+                          path={`projects.${i}.endDate`}
+                          onCommit={onCommit}
+                          placeholder="End"
+                        />
+                        <EditableText
+                          value={getStr(entry, "url")}
+                          path={`projects.${i}.url`}
+                          onCommit={onCommit}
+                          placeholder="URL"
+                        />
+                        <EditableText
+                          value={getStr(entry, "entity")}
+                          path={`projects.${i}.entity`}
+                          onCommit={onCommit}
+                          placeholder="Entity"
+                        />
+                        <EditableText
+                          value={getStr(entry, "type")}
+                          path={`projects.${i}.type`}
+                          onCommit={onCommit}
+                          placeholder="Type"
+                        />
+                      </div>
+                      <p className="text-sm text-gray-600 mt-0.5">
+                        <EditableText
+                          value={getStr(entry, "description")}
+                          path={`projects.${i}.description`}
+                          onCommit={onCommit}
+                          placeholder="Description"
+                        />
+                      </p>
+                      <div className="text-sm text-gray-600 mt-0.5 flex flex-wrap gap-1.5">
+                        {getArr<string>(entry, "keywords").map((kw, ki) => (
+                          <span
+                            key={ki}
+                            className="inline-flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded"
+                          >
+                            <EditableText
+                              value={kw}
+                              path={`projects.${i}.keywords.${ki}`}
+                              onCommit={onCommit}
+                              className="text-sm"
+                            />
+                            <button
+                              type="button"
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() =>
+                                onChange(
+                                  setResumePath(
+                                    resume,
+                                    `projects.${i}.keywords`,
+                                    getArr<string>(entry, "keywords").filter(
+                                      (_, idx) => idx !== ki,
+                                    ),
+                                  ),
+                                )
+                              }
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                        <button
+                          type="button"
+                          className={addBtn}
+                          onClick={() =>
+                            addHighlight(
+                              `projects.${i}.keywords`,
+                              getArr<string>(entry, "keywords"),
+                            )
+                          }
+                        >
+                          + keyword
+                        </button>
+                      </div>
+                      <div className="text-sm text-gray-600 mt-0.5 flex flex-wrap gap-1.5">
+                        {getArr<string>(entry, "roles").map((r, ri) => (
+                          <span
+                            key={ri}
+                            className="inline-flex items-center gap-1"
+                          >
+                            <EditableText
+                              value={r}
+                              path={`projects.${i}.roles.${ri}`}
+                              onCommit={onCommit}
+                              className="text-sm"
+                            />
+                            <button
+                              type="button"
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() =>
+                                onChange(
+                                  setResumePath(
+                                    resume,
+                                    `projects.${i}.roles`,
+                                    getArr<string>(entry, "roles").filter(
+                                      (_, idx) => idx !== ri,
+                                    ),
+                                  ),
+                                )
+                              }
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                        <button
+                          type="button"
+                          className={addBtn}
+                          onClick={() =>
+                            addHighlight(
+                              `projects.${i}.roles`,
+                              getArr<string>(entry, "roles"),
+                            )
+                          }
+                        >
+                          + role
+                        </button>
+                      </div>
+                    </>
+                  )}
+                  <ul className="list-disc list-inside space-y-0.5 mt-0.5 text-sm text-gray-700 ml-2">
+                    {getArr<string>(entry, "highlights").map((bullet, j) => (
+                      <li key={j} className="flex items-start gap-1">
+                        <EditableText
+                          value={bullet}
+                          path={`projects.${i}.highlights.${j}`}
+                          onCommit={onCommit}
+                          className="flex-1"
+                        />
+                        <button
+                          type="button"
+                          className="shrink-0 text-red-600 hover:text-red-700 text-xs min-h-[44px] inline-flex items-center touch-manipulation"
+                          onClick={() =>
+                            removeHighlight(
+                              `projects.${i}.highlights`,
+                              getArr<string>(entry, "highlights"),
+                              j,
+                            )
+                          }
+                          aria-label="Remove bullet"
+                        >
+                          ×
+                        </button>
+                      </li>
+                    ))}
+                    <li className="list-none">
+                      <button
+                        type="button"
+                        className={addBtn}
+                        onClick={() =>
+                          addHighlight(
+                            `projects.${i}.highlights`,
+                            getArr<string>(entry, "highlights"),
+                          )
+                        }
+                      >
+                        + Add bullet
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              );
+            })}
+            <button type="button" className={addBtn} onClick={addProject}>
+              + Add project
+            </button>
+          </section>
+
+          {/* Skills — tags (default) or inline one line per category when compact */}
+          <section className="resume-section">
+            <h2 className={sectionHeading}>Skills</h2>
+            {skills.map((entry, i) => {
+              const keywords = getArr<string>(entry, "keywords");
+              const showLevel =
+                getStr(entry, "level") !== "" || skillLevelExpanded.has(i);
+              const keywordsInline = keywords.join(", ");
+              const onKeywordsCommit = (path: string, value: string) => {
+                const next = value
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter(Boolean);
+                onChange(setResumePath(resume, `skills.${i}.keywords`, next));
+              };
+              if (compact) {
+                return (
+                  <div
+                    key={i}
+                    className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2"
+                  >
+                    <span className="text-sm">
+                      <span className="font-semibold">
+                        <EditableText
+                          value={getStr(entry, "name")}
+                          path={`skills.${i}.name`}
+                          onCommit={onCommit}
+                          placeholder="Category"
+                        />
+                      </span>
+                      <span className="text-gray-500 mx-1">: </span>
+                      <EditableText
+                        value={keywordsInline}
+                        path={`skills.${i}.keywords`}
+                        onCommit={onKeywordsCommit}
+                        placeholder="keyword1, keyword2"
+                        className="text-gray-700"
+                      />
+                    </span>
+                    <button
+                      type="button"
+                      className={removeBtn}
+                      onClick={() => removeSkillCategory(i)}
+                      aria-label="Remove skill category"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                );
+              }
+              return (
+                <div key={i} className="mb-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-semibold text-sm">
+                      <EditableText
+                        value={getStr(entry, "name")}
+                        path={`skills.${i}.name`}
+                        onCommit={onCommit}
+                        placeholder="Category name"
+                      />
+                    </span>
+                    {showLevel && (
+                      <span className="text-gray-500 text-sm">
+                        <EditableText
+                          value={getStr(entry, "level")}
+                          path={`skills.${i}.level`}
+                          onCommit={onCommit}
+                          placeholder="Level"
+                        />
+                      </span>
+                    )}
+                    {!showLevel && (
+                      <button
+                        type="button"
+                        className={addBtn}
+                        onClick={() =>
+                          setSkillLevelExpanded((s) => new Set(s).add(i))
+                        }
+                      >
+                        + Add level
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className={removeBtn}
+                      onClick={() => removeSkillCategory(i)}
+                      aria-label="Remove skill category"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mt-0.5">
+                    {keywords.map((kw, j) => (
+                      <span
+                        key={j}
+                        className="inline-flex items-center gap-1 bg-gray-100 px-2 py-1 rounded text-sm min-h-[44px]"
+                      >
+                        <EditableText
+                          value={kw}
+                          path={`skills.${i}.keywords.${j}`}
+                          onCommit={onCommit}
+                          className="text-sm py-1"
+                        />
+                        <button
+                          type="button"
+                          className="text-red-600 hover:text-red-700 touch-manipulation"
+                          onClick={() =>
+                            removeHighlight(`skills.${i}.keywords`, keywords, j)
+                          }
+                          aria-label="Remove keyword"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                    <button
+                      type="button"
+                      className={addBtn}
+                      onClick={() =>
+                        addHighlight(`skills.${i}.keywords`, keywords)
+                      }
+                    >
+                      + keyword
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+            <button type="button" className={addBtn} onClick={addSkillCategory}>
+              + Add skill category
+            </button>
+          </section>
+
+          {/* Languages — already one line; tighter when compact */}
+          <section className="resume-section">
+            <h2 className={sectionHeading}>Languages</h2>
+            {languages.map((entry, i) => (
+              <div
+                key={i}
+                className={`${compact ? "mb-1.5" : "mb-3"} flex flex-wrap items-center justify-between gap-2`}
+              >
+                <span className="text-sm">
+                  <EditableText
+                    value={getStr(entry, "language")}
+                    path={`languages.${i}.language`}
+                    onCommit={onCommit}
+                    placeholder="Language"
+                  />
+                  {" — "}
+                  <EditableText
+                    value={getStr(entry, "fluency")}
+                    path={`languages.${i}.fluency`}
+                    onCommit={onCommit}
+                    placeholder="Fluency"
+                  />
+                </span>
                 <button
                   type="button"
-                  className={addBtn}
-                  onClick={() => addHighlight(`interests.${i}.keywords`, kw)}
+                  className={removeBtn}
+                  onClick={() => removeLanguage(i)}
+                  aria-label="Remove language"
                 >
-                  + keyword
+                  Remove
                 </button>
               </div>
-            </div>
-          );
-        })}
-        <button type="button" className={addBtn} onClick={addInterest}>
-          + Add interest
-        </button>
-      </section>
+            ))}
+            <button type="button" className={addBtn} onClick={addLanguage}>
+              + Add language
+            </button>
+          </section>
 
-      {/* References — tighter when compact */}
-      <section>
-        <h2 className={sectionHeading}>References</h2>
-        {references.map((entry, i) => (
-          <div key={i} className={compact ? "mb-1.5" : "mb-3"}>
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <span className="font-semibold text-sm">
-                <EditableText
-                  value={getStr(entry, "name")}
-                  path={`references.${i}.name`}
-                  onCommit={onCommit}
-                  placeholder="Name"
-                />
-              </span>
-              <button
-                type="button"
-                className={removeBtn}
-                onClick={() => removeReference(i)}
-                aria-label="Remove reference"
-              >
-                Remove
-              </button>
-            </div>
-            <p className="text-sm text-gray-700 mt-0.5">
-              <EditableText
-                value={getStr(entry, "reference")}
-                path={`references.${i}.reference`}
-                onCommit={onCommit}
-                multiline
-                placeholder="Reference"
-                className="block"
-              />
-            </p>
-          </div>
-        ))}
-        <button type="button" className={addBtn} onClick={addReference}>
-          + Add reference
-        </button>
-      </section>
+          {/* Certificates — one line when compact: Name – Issuer, Date */}
+          <section className="resume-section">
+            <h2 className={sectionHeading}>Certificates</h2>
+            {certificates.map((entry, i) => (
+              <div key={i} className={compact ? "mb-1.5" : "mb-3"}>
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="text-sm">
+                    <span className="font-semibold">
+                      <EditableText
+                        value={getStr(entry, "name")}
+                        path={`certificates.${i}.name`}
+                        onCommit={onCommit}
+                        placeholder="Certificate name"
+                      />
+                    </span>
+                    {compact && (
+                      <>
+                        <span className="text-gray-500 mx-1">–</span>
+                        <EditableText
+                          value={getStr(entry, "issuer")}
+                          path={`certificates.${i}.issuer`}
+                          onCommit={onCommit}
+                          placeholder="Issuer"
+                          className="text-gray-600"
+                        />
+                        <span className="text-gray-500 mx-1">,</span>
+                        <EditableText
+                          value={getStr(entry, "date")}
+                          path={`certificates.${i}.date`}
+                          onCommit={onCommit}
+                          placeholder="Date"
+                          className="text-gray-600"
+                        />
+                      </>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    className={removeBtn}
+                    onClick={() => removeCertificate(i)}
+                    aria-label="Remove certificate"
+                  >
+                    Remove
+                  </button>
+                </div>
+                {!compact && (
+                  <p className="text-sm text-gray-600 mt-0.5">
+                    <EditableText
+                      value={getStr(entry, "issuer")}
+                      path={`certificates.${i}.issuer`}
+                      onCommit={onCommit}
+                      placeholder="Issuer"
+                    />
+                    {" · "}
+                    <EditableText
+                      value={getStr(entry, "date")}
+                      path={`certificates.${i}.date`}
+                      onCommit={onCommit}
+                      placeholder="Date"
+                    />
+                    {" · "}
+                    <EditableText
+                      value={getStr(entry, "url")}
+                      path={`certificates.${i}.url`}
+                      onCommit={onCommit}
+                      placeholder="URL"
+                    />
+                  </p>
+                )}
+              </div>
+            ))}
+            <button type="button" className={addBtn} onClick={addCertificate}>
+              + Add certificate
+            </button>
+          </section>
+
+          {/* Awards — one line when compact: Title – Awarder, Date */}
+          <section className="resume-section">
+            <h2 className={sectionHeading}>Awards</h2>
+            {awards.map((entry, i) => (
+              <div key={i} className={compact ? "mb-1.5" : "mb-3"}>
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="text-sm">
+                    <span className="font-semibold">
+                      <EditableText
+                        value={getStr(entry, "title")}
+                        path={`awards.${i}.title`}
+                        onCommit={onCommit}
+                        placeholder="Award title"
+                      />
+                    </span>
+                    {compact ? (
+                      <>
+                        <span className="text-gray-500 mx-1">–</span>
+                        <EditableText
+                          value={getStr(entry, "awarder")}
+                          path={`awards.${i}.awarder`}
+                          onCommit={onCommit}
+                          placeholder="Awarder"
+                          className="text-gray-600"
+                        />
+                        <span className="text-gray-500 mx-1">,</span>
+                        <EditableText
+                          value={getStr(entry, "date")}
+                          path={`awards.${i}.date`}
+                          onCommit={onCommit}
+                          placeholder="Date"
+                          className="text-gray-600"
+                        />
+                      </>
+                    ) : null}
+                  </span>
+                  <button
+                    type="button"
+                    className={removeBtn}
+                    onClick={() => removeAward(i)}
+                    aria-label="Remove award"
+                  >
+                    Remove
+                  </button>
+                </div>
+                {!compact && (
+                  <>
+                    <p className="text-sm text-gray-600 mt-0.5">
+                      <EditableText
+                        value={getStr(entry, "awarder")}
+                        path={`awards.${i}.awarder`}
+                        onCommit={onCommit}
+                        placeholder="Awarder"
+                      />
+                      {" · "}
+                      <EditableText
+                        value={getStr(entry, "date")}
+                        path={`awards.${i}.date`}
+                        onCommit={onCommit}
+                        placeholder="Date"
+                      />
+                    </p>
+                    <p className="text-sm text-gray-700 mt-0.5">
+                      <EditableText
+                        value={getStr(entry, "summary")}
+                        path={`awards.${i}.summary`}
+                        onCommit={onCommit}
+                        multiline
+                        placeholder="Summary"
+                        className="block"
+                      />
+                    </p>
+                  </>
+                )}
+                {compact && getStr(entry, "summary") && (
+                  <p className="text-sm text-gray-700 mt-0.5">
+                    <EditableText
+                      value={getStr(entry, "summary")}
+                      path={`awards.${i}.summary`}
+                      onCommit={onCommit}
+                      multiline
+                      placeholder="Summary"
+                      className="block"
+                    />
+                  </p>
+                )}
+              </div>
+            ))}
+            <button type="button" className={addBtn} onClick={addAward}>
+              + Add award
+            </button>
+          </section>
+
+          {/* Publications — one line when compact: Name – Publisher, Date */}
+          <section className="resume-section">
+            <h2 className={sectionHeading}>Publications</h2>
+            {publications.map((entry, i) => (
+              <div key={i} className={compact ? "mb-1.5" : "mb-3"}>
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="text-sm">
+                    <span className="font-semibold">
+                      <EditableText
+                        value={getStr(entry, "name")}
+                        path={`publications.${i}.name`}
+                        onCommit={onCommit}
+                        placeholder="Publication name"
+                      />
+                    </span>
+                    {compact ? (
+                      <>
+                        <span className="text-gray-500 mx-1">–</span>
+                        <EditableText
+                          value={getStr(entry, "publisher")}
+                          path={`publications.${i}.publisher`}
+                          onCommit={onCommit}
+                          placeholder="Publisher"
+                          className="text-gray-600"
+                        />
+                        <span className="text-gray-500 mx-1">,</span>
+                        <EditableText
+                          value={getStr(entry, "releaseDate")}
+                          path={`publications.${i}.releaseDate`}
+                          onCommit={onCommit}
+                          placeholder="Date"
+                          className="text-gray-600"
+                        />
+                      </>
+                    ) : null}
+                  </span>
+                  <button
+                    type="button"
+                    className={removeBtn}
+                    onClick={() => removePublication(i)}
+                    aria-label="Remove publication"
+                  >
+                    Remove
+                  </button>
+                </div>
+                {!compact && (
+                  <>
+                    <p className="text-sm text-gray-600 mt-0.5">
+                      <EditableText
+                        value={getStr(entry, "publisher")}
+                        path={`publications.${i}.publisher`}
+                        onCommit={onCommit}
+                        placeholder="Publisher"
+                      />
+                      {" · "}
+                      <EditableText
+                        value={getStr(entry, "releaseDate")}
+                        path={`publications.${i}.releaseDate`}
+                        onCommit={onCommit}
+                        placeholder="Date"
+                      />
+                      {" · "}
+                      <EditableText
+                        value={getStr(entry, "url")}
+                        path={`publications.${i}.url`}
+                        onCommit={onCommit}
+                        placeholder="URL"
+                      />
+                    </p>
+                    <p className="text-sm text-gray-700 mt-0.5">
+                      <EditableText
+                        value={getStr(entry, "summary")}
+                        path={`publications.${i}.summary`}
+                        onCommit={onCommit}
+                        multiline
+                        placeholder="Summary"
+                        className="block"
+                      />
+                    </p>
+                  </>
+                )}
+                {compact && getStr(entry, "summary") && (
+                  <p className="text-sm text-gray-700 mt-0.5">
+                    <EditableText
+                      value={getStr(entry, "summary")}
+                      path={`publications.${i}.summary`}
+                      onCommit={onCommit}
+                      multiline
+                      placeholder="Summary"
+                      className="block"
+                    />
+                  </p>
+                )}
+              </div>
+            ))}
+            <button type="button" className={addBtn} onClick={addPublication}>
+              + Add publication
+            </button>
+          </section>
+
+          {/* Interests — one line when compact: Name: kw1, kw2 */}
+          <section className="resume-section">
+            <h2 className={sectionHeading}>Interests</h2>
+            {interests.map((entry, i) => {
+              const kw = getArr<string>(entry, "keywords");
+              const keywordsInline = kw.join(", ");
+              const onInterestKeywordsCommit = (
+                path: string,
+                value: string,
+              ) => {
+                const next = value
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter(Boolean);
+                onChange(
+                  setResumePath(resume, `interests.${i}.keywords`, next),
+                );
+              };
+              if (compact) {
+                return (
+                  <div
+                    key={i}
+                    className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2"
+                  >
+                    <span className="text-sm">
+                      <span className="font-semibold">
+                        <EditableText
+                          value={getStr(entry, "name")}
+                          path={`interests.${i}.name`}
+                          onCommit={onCommit}
+                          placeholder="Interest"
+                        />
+                      </span>
+                      <span className="text-gray-500 mx-1">: </span>
+                      <EditableText
+                        value={keywordsInline}
+                        path={`interests.${i}.keywords`}
+                        onCommit={onInterestKeywordsCommit}
+                        placeholder="keyword1, keyword2"
+                        className="text-gray-700"
+                      />
+                    </span>
+                    <button
+                      type="button"
+                      className={removeBtn}
+                      onClick={() => removeInterest(i)}
+                      aria-label="Remove interest"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                );
+              }
+              return (
+                <div key={i} className="mb-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-semibold text-sm">
+                      <EditableText
+                        value={getStr(entry, "name")}
+                        path={`interests.${i}.name`}
+                        onCommit={onCommit}
+                        placeholder="Interest name"
+                      />
+                    </span>
+                    <button
+                      type="button"
+                      className={removeBtn}
+                      onClick={() => removeInterest(i)}
+                      aria-label="Remove interest"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mt-0.5">
+                    {kw.map((k, ki) => (
+                      <span
+                        key={ki}
+                        className="inline-flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded text-sm"
+                      >
+                        <EditableText
+                          value={k}
+                          path={`interests.${i}.keywords.${ki}`}
+                          onCommit={onCommit}
+                          className="text-sm"
+                        />
+                        <button
+                          type="button"
+                          className="text-red-600 hover:text-red-700"
+                          onClick={() =>
+                            onChange(
+                              setResumePath(
+                                resume,
+                                `interests.${i}.keywords`,
+                                kw.filter((_, idx) => idx !== ki),
+                              ),
+                            )
+                          }
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                    <button
+                      type="button"
+                      className={addBtn}
+                      onClick={() =>
+                        addHighlight(`interests.${i}.keywords`, kw)
+                      }
+                    >
+                      + keyword
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+            <button type="button" className={addBtn} onClick={addInterest}>
+              + Add interest
+            </button>
+          </section>
+
+          {/* References — tighter when compact */}
+          <section className="resume-section">
+            <h2 className={sectionHeading}>References</h2>
+            {references.map((entry, i) => (
+              <div key={i} className={compact ? "mb-1.5" : "mb-3"}>
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="font-semibold text-sm">
+                    <EditableText
+                      value={getStr(entry, "name")}
+                      path={`references.${i}.name`}
+                      onCommit={onCommit}
+                      placeholder="Name"
+                    />
+                  </span>
+                  <button
+                    type="button"
+                    className={removeBtn}
+                    onClick={() => removeReference(i)}
+                    aria-label="Remove reference"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <p className="text-sm text-gray-700 mt-0.5">
+                  <EditableText
+                    value={getStr(entry, "reference")}
+                    path={`references.${i}.reference`}
+                    onCommit={onCommit}
+                    multiline
+                    placeholder="Reference"
+                    className="block"
+                  />
+                </p>
+              </div>
+            ))}
+            <button type="button" className={addBtn} onClick={addReference}>
+              + Add reference
+            </button>
+          </section>
+        </div>
+      </div>
     </div>
   );
 }
