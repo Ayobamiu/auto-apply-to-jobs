@@ -323,7 +323,7 @@ export function ResumeEditorApp() {
 
       {/* AI Assistant Button — moves up when ReviewBar is visible */}
       <div
-        className={`no-print fixed lg:left-1/2 left-6 lg:-translate-x-1/2 z-40 transition-[bottom] duration-200 ${proposedPatches.length > 0 ? "bottom-24" : "bottom-6"}`}
+        className={`no-print fixed lg:left-1/2 left-6 lg:-translate-x-1/2 z-40 transition-[bottom] duration-200 bottom-6`}
       >
         {!aiOpen && (
           <button
