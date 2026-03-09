@@ -4,7 +4,6 @@ import { ResumeDocument } from "./ResumeDocument";
 import { Check, Send, Sparkles, XIcon } from "lucide-react";
 import { useAiEditor } from "../hooks/useAiEditor";
 import { ReviewBar } from "../components/ReviewBar";
-import { pathToReviewLabel } from "./utils";
 
 const STORAGE_KEY = "auto-apply-resume-editor-draft";
 
@@ -20,11 +19,13 @@ export function ResumeEditorApp() {
 
   const {
     resume,
-    proposedChange,
+    proposedPatches,
     handleAiUpdate,
     setResume,
-    commitChange,
-    discardChange,
+    commitOne,
+    commitAll,
+    discardOne,
+    discardAll,
   } = useAiEditor(initialResume, handleChange);
 
   const [mode, setMode] = useState<"edit" | "preview">("preview");
@@ -43,11 +44,11 @@ export function ResumeEditorApp() {
     const responses = {
       // 1. UPDATE: Leaf node (Specific bullet point)
       response1: {
-        results: [
+        patches: [
           {
-            path: "work[0].highlights[0]",
-            action: "update",
-            proposed:
+            path: "/work/0/highlights/0",
+            op: "replace",
+            value:
               "Architected patient-facing eligibility verification flows in React/Node.js, automating manual checks to reduce clinic workload by 40%. Updated the highlights to include the new feature.",
           },
         ],
@@ -55,23 +56,29 @@ export function ResumeEditorApp() {
 
       // 2. UPDATE: String field (Summary)
       response2: {
-        results: [
+        patches: [
           {
-            path: "basics.summary",
-            action: "update",
-            proposed:
-              "Software Engineer focused on healthcare innovation. Skilled in building scalable full-stack systems, AI-driven document parsing, and clinical workflow automation with a focus on real-world impact.",
+            path: "/basics/summary",
+            op: "replace",
+            value:
+              "UUU Software Engineer focused on healthcare innovation. Skilled in building scalable full-stack systems, AI-driven document parsing, and clinical workflow automation with a focus on real-world impact.",
+          },
+          {
+            path: "/work/0/highlights/0",
+            op: "replace",
+            value:
+              "Architected patient-facing eligibility verification flows in React/Node.js, automating manual checks to reduce clinic workload by 40%. Updated the highlights to include the new feature.",
           },
         ],
       },
 
       // 3. UPDATE: Full Object (Core Extract role)
       response3: {
-        results: [
+        patches: [
           {
-            path: "work[1]",
-            action: "update",
-            proposed: {
+            path: "/work/1",
+            op: "replace",
+            value: {
               name: "Core Extract",
               position: "Lead Software Engineer",
               startDate: "2025-09-01",
@@ -87,11 +94,11 @@ export function ResumeEditorApp() {
 
       // 4. UPDATE: Array Object (Skills category)
       response4: {
-        results: [
+        patches: [
           {
-            path: "skills[0]",
-            action: "update",
-            proposed: {
+            path: "/skills/0",
+            op: "replace",
+            value: {
               name: "Full-Stack Development",
               keywords: [
                 "TypeScript",
@@ -115,11 +122,11 @@ export function ResumeEditorApp() {
       // 5. INSERT: Brand New Section (Volunteer)
       // Use this to test if your UI renders the "Volunteer" header when it was previously empty
       response5: {
-        results: [
+        patches: [
           {
-            path: "volunteer[3]",
-            action: "insert",
-            proposed: {
+            path: "/volunteer/3",
+            op: "add",
+            value: {
               organization: "Acme Inc",
               position: "Volunteer Software Engineer",
               url: "https://acme.org",
@@ -138,11 +145,11 @@ export function ResumeEditorApp() {
       // 6. INSERT: Adding to an existing list (Project)
       // Tests if your push logic adds to the end of the array correctly
       response6: {
-        results: [
+        patches: [
           {
-            path: "projects[3]", // If projects[] is empty, this is the first
-            action: "insert",
-            proposed: {
+            path: "/projects/3", // If projects[] is empty, this is the first
+            op: "add",
+            value: {
               name: "AI Resume Parser",
               description:
                 "A high-performance tool built with Rust to structure unstructured PDF data.",
@@ -158,7 +165,7 @@ export function ResumeEditorApp() {
       },
     };
 
-    let mockResponse = responses.response6;
+    let mockResponse = responses.response2;
     // if (selectedNode?.path === "basics.summary") {
     //   mockResponse = responses.response2; // Summary rewrite
     // } else if (selectedNode?.path.includes("highlights")) {
@@ -198,7 +205,7 @@ export function ResumeEditorApp() {
   return (
     <div className="min-h-screen bg-white text-gray-900 flex flex-col">
       <div
-        className={`flex-1 overflow-auto px-4 py-4 md:max-w-3xl md:mx-auto md:px-6 md:py-5 w-full ${proposedChange ? "pb-24" : ""}`}
+        className={`flex-1 overflow-auto px-4 py-4 md:max-w-3xl md:mx-auto md:px-6 md:py-5 w-full ${proposedPatches.length > 0 ? "pb-24" : ""}`}
       >
         <ResumeDocument
           resume={resume}
@@ -207,13 +214,15 @@ export function ResumeEditorApp() {
           readOnly={mode === "preview"}
           selectedNode={selectedNode}
           setSelectedNode={setSelectedNode}
-          proposedChange={proposedChange}
+          proposedPatches={proposedPatches}
         />
-        {proposedChange && (
+        {proposedPatches.length > 0 && (
           <ReviewBar
-            onAccept={commitChange}
-            onDiscard={discardChange}
-            sectionLabel={pathToReviewLabel(proposedChange.path)}
+            patches={proposedPatches}
+            onAcceptOne={commitOne}
+            onAcceptAll={commitAll}
+            onDiscardOne={discardOne}
+            onDiscardAll={discardAll}
           />
         )}
       </div>
@@ -314,7 +323,7 @@ export function ResumeEditorApp() {
 
       {/* AI Assistant Button — moves up when ReviewBar is visible */}
       <div
-        className={`no-print fixed lg:left-1/2 left-6 lg:-translate-x-1/2 z-40 transition-[bottom] duration-200 ${proposedChange ? "bottom-24" : "bottom-6"}`}
+        className={`no-print fixed lg:left-1/2 left-6 lg:-translate-x-1/2 z-40 transition-[bottom] duration-200 ${proposedPatches.length > 0 ? "bottom-24" : "bottom-6"}`}
       >
         {!aiOpen && (
           <button

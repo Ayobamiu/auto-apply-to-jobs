@@ -40,59 +40,57 @@ export function normalizeProposedDates<T>(data: T): T {
 }
 
 const ajv = new Ajv({
-    allErrors: true,
-    verbose: true,
-    strict: false
+  allErrors: true,
+  verbose: true,
+  strict: false
 });
 addFormats(ajv);
 
 // 1. Give the schema a clear ID so AJV can resolve internal $refs
 const SCHEMA_KEY = "resume-schema.json";
 if (!ajv.getSchema(SCHEMA_KEY)) {
-    ajv.addSchema(schema, SCHEMA_KEY);
+  ajv.addSchema(schema, SCHEMA_KEY);
 }
-export function validateResumeFragment<T>(path: string, proposedData: T) {
-    const normalized = normalizeProposedDates(proposedData);
-    const segments = path.split(/[\[\]\.]/).filter(Boolean);
-    const rootSection = segments[0];
+export function validateResumeFragment<T>(pointer: string, proposedData: T) {
+  const normalized = normalizeProposedDates(proposedData);
 
-    let currentSchemaPath = `${SCHEMA_KEY}#/properties/${rootSection}`;
+  // 1. Convert JSON Pointer (/work/0/name) to JSON Schema Path (#/properties/work/items/properties/name)
+  // We remove the leading slash and split
+  const segments = pointer.split('/').filter(Boolean);
 
-    for (let i = 1; i < segments.length; i++) {
-        const segment = segments[i];
-        const currentSchema = ajv.getSchema(currentSchemaPath)?.schema as any;
+  let currentSchemaPath = `${SCHEMA_KEY}#`;
 
-        // If the current level is an array, the next part of the path 
-        // is either an index or a property of the items.
-        if (currentSchema?.type === 'array') {
-            currentSchemaPath += "/items";
+  for (const segment of segments) {
+    const currentSchema = ajv.getSchema(currentSchemaPath)?.schema as any;
 
-            // If the segment is NOT a number, it's a property inside the item
-            // (e.g., work[0].company -> segment is 'company')
-            if (isNaN(Number(segment))) {
-                currentSchemaPath += `/properties/${segment}`;
-            }
-            // If it IS a number (e.g., work[0]), we just stay at /items 
-            // to validate the object itself.
-        } else if (currentSchema?.properties && currentSchema.properties[segment]) {
-            currentSchemaPath += `/properties/${segment}`;
-        }
+    if (currentSchema?.type === 'array') {
+      // If the schema is an array, we move to /items
+      currentSchemaPath += "/items";
+
+      // If the segment is NOT a number (e.g. /work/name), we move into properties
+      if (isNaN(Number(segment))) {
+        currentSchemaPath += `/properties/${segment}`;
+      }
+      // If it IS a number (index), we stay at /items to validate the object
+    } else {
+      currentSchemaPath += `/properties/${segment}`;
     }
+  }
 
-    const validate = ajv.getSchema(currentSchemaPath);
+  const validate = ajv.getSchema(currentSchemaPath);
 
-    if (!validate) {
-        return {
-            isValid: false,
-            errors: [`Path not found: ${currentSchemaPath}`],
-            sanitizedData: proposedData
-        };
-    }
-
-    const isValid = validate(normalized);
+  if (!validate) {
     return {
-        isValid: !!isValid,
-        errors: validate.errors?.map(err => `${err.instancePath} ${err.message}`) || [],
-        sanitizedData: normalized
+      isValid: false,
+      errors: [`Path not found: ${currentSchemaPath}`],
+      sanitizedData: proposedData
     };
+  }
+
+  const isValid = validate(normalized);
+  return {
+    isValid: !!isValid,
+    errors: validate.errors?.map(err => `${err.instancePath} ${err.message}`) || [],
+    sanitizedData: normalized
+  };
 }

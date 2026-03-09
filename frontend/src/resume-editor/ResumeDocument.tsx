@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { EditableText } from "./EditableText";
-import { setResumePath, getProposedValueForPath, normalizePath } from "./utils";
+import { setResumePath, getProposedValueForPath, isPathUnderPatch, type ProposedPatch } from "./utils";
 import { Sparkles } from "lucide-react";
 import { DiffView } from "../components/DiffView";
 
@@ -116,7 +116,7 @@ export interface ResumeDocumentProps {
       | null
       | undefined,
   ) => void;
-  proposedChange?: any;
+  proposedPatches?: ProposedPatch[];
 }
 
 export function ResumeDocument({
@@ -126,7 +126,7 @@ export function ResumeDocument({
   readOnly = false,
   selectedNode,
   setSelectedNode,
-  proposedChange, // From useAiEditor hook
+  proposedPatches = [], // From useAiEditor hook
 }: ResumeDocumentProps) {
   const onCommit = (path: string, value: string) => {
     onChange(setResumePath(resume, path, value));
@@ -179,9 +179,7 @@ export function ResumeDocument({
     type?: "block" | "highlight";
   }) => {
     const isSelected = selectedNode?.path === path;
-    const isBlockLevelProposed =
-      proposedChange != null &&
-      normalizePath(proposedChange.path) === normalizePath(path);
+    const isBlockLevelProposed = isPathUnderPatch(path, proposedPatches);
 
     const handleSelect = (e: React.MouseEvent<HTMLDivElement>) => {
       // Prevent a highlight click from triggering a parent experience block click
@@ -233,19 +231,23 @@ export function ResumeDocument({
 
   /** Renders a field with optional diff when this path (or a parent) has a proposed change. Supports recursive drill: if proposedChange is at work[1], work[1].position gets proposed from proposedChange.proposed.position. */
   const renderField = (path: string, defaultValue: string) => {
-    const match = getProposedValueForPath(path, proposedChange ?? null);
+    const match = getProposedValueForPath(path, proposedPatches);
+    // If no AI change applies to this field, render normal text
     if (!match) return <span>{defaultValue}</span>;
 
     const { proposed, isExact } = match;
-    // Only show word-level diff for string leaves; block-level (object/array) is handled by section aura
+
+    // If the AI is proposing an object (block update), the section component
+    // handles the background aura; we just show the original text here
+    // unless we want to drill down.
     if (typeof proposed !== "string") return <span>{defaultValue}</span>;
 
-    const showAura = isExact;
+    // The 'Emerald Aura' highlights the specific text being changed
     return (
       <span className="relative inline">
-        {showAura && (
+        {isExact && (
           <span
-            className="absolute -inset-1 bg-emerald-50/60 border border-emerald-200 border-dashed rounded -z-10"
+            className="absolute -inset-1 bg-emerald-50/60 border border-emerald-200 border-dashed rounded -z-10 animate-pulse"
             aria-hidden
           />
         )}
@@ -639,7 +641,7 @@ export function ResumeDocument({
                         {(() => {
                           const blockMatch = getProposedValueForPath(
                             `work[${i}]`,
-                            proposedChange ?? null,
+                            proposedPatches,
                           );
                           const proposedHighlights =
                             blockMatch &&
@@ -665,7 +667,7 @@ export function ResumeDocument({
                                 const currentPath = `work[${i}].highlights[${j}]`;
                                 const match = getProposedValueForPath(
                                   currentPath,
-                                  proposedChange ?? null,
+                                  proposedPatches,
                                 );
                                 const proposedStr =
                                   match && typeof match.proposed === "string"
@@ -844,19 +846,12 @@ export function ResumeDocument({
                   const currentPath = `skills[${i}].keywords`;
                   const match = getProposedValueForPath(
                     currentPath,
-                    proposedChange ?? null,
+                    proposedPatches,
                   );
                   const proposedKeywords =
                     match && Array.isArray(match.proposed)
                       ? (match.proposed as string[]).join(", ")
                       : null;
-                  console.log({
-                    kwStr,
-                    proposedKeywords,
-                    proposedChange,
-                    match,
-                    currentPath,
-                  });
 
                   if (compact) {
                     return (
