@@ -44,6 +44,7 @@ import {
   putUserResume,
   postUserResume,
 } from './routes/user-resume.js';
+import { postResumeUpdate } from './routes/resume.js';
 
 if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
   console.error('JWT_SECRET is required in production');
@@ -101,6 +102,7 @@ app.put('/users/me/resume', authMiddleware, putUserResume);
 app.post('/users/me/resume', authMiddleware, userResumeUploadMiddleware, postUserResume);
 app.get('/chat/messages', authMiddleware, getChatMessages);
 app.post('/chat', authMiddleware, postChat);
+app.post('/ai/resume/update', authMiddleware, postResumeUpdate);
 
 // Serve frontend SPA (after API routes so API paths take priority)
 if (existsSync(FRONTEND_DIST)) {

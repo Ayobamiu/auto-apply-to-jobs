@@ -1,8 +1,10 @@
-integrate the new resume edit ui
+Integrate OpenAI into resume editor
+Bug: add op for new items are not previewed before adding
+Clone resume editor for other documents [later]
+Update job details page: show “Review generated documents” with a collapsible to show list of documents. On click, the document is shown on the main side of the screen (or in a full screen modal on mobile. Show “Review prefilled forms” with list of questions and answers generated. On click, a list of questions and answer show where user can edit manually and with ai assistant. [later]
 ask agent to check the code base for Inconsistency that could lead to code depth and fix.
 do step by step check to improve UX
-x fix job details UI
-x show applied on job lists
+x Fix: remove op not working
 x remove localStorage fallback
 x use tailwind css
 x resume preview and edit UI is bad. Updated resume preview and edit UI for better user experience, addressing previous design issues.
