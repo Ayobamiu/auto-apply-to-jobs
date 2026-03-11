@@ -1,9 +1,10 @@
 import { useState, useCallback, useEffect } from "react";
 import initialResume from "../sample-resume.json";
 import { ResumeDocument } from "./ResumeDocument";
-import { Check, Send, Sparkles, XIcon } from "lucide-react";
+import { Check, Send, Sparkles } from "lucide-react";
 import { useAiEditor } from "../hooks/useAiEditor";
 import { ReviewBar } from "../components/ReviewBar";
+import { postResumeUpdate } from "../api";
 
 const STORAGE_KEY = "auto-apply-resume-editor-draft";
 
@@ -39,149 +40,17 @@ export function ResumeEditorApp() {
 
     setIsGenerating(true);
 
-    // 1. Simulate API Latency
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    const responses = {
-      // 1. UPDATE: Leaf node (Specific bullet point)
-      response1: {
-        patches: [
-          {
-            path: "/work/0/highlights/0",
-            op: "replace",
-            value:
-              "Architected patient-facing eligibility verification flows in React/Node.js, automating manual checks to reduce clinic workload by 40%. Updated the highlights to include the new feature.",
-          },
-        ],
-      },
-
-      // 2. UPDATE: String field (Summary)
-      response2: {
-        patches: [
-          {
-            path: "/basics/summary",
-            op: "replace",
-            value:
-              "UUU Software Engineer focused on healthcare innovation. Skilled in building scalable full-stack systems, AI-driven document parsing, and clinical workflow automation with a focus on real-world impact.",
-          },
-          {
-            path: "/work/0/highlights/0",
-            op: "replace",
-            value:
-              "Architected patient-facing eligibility verification flows in React/Node.js, automating manual checks to reduce clinic workload by 40%. Updated the highlights to include the new feature.",
-          },
-        ],
-      },
-
-      // 3. UPDATE: Full Object (Core Extract role)
-      response3: {
-        patches: [
-          {
-            path: "/work/1",
-            op: "replace",
-            value: {
-              name: "Core Extract",
-              position: "Lead Software Engineer",
-              startDate: "2025-09-01",
-              highlights: [
-                "Spearheaded a multi-stage document parsing system using Python, Rust, and ML to structure medical data.",
-                "Increased OCR accuracy by 25% by integrating layout models and domain-specific validation pipelines.",
-                "Mentored junior developers on Rust integration and performance optimization.",
-              ],
-            },
-          },
-        ],
-      },
-
-      // 4. UPDATE: Array Object (Skills category)
-      response4: {
-        patches: [
-          {
-            path: "/skills/0",
-            op: "replace",
-            value: {
-              name: "Full-Stack Development",
-              keywords: [
-                "TypeScript",
-                "Node.js",
-                "React",
-                "Python",
-                "Rust",
-                "PostgreSQL",
-                "GraphQL",
-                "Docker",
-                "Tailwind CSS",
-                "shadcn UI",
-                "SWR",
-                "Zustand",
-              ],
-            },
-          },
-        ],
-      },
-
-      // 5. INSERT: Brand New Section (Volunteer)
-      // Use this to test if your UI renders the "Volunteer" header when it was previously empty
-      response5: {
-        patches: [
-          {
-            path: "/volunteer/3",
-            op: "add",
-            value: {
-              organization: "Acme Inc",
-              position: "Volunteer Software Engineer",
-              url: "https://acme.org",
-              startDate: "2026-02-01",
-              summary:
-                "Contributed to open-source healthcare tooling and community outreach.",
-              highlights: [
-                "Developed a community portal using Next.js",
-                "Assisted in data migration for local non-profits",
-              ],
-            },
-          },
-        ],
-      },
-
-      // 6. INSERT: Adding to an existing list (Project)
-      // Tests if your push logic adds to the end of the array correctly
-      response6: {
-        patches: [
-          {
-            path: "/projects/3", // If projects[] is empty, this is the first
-            op: "add",
-            value: {
-              name: "AI Resume Parser",
-              description:
-                "A high-performance tool built with Rust to structure unstructured PDF data.",
-              highlights: [
-                "Implemented custom OCR pipeline",
-                "Reduced parsing latency by 60%",
-              ],
-              keywords: ["Rust", "Wasm", "AI"],
-              startDate: "2026-01-01",
-            },
-          },
-        ],
-      },
-    };
-
-    let mockResponse = responses.response2;
-    // if (selectedNode?.path === "basics.summary") {
-    //   mockResponse = responses.response2; // Summary rewrite
-    // } else if (selectedNode?.path.includes("highlights")) {
-    //   mockResponse = responses.response1; // Specific bullet point
-    // } else if (selectedNode?.path === "work[1]") {
-    //   mockResponse = responses.response3; // Whole job update
-    // } else {
-    //   mockResponse = responses.response4; // Default to skills
-    // }
-
-    // 3. Trigger the Aura Flow
-    // This calls the AJV validation and sets the proposedChange state
-    await handleAiUpdate(mockResponse);
-
-    setIsGenerating(false);
-    setAiOpen(false); // Close the command box to show the diff
+    try {
+      const response = await postResumeUpdate(resume, aiInput);
+      console.log("response", response);
+      await handleAiUpdate({ patches: response });
+      setIsGenerating(false);
+      setAiOpen(false); // Close the command box to show the diff
+    } catch (error) {
+      console.error("Error generating AI update:", error);
+      setIsGenerating(false);
+      setIsSuccess(false);
+    }
   };
   // state to track what the AI is focusing on
   const [selectedNode, setSelectedNode] = useState<

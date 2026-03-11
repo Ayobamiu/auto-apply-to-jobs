@@ -1,4 +1,4 @@
-const API_BASE = '';
+const API_BASE = 'http://localhost:3000';
 
 let onUnauthorized: (() => void) | null = null;
 
@@ -356,4 +356,18 @@ export interface HandshakeSessionStatus {
 
 export async function getHandshakeSessionStatus(): Promise<HandshakeSessionStatus> {
   return request<HandshakeSessionStatus>('/handshake/session/status');
+}
+
+export interface Patch {
+  op: 'add' | 'replace' | 'remove';
+  path: string;
+  value?: unknown;
+  reason?: string;
+}
+
+export async function postResumeUpdate(resume: Record<string, unknown>, instruction: string): Promise<Patch[]> {
+  return request<Patch[]>('/ai/resume/update', {
+    method: 'POST',
+    body: JSON.stringify({ resume, instruction }),
+  });
 }

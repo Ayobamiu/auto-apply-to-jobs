@@ -5,6 +5,7 @@ import { validateResumeFragment } from "../utils/ajv-setup";
 import initialResume from "../sample-resume.json";
 import { applyPatch, getValueByPointer } from "fast-json-patch";
 import type { ProposedPatch } from "../resume-editor/utils";
+import { Patch } from "../api";
 
 const STORAGE_KEY = "auto-apply-resume-editor-draft";
 
@@ -26,15 +27,29 @@ export const useAiEditor = (_initial: Resume, onSave: (next: any) => void) => {
   const [proposedPatches, setProposedPatches] = useState<ProposedPatch[]>([]);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const handleAiUpdate = async (
-    aiResponse: { patches: Array<{ op: string; path: string; value?: unknown }> },
-  ) => {
+  const handleAiUpdate = async (aiResponse: { patches: Patch[] }) => {
     const validated: ProposedPatch[] = [];
     for (const p of aiResponse.patches) {
-      const { isValid, sanitizedData } = validateResumeFragment(p.path, p.value);
-      if (!isValid) continue;
+      let sanitizedData = p.value;
+
+      // 1. Only validate if it's NOT a 'remove' operation
+      if (p.op !== 'remove') {
+        const { isValid, sanitizedData: cleaned } = validateResumeFragment(p.path, p.value);
+        if (!isValid) {
+          console.warn(`Validation failed for ${p.path}`);
+          continue;
+        }
+        sanitizedData = cleaned;
+      }
+
+      // 2. Capture the 'original' value so you can show the user WHAT is being deleted
       let original: unknown;
-      try { original = getValueByPointer(resume, p.path); } catch { original = undefined; }
+      try {
+        original = getValueByPointer(resume, p.path);
+      } catch {
+        original = undefined;
+      }
+
       validated.push({
         op: p.op as ProposedPatch["op"],
         path: p.path,
