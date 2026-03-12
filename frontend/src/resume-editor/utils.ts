@@ -71,6 +71,19 @@ export function isPathUnderPatch(sectionPath: string, patches: ProposedPatch[]):
   return patches.some(p => jsonPointerToDot(p.path) === norm);
 }
 
+/** Returns 'add' patches that append items to a given array section (e.g. "work", "education"). */
+export function getAddPatchesForArray(sectionPath: string, patches: ProposedPatch[]): ProposedPatch[] {
+  const norm = normalizePath(sectionPath);
+  return patches.filter(p => {
+    if (p.op !== "add") return false;
+    const pNorm = jsonPointerToDot(p.path);
+    const parts = pNorm.split(".");
+    const parentParts = norm.split(".");
+    if (parts.length !== parentParts.length + 1) return false;
+    return parts.slice(0, -1).join(".") === norm && /^\d+$/.test(parts[parts.length - 1]);
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Human-readable label from a JSON Pointer
 // ---------------------------------------------------------------------------

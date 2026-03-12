@@ -34,6 +34,8 @@ import {
   postPipelineJobCancel,
   getAppliedArtifactsResume,
   getAppliedArtifactsCover,
+  getArtifactEditHistory,
+  postArtifactEditHistory,
 } from './routes/pipeline-jobs.js';
 import { getSettings, putSettings } from './routes/settings.js';
 import { postChat, getChatMessages } from './routes/chat.js';
@@ -44,7 +46,7 @@ import {
   putUserResume,
   postUserResume,
 } from './routes/user-resume.js';
-import { postResumeUpdate } from './routes/resume.js';
+import { postResumeUpdate, postCoverLetterUpdate } from './routes/resume.js';
 
 if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
   console.error('JWT_SECRET is required in production');
@@ -103,6 +105,9 @@ app.post('/users/me/resume', authMiddleware, userResumeUploadMiddleware, postUse
 app.get('/chat/messages', authMiddleware, getChatMessages);
 app.post('/chat', authMiddleware, postChat);
 app.post('/ai/resume/update', authMiddleware, postResumeUpdate);
+app.post('/ai/cover-letter/update', authMiddleware, postCoverLetterUpdate);
+app.get('/pipeline/jobs/:jobId/artifacts/:type/history', authMiddleware, getArtifactEditHistory);
+app.post('/pipeline/jobs/:jobId/artifacts/:type/history', authMiddleware, postArtifactEditHistory);
 
 // Serve frontend SPA (after API routes so API paths take priority)
 if (existsSync(FRONTEND_DIST)) {

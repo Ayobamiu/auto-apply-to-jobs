@@ -481,9 +481,35 @@ export interface Patch {
   reason?: string;
 }
 
-export async function postResumeUpdate(resume: Record<string, unknown>, instruction: string): Promise<Patch[]> {
+export async function postResumeUpdate(
+  resume: Record<string, unknown>,
+  instruction: string,
+  context?: { jobDescription?: string; editHistory?: string[] },
+): Promise<Patch[]> {
   return request<Patch[]>('/ai/resume/update', {
     method: 'POST',
-    body: JSON.stringify({ resume, instruction }),
+    body: JSON.stringify({ resume, instruction, jobDescription: context?.jobDescription, editHistory: context?.editHistory }),
+  });
+}
+
+export async function postCoverLetterUpdate(
+  text: string,
+  instruction: string,
+  context?: { jobDescription?: string; editHistory?: string[] },
+): Promise<{ text: string }> {
+  return request<{ text: string }>('/ai/cover-letter/update', {
+    method: 'POST',
+    body: JSON.stringify({ text, instruction, jobDescription: context?.jobDescription, editHistory: context?.editHistory }),
+  });
+}
+
+export async function getArtifactEditHistory(jobId: string, type: 'resume' | 'cover_letter'): Promise<string[]> {
+  return request<string[]>(`/pipeline/jobs/${encodeURIComponent(jobId)}/artifacts/${type === 'resume' ? 'resume' : 'cover'}/history`);
+}
+
+export async function appendArtifactEditHistory(jobId: string, type: 'resume' | 'cover_letter', entry: string): Promise<void> {
+  await request(`/pipeline/jobs/${encodeURIComponent(jobId)}/artifacts/${type === 'resume' ? 'resume' : 'cover'}/history`, {
+    method: 'POST',
+    body: JSON.stringify({ entry }),
   });
 }

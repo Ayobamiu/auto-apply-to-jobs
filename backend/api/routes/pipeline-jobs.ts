@@ -18,7 +18,10 @@ import {
   saveResumeForJob,
   getCoverLetterForJob,
   saveCoverLetterForJob,
+  getEditHistory,
+  appendEditHistory,
 } from '../../data/job-artifacts.js';
+import { toJobRef } from '../../data/user-job-state.js';
 import { getJob } from '../../data/jobs.js';
 import { resumePipelineAfterApproval } from '../../orchestration/run-pipeline-background.js';
 import { ensureResumePdfFromDb, exportResumeToPdf } from '../../agents/resume_generator_agent/export-pdf.js';
@@ -372,4 +375,38 @@ export async function getAppliedArtifactsCover(req: Request, res: Response): Pro
     return;
   }
   res.status(200).json({ text: applied.coverLetter.text });
+}
+
+export async function getArtifactEditHistory(req: Request, res: Response): Promise<void> {
+  const userId = req.userId;
+  if (!userId) { res.status(401).json({ error: 'Unauthorized' }); return; }
+  const { jobId, type } = req.params as { jobId: string; type: string };
+  const artifactType = type === 'cover' ? 'cover_letter' : 'resume';
+  const job = await getPipelineJob(jobId, userId);
+  if (!job) { res.status(404).json({ error: 'Not found' }); return; }
+  const site = getJobSiteFromUrl(job.job_url);
+  const jid = getJobIdFromUrl(job.job_url);
+  if (!site || !jid) { res.status(404).json({ error: 'Not found' }); return; }
+  const jobRef = toJobRef(site, jid);
+  if (!jobRef) { res.status(404).json({ error: 'Not found' }); return; }
+  const history = await getEditHistory(userId, jobRef, artifactType as any);
+  res.status(200).json(history);
+}
+
+export async function postArtifactEditHistory(req: Request, res: Response): Promise<void> {
+  const userId = req.userId;
+  if (!userId) { res.status(401).json({ error: 'Unauthorized' }); return; }
+  const { jobId, type } = req.params as { jobId: string; type: string };
+  const { entry } = req.body as { entry?: string };
+  if (!entry || typeof entry !== 'string') { res.status(400).json({ error: 'Missing entry' }); return; }
+  const artifactType = type === 'cover' ? 'cover_letter' : 'resume';
+  const job = await getPipelineJob(jobId, userId);
+  if (!job) { res.status(404).json({ error: 'Not found' }); return; }
+  const site = getJobSiteFromUrl(job.job_url);
+  const jid = getJobIdFromUrl(job.job_url);
+  if (!site || !jid) { res.status(404).json({ error: 'Not found' }); return; }
+  const jobRef = toJobRef(site, jid);
+  if (!jobRef) { res.status(404).json({ error: 'Not found' }); return; }
+  await appendEditHistory(userId, jobRef, artifactType as any, entry);
+  res.status(200).json({ ok: true });
 }

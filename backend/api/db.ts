@@ -184,6 +184,7 @@ export async function ensureDataTables(): Promise<void> {
   await pool.query('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS location text');
   await pool.query('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS salary_employment_type text');
   await pool.query('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS company_logo_url text');
+  await pool.query("ALTER TABLE job_artifacts ADD COLUMN IF NOT EXISTS edit_history jsonb DEFAULT '[]'::jsonb");
   dataTablesInitialized = true;
 }
 
