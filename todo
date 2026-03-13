@@ -1,9 +1,14 @@
-Integrate OpenAI into resume editor
-Bug: add op for new items are not previewed before adding
-Clone resume editor for other documents [later]
-Update job details page: show “Review generated documents” with a collapsible to show list of documents. On click, the document is shown on the main side of the screen (or in a full screen modal on mobile. Show “Review prefilled forms” with list of questions and answers generated. On click, a list of questions and answer show where user can edit manually and with ai assistant. [later]
-ask agent to check the code base for Inconsistency that could lead to code depth and fix.
-do step by step check to improve UX
+Profile set as part of Onboarding
+Bug: Resume generated have Numbers as skills Categories and empty keywords e.g. "skills": [{ "name": "0", "keywords": []},{ "name": "1", "keywords": []},{ "name": "2", "keywords": []},{ "name": "3", "keywords": []}]
+Bug: edit hostories not saved
+Bug: preview mode is still editable
+Add "Jobs in progress" and "saved job" sections
+Redesign the discover page and job details page.
+Handle more than resume, cover letter and Transcript. Add dynamic forms
+x Integrate OpenAI into resume editor
+x Bug: add op for new items are not previewed before adding
+x Clone resume editor for other documents [later]
+x Update job details page: show “Review generated documents” with a collapsible to show list of documents. On click, the document is shown on the main side of the screen (or in a full screen modal on mobile. Show “Review prefilled forms” with list of questions and answers generated. On click, a list of questions and answer show where user can edit manually and with ai assistant. [later]
 x Fix: remove op not working
 x remove localStorage fallback
 x use tailwind css

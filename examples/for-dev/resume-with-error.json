@@ -1,0 +1,97 @@
+{
+  "work": [
+    {
+      "name": "Daylight Health",
+      "endDate": "2025",
+      "position": "Software Engineering Intern",
+      "startDate": "2025",
+      "highlights": [
+        "Built patient-facing eligibility verification flows using React and Node.js, reducing clinic workload by 40%.",
+        "Developed backend systems to process insurance data with real-time validation and file parsing (OCR, PDF).",
+        "Created internal tools used by clinicians to improve scheduling, intake, and documentation workflows.",
+        "Partnered with cross-functional teams including designers and clinicians to ship and iterate on features."
+      ]
+    },
+    {
+      "name": "Core Extract",
+      "endDate": "2025",
+      "position": "Software Engineer",
+      "highlights": [
+        "Built multi-stage document parsing system using Python, Rust, and ML to structure medical and administrative data.",
+        "Improved accuracy of structured outputs from PDFs by integrating layout models and domain-specific validation."
+      ]
+    },
+    {
+      "name": "Michigan Geological Survey / WMU",
+      "endDate": "2025",
+      "position": "Graduate Research Developer",
+      "startDate": "2023",
+      "highlights": [
+        "Designed data dashboards and ingestion pipelines (React, Python, PostGIS) for carbon storage analysis projects.",
+        "Collaborated with researchers and government partners to optimize visualization and analysis of geospatial data."
+      ]
+    },
+    {
+      "name": "PanAfrican Capital Holdings",
+      "endDate": "2023",
+      "position": "Software Engineer",
+      "startDate": "2022",
+      "highlights": [
+        "Developed scalable frontend interfaces using TypeScript and Redux to improve user engagement and reporting clarity.",
+        "Supported backend coordination and systems integration with finance tools and enterprise services."
+      ]
+    }
+  ],
+  "basics": {
+    "name": "Usman Ayobami",
+    "email": "ayobamiu@gmail.com",
+    "label": "Software Engineer",
+    "phone": "+1 (269) 220-1205",
+    "summary": "Mission-driven software engineer with a strong foundation in full-stack development and a deep interest in applying technology to improve healthcare outcomes. Experienced building scalable web systems, AI-powered tools, and backend services with real-world impact. Adept at working across interdisciplinary teams and translating complex workflows into effective technical solutions."
+  },
+  "skills": [
+    {
+      "name": "0",
+      "keywords": []
+    },
+    {
+      "name": "1",
+      "keywords": []
+    },
+    {
+      "name": "2",
+      "keywords": []
+    },
+    {
+      "name": "3",
+      "keywords": []
+    }
+  ],
+  "$schema": "https://raw.githubusercontent.com/jsonresume/resume-schema/master/schema.json",
+  "projects": [
+    {
+      "name": "HealthDisparity AI",
+      "highlights": [
+        "Designed end-to-end products with analytics and clean UX."
+      ],
+      "description": "Built an AI assistant recommending culturally competent care using React, Node.js, OpenAI."
+    },
+    {
+      "name": "Core Extract",
+      "highlights": ["Focused on accuracy and robust failure handling."],
+      "description": "Developed a reliable AI pipeline to extract structured data from PDFs using Python, Rust, and OCR."
+    }
+  ],
+  "education": [
+    {
+      "area": "Computer Science M.S.",
+      "endDate": "2025",
+      "institution": "Western Michigan University"
+    },
+    {
+      "area": "Petroleum Engineering B.Sc.",
+      "endDate": "2020",
+      "institution": "University of Ibadan, Nigeria"
+    }
+  ]
+}

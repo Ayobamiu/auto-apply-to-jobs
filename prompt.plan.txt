@@ -1,0 +1,47 @@
+- In the ResumeEditorApp, when the op is 'add', they are not previewed before adding. e.g. op to add new Educationa history, it doesnt show in preview, i only see the summary on the ReviewBar, it doesnt show on the resume until i Accept the change. Fix it.
+- Currently, we have two buttons labeled "Open detailed review" & "Preview documents" in DiscoverJobDetailPage that show artifacts in edit and preview modes respectively. They both show list of those documents on the same page.
+  - Update it to show “Review generated documents” (edit mode) or "Preview documents" (preview mode) with a collapsible to show list of documents. On click, each document is shown at a time Separately on the main side of the screen (or in a full screen modal on mobile).
+- Replace the ReviewView that we have Currently with the new ResumeEditorApp. It handles preview and edit.
+- The ResumeEditorApp currently uses '/ai/resume/update' route from the backend which takes the resume and Instructions and returns the right patch.
+  - First, update the job_artifact table with a column to store editHistory (Natural Language Summaries of recent edits) for each resume and cover letter edit, pass editHistory to the api to give the ai the most recent edit History as context.
+  - Also, update the api to take the job description as context. Do it Intelligently so as to use minimal tokens for the edits.
+  - Currently, to generate resume for user, we turn the JSON to PDF using 'npx resumed export ...' CLI. With our new ResumeEditorApp, find a new way to convert what we have to PDF. The PDF must look Exactly like it does when the user edit it on Desktop using our ResumeEditorApp. Use your Knowledge to select the Technology to get the best result (I'd suggest using Playwright page print if that is a thing). Still stick to the Naming convention for the resume name.
+- Clone ResumeEditorApp to be used for editing and previewing Cover letters. Write a new api to also improve the cover letters using ai.
+- Eventually, you'd deprecate ReviewView and now using ResumeEditorApp
+- IF there are gaps in the Current Implementations, make them better
+
+PS: Execute this task in the most token-efficent way. Use minimal tokens.
+
+- edit histories were not updated in db. They should be updated after user accept Changes 
+- when a job cannot be applied to for some reasons. Give users option to just generate resume and cover letter for it
+- After Artifacts are generated, Automatically update the UI
+    - Always select the first artifact as default to show on the main screen
+- After a job is submitted and i am previewing resumes or cover letter [any artifact]. Ideally, i dont want to edit them again. 
+    - currently there are two modes for the editor, 'edit' and 'preview'
+    - in the 'preview' mode, user can switch to 'edit' and back
+    - after job is submitted, we dont want user to be able to:
+        1. switch to edit
+        2. select sections of the resume for edit
+        3. See or Click the "Ask Assistant" button
+- Currently, users can view submitted job, Lets add "Jobs in progress" and "saved job"
+    - add a button on each job on the discover page for users to save them
+    - for a job that user have started thier Application but not yet Completed, add them to "Jobs in progress"
+    - on the discover, lets add option for users to start an Application by pasting link from Handshake. Once they do, add it to saved jobs, so that they can find that job later OR think of a better UX
+- Redesign the discover page, job details page and any other pages. [in a separate branch "page-redesign"]
+    - its currently dark themed and all the buttons are not obvious. 
+    - Make it intuitive, simple and mordern generally. Maybe match the design of the ResumeEditorApp.
+    - From the interactions of the user and the product, understand the user jorney on the app and reimagine where each details, button, text, and Everything else should be. Do overall redesign with Quality User Experience. You can even add some touches to the resume ResumeEditorApp
+- We currently handle just resume, cover letter and Transcript. lets Add dynamic forms [in a separate branch "dynamic-form-and-profile-update"]
+    - i have added three diffent form types inside @handshake-form-types.txt and Reference thier html examples inside examples/for-dev folder [you dont nned to visit those sites]. These are just Examples i found, our Solution should be robust to handle any form type we find.
+    - look at the way we Currently extract form data from handshake Application and come up with robust dynamic way to capture, fill and avoid errors in this new dynamic forms. Have in mind that Strategies we use here can be extended to when we are working on other job sites [later]
+    - This means we need to collect more info from users apart from whats in thier profile currently stored in the profiles table. Come up with more fields for Customers to fill out where we can grab thier data from. Do this in the most efficent way
+    - On the frontend, we have “Review generated documents” (edit mode) or "Preview documents" (preview mode) button for artifacts
+        - Amongst the new dynamic fields, for generated documents, they are similar to 'cover letter', add them to list of artifacts and display them Accordingly 
+        - For forms, Show “Review prefilled forms” button with list of questions and answers generated. On click, a list of questions and answer show where user can edit manually or with ai assistant. 
+        - That also mean You’re writing a new api for ai to generally edit those
+    - work on the pages redesign first so that you can extend the design to this branch.
+- Currently, users set up profile by uploading thier PDF. In an effort to get more data for the profile [in a separate branch "dynamic-form-and-profile-update"]
+    - lets set it it as a proper  Onboarding 
+    - after user uploads resume to setup profile, lets have some indication telling them if they need to update it.
+    - A way i can think of "You have complete X% of your profile. Then they can click and complete it"
+    - from the section of adding Dynamic form, we have more info to get from the user, so add them and many common job Application details you can think of
