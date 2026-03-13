@@ -1,0 +1,115 @@
+Here are the key systems grouped by file path (workspace-relative):
+
+---
+
+## 1. Artifact Generation
+
+- `backend/agents/resume_generator_agent/index.ts`
+- `backend/agents/resume_generator_agent/assistant.ts`
+- `backend/agents/resume_generator_agent/cover-letter.ts`
+- `backend/agents/resume_generator_agent/resume-edit.ts`
+- `backend/agents/resume_generator_agent/resume-edit-cli.ts`
+- `backend/agents/resume_generator_agent/export-pdf.ts`
+- `backend/orchestration/run-pipeline.ts`
+- `backend/orchestration/run-pipeline-background.ts`
+- `backend/orchestration/chat-orchestrator.ts`
+- `backend/data/job-artifacts.ts`
+- `backend/api/routes/pipeline-jobs.ts`
+- `backend/api/routes/pipeline.ts`
+- `backend/api/routes/resume.ts`
+- `backend/scripts/migrate-resumes-to-job-artifacts.ts`
+
+## 2. Artifact Viewer
+
+- `frontend/src/components/ReviewView.tsx`
+- `frontend/src/components/ReviewCard.tsx`
+- `frontend/src/components/ReviewBar.tsx`
+- `frontend/src/components/PreviewModal.tsx`
+- `frontend/src/components/AppliedCard.tsx`
+- `frontend/src/components/DiscoverJobDetailPage.tsx`
+- `frontend/src/components/Chat.tsx`
+- `frontend/src/resume-preview.ts`
+- `frontend/src/api.ts`
+
+## 3. Resume / Cover Letter Editor
+
+- `frontend/src/resume-editor/ResumeEditorApp.tsx`
+- `frontend/src/resume-editor/CoverLetterEditorApp.tsx`
+- `frontend/src/resume-editor/EditableText.tsx`
+- `frontend/src/resume-editor/ResumeDocument.tsx`
+- `frontend/src/resume-editor/utils.ts`
+- `frontend/src/cover-letter-editor.ts`
+- `frontend/src/hooks/useAiEditor.ts`
+- `frontend/src/resume-form.ts`
+- `frontend/src/resume-preview.ts`
+- `frontend/src/components/BaseResumeModal.tsx`
+
+## 4. Job Discovery Page
+
+- `frontend/src/components/DiscoverListPage.tsx`
+- `frontend/src/components/DiscoverJobDetailPage.tsx`
+- `frontend/src/components/SubmitedJobsDrawer.tsx`
+- `backend/api/routes/jobs-find.ts`
+- `backend/api/routes/jobs.ts`
+- `backend/job-finders/handshake.ts`
+- `backend/job-finders/registry.ts`
+- `backend/shared/job-from-url.ts`
+- `backend/shared/job-finder-types.ts`
+
+## 5. Job Application Submission
+
+- `backend/agents/auto_apply_agent/handshake-apply-real.ts`
+- `backend/handshake-apply.ts`
+- `backend/fill-form.ts`
+- `backend/orchestration/run-pipeline.ts`
+- `backend/orchestration/run-pipeline-background.ts`
+- `backend/orchestration/list-jobs-with-status.ts`
+- `backend/shared/apply-state.js`
+- `backend/shared/pipeline-outcome.ts`
+- `backend/shared/job-profile-mismatch.ts`
+- `backend/data/apply-state.ts`
+- `backend/data/user-job-state.ts`
+- `backend/api/routes/pipeline.ts`
+
+## 6. Handshake Form Extraction
+
+- `backend/shared/apply-form-capture.ts`
+- `backend/shared/handshake-attach-helper.ts`
+- `backend/shared/probe-apply-modal.ts`
+- `backend/shared/session-check.ts`
+- `backend/data/apply-forms.ts`
+- `backend/api/routes/handshake-session.ts`
+- `backend/agents/auto_apply_agent/handshake-login.ts`
+- `backend/agents/auto_apply_agent/handshake-login-record.ts`
+- `chrome-extension/manifest.json`
+- `chrome-extension/popup.html`
+- `chrome-extension/popup.js`
+- `handshake-form-types.txt`
+
+## 7. User Profile Storage
+
+- `backend/data/profile.ts`
+- `backend/api/routes/profile.ts`
+- `backend/shared/profile-from-resume.ts`
+- `backend/shared/profile-update-from-chat.ts`
+- `backend/shared/profile.js`
+- `backend/shared/profile_schema.json`
+- `backend/shared/profile.json`
+- `backend/data/profiles.json`
+- `frontend/src/hooks/resume-schema.json`
+- `frontend/src/types/resume.ts`
+
+## 8. Database Models (Jobs / Artifacts)
+
+- `backend/api/db.ts`
+- `backend/data/jobs.ts`
+- `backend/data/job-artifacts.ts`
+- `backend/data/pipeline-jobs.ts`
+- `backend/data/user-job-state.ts`
+- `backend/data/apply-state.ts`
+- `backend/data/user-resumes.ts`
+- `backend/data/user-discovered-jobs.ts`
+- `backend/shared/types.ts`
+- `backend/shared/job.ts`
+- `backend/scripts/migrate-file-data-to-db.ts`
+- `backend/scripts/migrate-resumes-to-job-artifacts.ts`
