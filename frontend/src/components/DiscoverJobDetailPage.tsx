@@ -107,6 +107,28 @@ export function DiscoverJobDetailPage() {
   const jobDescription = detail?.job?.description ?? undefined;
   const pipelineId = detail?.pipelineJob?.id;
 
+  // When artifacts become available, auto-expand the documents section and
+  // select the first available artifact (resume preferred, then cover).
+  useEffect(() => {
+    if (!hasArtifacts) return;
+    setDocsExpanded(true);
+    if (!activeDoc) {
+      if (artifacts?.resume) {
+        setActiveDoc("resume");
+      } else if (artifacts?.cover) {
+        setActiveDoc("cover");
+      }
+    }
+  }, [hasArtifacts, artifacts?.resume, artifacts?.cover, activeDoc]);
+
+  // When pipeline reaches a terminal or review-ready state, refresh artifacts
+  // so the viewer reflects the latest generation result.
+  useEffect(() => {
+    if (!pipelineStatus || !pipelineId) return;
+    if (pipelineStatus !== "awaiting_approval" && pipelineStatus !== "done") return;
+    void loadOrReloadArtifacts();
+  }, [pipelineStatus, pipelineId, loadOrReloadArtifacts]);
+
   if (!jobRef) return null;
 
   // Editor for the right panel / mobile modal
