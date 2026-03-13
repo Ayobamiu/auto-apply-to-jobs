@@ -62,3 +62,17 @@ main
  ├ feature/application-fallback
  ├ page-redesign
  └ dynamic-form-and-profile-update
+
+
+
+
+there is a new issue with the code. inefficiency with the pipelines. 
+the individual components work well, job scraping, ai resume generator, cover letter generator; they all work well. Only the orchestrating pipeline saves things wrongly or call multiple functions more than needed.
+
+Currently, we support only jobs that requires resume/cover letter/transcript.
+how the code should work, to the best of my knowledge, when user clicks:
+1. "Apply": 
+ a. on an existing job: the job was scraped partially from listings so, re-scrape-fully -> open job form modal -> determine required artifacts -> generate resume and cover letter if required and not already generated -> ask for user permission/review (in review mode) -> submit (automatically or with user's permission)
+b. on a new job (from link pasted): same process as 1a only that the job is just scraped newly
+
+2. "
