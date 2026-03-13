@@ -37,30 +37,52 @@ export function ResumeEditorApp({
     return {} as Record<string, unknown>;
   }, [externalResume, standalone]);
 
-  const handleSave = useCallback((next: Record<string, unknown>) => {
+  const [lastSavedResume, setLastSavedResume] = useState<Record<string, unknown>>(initial);
+
+  useEffect(() => {
+    // When the initial resume source changes (e.g., new job or standalone load),
+    // treat that as the new saved baseline.
+    setLastSavedResume(initial);
+  }, [initial]);
+
+  const persistResume = useCallback(async (next: Record<string, unknown>) => {
     if (standalone) {
-      try { localStorage.setItem(STANDALONE_KEY, JSON.stringify(next)); } catch {}
+      try {
+        localStorage.setItem(STANDALONE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore storage errors for standalone mode
+      }
     }
-    if (jobId) {
-      putPipelineArtifactResume(jobId, next).catch(console.error);
+    try {
+      if (jobId) {
+        await putPipelineArtifactResume(jobId, next);
+      }
+      externalOnSave?.(next);
+      setLastSavedResume(next);
+    } catch (err) {
+      // surface to console for now; UI remains responsive because state is local
+      console.error("Failed to save resume", err);
     }
-    externalOnSave?.(next);
   }, [standalone, jobId, externalOnSave]);
 
   const {
     resume, proposedPatches, handleAiUpdate, setResume, resetResume,
     commitOne, commitAll, discardOne, discardAll, isSuccess,
-  } = useAiEditor({ initialResume: initial, onSave: handleSave });
+  } = useAiEditor({ initialResume: initial, onSave: persistResume });
 
   useEffect(() => {
-    if (externalResume && externalResume !== initial) resetResume(externalResume);
-  }, [externalResume]);
+    if (externalResume && externalResume !== initial) {
+      resetResume(externalResume);
+      setLastSavedResume(externalResume);
+    }
+  }, [externalResume, initial, resetResume]);
 
   const [mode, setMode] = useState<"edit" | "preview">("preview");
   const [aiOpen, setAiOpen] = useState(false);
   const [aiInput, setAiInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [selectedNode, setSelectedNode] = useState<{
     path: string; label: string; data: string; type: "block" | "highlight";
@@ -128,6 +150,21 @@ export function ResumeEditorApp({
 
   const hasPatches = proposedPatches.length > 0;
 
+  const hasUnsavedChanges = useMemo(
+    () => JSON.stringify(resume) !== JSON.stringify(lastSavedResume),
+    [resume, lastSavedResume],
+  );
+
+  const handleSaveClick = useCallback(async () => {
+    if (isSubmitted || !hasUnsavedChanges) return;
+    setIsSaving(true);
+    try {
+      await persistResume(resume);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [isSubmitted, hasUnsavedChanges, persistResume, resume]);
+
   return (
     <div className="flex flex-col h-full bg-white text-gray-900">
       {/* Top bar */}
@@ -154,6 +191,15 @@ export function ResumeEditorApp({
                 <Download size={14} /> PDF
               </button>
             )}
+            {hasUnsavedChanges && (
+              <button
+                onClick={handleSaveClick}
+                disabled={isSubmitted || isSaving}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 bg-slate-900 text-white hover:bg-black disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isSaving ? "Saving..." : "Save changes"}
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -161,7 +207,7 @@ export function ResumeEditorApp({
       <div className={`flex-1 overflow-auto px-4 py-4 md:max-w-3xl md:mx-auto md:px-6 md:py-5 w-full ${hasPatches ? "pb-24" : ""}`}>
         <ResumeDocument
           resume={resume}
-          onChange={handleSave}
+          onChange={setResume}
           compact={mode === "preview"}
           readOnly={mode === "preview"}
           disableSelection={isSubmitted}
@@ -182,6 +228,16 @@ export function ResumeEditorApp({
               className="h-14 px-6 flex items-center gap-2 rounded-full bg-white text-slate-700 border border-slate-200/80 shadow-[0_4px_12px_rgba(0,0,0,0.05)] transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95 group">
               <Download size={20} className="shrink-0 text-slate-500 group-hover:text-slate-900" />
               <span className="hidden lg:block font-semibold text-sm text-slate-600 group-hover:text-slate-900">Download PDF</span>
+            </button>
+          )}
+          {hasUnsavedChanges && (
+            <button
+              type="button"
+              onClick={handleSaveClick}
+              disabled={isSubmitted || isSaving}
+              className="h-14 px-6 flex items-center gap-2 rounded-full bg-white text-slate-700 border border-slate-200/80 shadow-[0_4px_12px_rgba(0,0,0,0.05)] transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isSaving ? "Saving..." : "Save changes"}
             </button>
           )}
           <button

@@ -510,30 +510,55 @@ export function ResumeDocument({
     const region = getStr(location, "region");
     const phone = getStr(basics, "phone");
     const email = getStr(basics, "email");
-    const contactSegments: (JSX.Element | string)[] = [];
-    if (city || region)
-      contactSegments.push([city, city && region ? ", " : "", region].join(""));
-    if (phone) contactSegments.push(phone);
-    if (email) contactSegments.push(email);
+    const contactSegments: JSX.Element[] = [];
+    if (city || region) {
+      contactSegments.push(
+        <span key="city-region">
+          {renderField("basics.location.city", city)}
+          {city && region ? ", " : ""}
+          {renderField("basics.location.region", region)}
+        </span>,
+      );
+    }
+    if (phone) {
+      contactSegments.push(
+        <span key="phone">
+          {renderField("basics.phone", phone)}
+        </span>,
+      );
+    }
+    if (email) {
+      contactSegments.push(
+        <span key="email">
+          {renderField("basics.email", email)}
+        </span>,
+      );
+    }
     if (profiles.length > 0) {
-      profiles.forEach((pro) => {
+      profiles.forEach((pro, index) => {
         const profileUrl = getStr(pro, "url");
         if (profileUrl)
           contactSegments.push(
             <a
-              key={contactSegments.length}
+              key={`profile-${index}`}
               href={profileUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 hover:underline"
             >
-              {profileUrl}
+              {renderField(`basics.profiles[${index}].url`, profileUrl)}
             </a>,
           );
       });
     } else {
       const url = getStr(basics, "url");
-      if (url) contactSegments.push(url);
+      if (url) {
+        contactSegments.push(
+          <span key="url">
+            {renderField("basics.url", url)}
+          </span>,
+        );
+      }
     }
     const contactLine =
       contactSegments.length > 0
@@ -563,7 +588,16 @@ export function ResumeDocument({
               <SectionWrapper
                 path="basics.contact"
                 label="Contact and Social Links"
-                data={contactLine?.join(", ") || ""}
+                data={[
+                  city,
+                  region,
+                  phone,
+                  email,
+                  ...profiles.map((p) => getStr(p, "url")),
+                  getStr(basics, "url"),
+                ]
+                  .filter(Boolean)
+                  .join(" | ")}
               >
                 {contactLine && (
                   <div className="flex flex-wrap justify-center items-baseline gap-x-0 mt-0.5 text-sm text-gray-600">
