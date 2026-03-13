@@ -3,10 +3,11 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, MapPin, Briefcase, FileText, Send, ExternalLink,
   ClipboardList, CheckCircle, AlertCircle, Loader2, Clock, ChevronDown, ChevronRight, X,
+  Bookmark, BookmarkCheck,
 } from "lucide-react";
 import {
   getJobDetail, postPipeline, getPipelineArtifacts, postScrapeJobDetail,
-  approvePipelineJob, cancelPipelineJob,
+  approvePipelineJob, cancelPipelineJob, saveJob,
   type JobDetailResponse, type PipelineArtifacts,
 } from "../api";
 import { ResumeEditorApp } from "../resume-editor/ResumeEditorApp";
@@ -31,6 +32,8 @@ export function DiscoverJobDetailPage() {
   const [activeDoc, setActiveDoc] = useState<DocTab>(null);
   const [mobileDocOpen, setMobileDocOpen] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const loadDetail = useCallback(async (ref: string, silent = false) => {
     if (!silent) { setDetailLoading(true); setDetailError(null); }
@@ -106,6 +109,27 @@ export function DiscoverJobDetailPage() {
   const hasArtifacts = !!(artifacts?.resume || artifacts?.cover);
   const jobDescription = detail?.job?.description ?? undefined;
   const pipelineId = detail?.pipelineJob?.id;
+
+  // Seed saved state from backend lifecycle status
+  useEffect(() => {
+    if (detail?.userState?.lifecycleStatus === 'saved') setSaved(true);
+  }, [detail?.userState?.lifecycleStatus]);
+
+  const handleSave = useCallback(async () => {
+    if (!jobRef || saving || saved) return;
+    setSaving(true);
+    try {
+      const i = jobRef.indexOf(':');
+      const site = jobRef.slice(0, i);
+      const jId = jobRef.slice(i + 1);
+      if (site && jId) await saveJob(jobRef);
+      setSaved(true);
+    } catch {
+      // silently ignore
+    } finally {
+      setSaving(false);
+    }
+  }, [jobRef, saving, saved]);
 
   // When artifacts become available, auto-expand the documents section and
   // select the first available artifact (resume preferred, then cover).
@@ -208,6 +232,24 @@ export function DiscoverJobDetailPage() {
                 {/* Actions */}
                 <section className="mb-6">
                   <div className="flex flex-col gap-4">
+                    {/* Save button */}
+                    {!appliedAt && (
+                      <button
+                        type="button"
+                        onClick={handleSave}
+                        disabled={saving || saved}
+                        className="inline-flex items-center gap-2 w-full px-4 py-2.5 text-sm font-medium rounded-lg border border-border bg-card hover:bg-input disabled:opacity-60 disabled:cursor-not-allowed text-text"
+                      >
+                        {saving ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : saved ? (
+                          <BookmarkCheck className="w-4 h-4 text-accent" />
+                        ) : (
+                          <Bookmark className="w-4 h-4" />
+                        )}
+                        {saved ? "Job saved" : "Save job"}
+                      </button>
+                    )}
                     {cannotApply && (
                       <div className="rounded-xl p-4 bg-card border border-border">
                         <p className="text-sm text-text">We can&apos;t apply to this job through the app.{!hasResume && " Generate documents to use elsewhere?"}</p>

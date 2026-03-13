@@ -314,6 +314,9 @@ export interface JobListing {
   companyLogoUrl?: string;
   applicationSubmitted?: boolean;
   appliedAt?: string;
+  /** Job lifecycle state set by the lifecycle system. */
+  lifecycleStatus?: 'saved' | 'in_progress' | 'submitted';
+  savedAt?: string;
 }
 
 export interface JobDetailJob {
@@ -344,7 +347,13 @@ export interface JobDetailPipeline {
 
 export interface JobDetailResponse {
   job: JobDetailJob;
-  userState: { resumeBasename?: string; applicationSubmitted?: boolean; appliedAt?: string } | null;
+  userState: {
+    resumeBasename?: string;
+    applicationSubmitted?: boolean;
+    appliedAt?: string;
+    lifecycleStatus?: 'saved' | 'in_progress' | 'submitted';
+    savedAt?: string;
+  } | null;
   hasResume: boolean;
   pipelineJob: JobDetailPipeline | null;
 }
@@ -406,6 +415,21 @@ export async function findJobs(options?: {
 
 export async function getSubmittedJobList(): Promise<JobListing[]> {
   return request<JobListing[]>('/jobs/submitted-list');
+}
+
+/** Save a job to the user's list (sets lifecycle_status = 'saved'). */
+export async function saveJob(jobRef: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>('/jobs/save', {
+    method: 'POST',
+    body: JSON.stringify({ jobRef }),
+  });
+}
+
+/** Fetch jobs filtered by lifecycle status. */
+export async function getJobLifecycleList(
+  status: 'saved' | 'in_progress' | 'submitted'
+): Promise<JobListing[]> {
+  return request<JobListing[]>(`/jobs/lifecycle-list?status=${encodeURIComponent(status)}`);
 }
 
 /** Fetch PDF as blob with auth and trigger download. */

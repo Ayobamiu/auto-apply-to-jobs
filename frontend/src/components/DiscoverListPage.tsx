@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   MapPin,
   Briefcase,
@@ -8,8 +8,12 @@ import {
   Filter,
   ExternalLink,
   CheckCircle,
+  Bookmark,
+  BookmarkCheck,
+  Link2,
+  Loader2,
 } from "lucide-react";
-import { findJobs, type JobListing } from "../api";
+import { findJobs, saveJob, postPipeline, getPipelineJobStatus, type JobListing } from "../api";
 import { SubmitedJobsDrawer } from "./SubmitedJobsDrawer";
 
 const STORAGE_KEY_SCROLL = "discover-list-scroll";
@@ -77,7 +81,14 @@ function countActiveFilters(
   return employment.size + jobTypes.size + remote.size + workAuth.size;
 }
 
+/** Extract handshake jobId from a Handshake job URL (supports common variants). */
+function parseHandshakeJobRef(url: string): string | null {
+  const m = url.match(/\/jobs\/(\d+)/);
+  return m ? `handshake:${m[1]}` : null;
+}
+
 export function DiscoverListPage() {
+  const navigate = useNavigate();
   const [listings, setListings] = useState<JobListing[]>([]);
   const [lastRefreshAt, setLastRefreshAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -93,6 +104,37 @@ export function DiscoverListPage() {
     new Set(),
   );
   const [perPage, setPerPage] = useState(25);
+
+  // Handshake link input state
+  const [handshakeUrl, setHandshakeUrl] = useState("");
+  const [handshakeSubmitting, setHandshakeSubmitting] = useState(false);
+  const [handshakeMsg, setHandshakeMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const handshakeMsgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Optimistic saved-job tracking
+  const [savedRefs, setSavedRefs] = useState<Set<string>>(new Set());
+  const [savingRefs, setSavingRefs] = useState<Set<string>>(new Set());
+
+  // Floating pipeline status notification (for Handshake link starts)
+  const [floating, setFloating] = useState<{
+    open: boolean;
+    jobId: string | null;
+    jobRef: string | null;
+    statusText: string;
+    phase: string | null;
+    lastUpdatedAt: string | null;
+    done: boolean;
+    error: string | null;
+  }>({
+    open: false,
+    jobId: null,
+    jobRef: null,
+    statusText: "",
+    phase: null,
+    lastUpdatedAt: null,
+    done: false,
+    error: null,
+  });
 
   const loadList = useCallback(
     async (refresh = false) => {
@@ -160,6 +202,90 @@ export function DiscoverListPage() {
     }
   }, []);
 
+  const handleSaveJob = useCallback(async (ref: string) => {
+    if (savingRefs.has(ref) || savedRefs.has(ref)) return;
+    setSavingRefs((s) => new Set(s).add(ref));
+    try {
+      await saveJob(ref);
+      setSavedRefs((s) => new Set(s).add(ref));
+    } catch {
+      // silently ignore; user can retry
+    } finally {
+      setSavingRefs((s) => { const n = new Set(s); n.delete(ref); return n; });
+    }
+  }, [savingRefs, savedRefs]);
+
+  const handleHandshakeSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    const url = handshakeUrl.trim();
+    if (!url) return;
+    const ref = parseHandshakeJobRef(url);
+    if (!ref) {
+      setHandshakeMsg({ text: "Couldn't parse a job ID from that URL. Make sure it's a Handshake job link.", ok: false });
+      return;
+    }
+    setHandshakeSubmitting(true);
+    setHandshakeMsg(null);
+    try {
+      const { jobId } = await postPipeline(url, { submit: false });
+      setHandshakeUrl("");
+      setHandshakeMsg({ text: "Started generating documents. The job will appear in 'In Progress'.", ok: true });
+      setFloating({
+        open: true,
+        jobId,
+        jobRef: ref,
+        statusText: "Starting…",
+        phase: "Queued",
+        lastUpdatedAt: new Date().toISOString(),
+        done: false,
+        error: null,
+      });
+      // Navigate to the job detail once we have the ref
+      if (handshakeMsgTimer.current) clearTimeout(handshakeMsgTimer.current);
+      handshakeMsgTimer.current = setTimeout(() => {
+        navigate(`/discover/job/${encodeURIComponent(ref)}`);
+      }, 1500);
+    } catch (err) {
+      setHandshakeMsg({ text: err instanceof Error ? err.message : "Failed to start pipeline.", ok: false });
+    } finally {
+      setHandshakeSubmitting(false);
+    }
+  }, [handshakeUrl, navigate]);
+
+  // Poll pipeline status for the floating notification (avoid loops by keying to jobId).
+  useEffect(() => {
+    if (!floating.open || !floating.jobId || floating.done) return;
+    let cancelled = false;
+    let timer: number | null = null;
+
+    const poll = async () => {
+      try {
+        const s = await getPipelineJobStatus(floating.jobId!);
+        if (cancelled) return;
+        const status = s.status || "running";
+        const done = status === "done" || status === "failed" || status === "cancelled";
+        setFloating((prev) => ({
+          ...prev,
+          statusText: status.replace(/_/g, " "),
+          phase: s.phase ?? null,
+          lastUpdatedAt: s.updatedAt ?? new Date().toISOString(),
+          done,
+          error: status === "failed" ? (s.error ?? "Failed") : null,
+        }));
+        if (done) return;
+      } catch {
+        // ignore transient failures; keep polling
+      }
+      timer = window.setTimeout(poll, 2000);
+    };
+
+    void poll();
+    return () => {
+      cancelled = true;
+      if (timer != null) window.clearTimeout(timer);
+    };
+  }, [floating.open, floating.jobId, floating.done]);
+
   const activeCount = countActiveFilters(
     employmentTypes,
     jobTypes,
@@ -169,9 +295,37 @@ export function DiscoverListPage() {
 
   return (
     <div className="flex flex-col min-h-full w-full">
-      <header className="flex-shrink-0 border-b border-border bg-card px-4 py-3 flex items-center justify-between">
+      <header className="flex-shrink-0 border-b border-border bg-card px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-xl font-semibold text-text">Discover jobs</h1>
-        <SubmitedJobsDrawer />
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Handshake link input */}
+          <form onSubmit={handleHandshakeSubmit} className="flex items-center gap-2">
+            <div className="relative">
+              <Link2 className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+              <input
+                type="url"
+                value={handshakeUrl}
+                onChange={(e) => setHandshakeUrl(e.target.value)}
+                placeholder="Paste Handshake job link…"
+                className="pl-8 pr-3 py-2 text-sm bg-input border border-border rounded-lg text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent w-[220px] md:w-[280px]"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={handshakeSubmitting || !handshakeUrl.trim()}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {handshakeSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {handshakeSubmitting ? "Starting…" : "Start"}
+            </button>
+          </form>
+          {handshakeMsg && (
+            <span className={`text-xs ${handshakeMsg.ok ? "text-green-600" : "text-danger"}`}>
+              {handshakeMsg.text}
+            </span>
+          )}
+          <SubmitedJobsDrawer />
+        </div>
       </header>
 
       <main className="flex-1 w-full p-4 md:p-6">
@@ -461,27 +615,43 @@ export function DiscoverListPage() {
                           />
                         </div>
                       </Link>
-                      {listing.url && (
-                        <a
-                          href={listing.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-2 mt-3 pt-3 border-t border-border text-sm font-medium text-accent hover:text-accent-hover focus:outline-none focus:ring-2 focus:ring-accent/20 rounded no-underline"
-                        >
-                          <ExternalLink className="w-4 h-4" aria-hidden />
-                          Open on Handshake
-                        </a>
-                      )}
-                      {listing.applicationSubmitted && (
-                        <p className="text-sm text-text-muted inline-flex items-center gap-2">
-                          <CheckCircle
-                            className="w-4 h-4 text-green-600"
-                            aria-hidden
-                          />
-                          Applied at {listing.appliedAt}
-                        </p>
-                      )}
+                      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border flex-wrap">
+                        {listing.url && (
+                          <a
+                            href={listing.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:text-accent-hover focus:outline-none rounded no-underline"
+                          >
+                            <ExternalLink className="w-4 h-4" aria-hidden />
+                            Open on Handshake
+                          </a>
+                        )}
+                        {listing.applicationSubmitted ? (
+                          <span className="inline-flex items-center gap-1.5 text-sm text-text-muted ml-auto">
+                            <CheckCircle className="w-4 h-4 text-green-600" aria-hidden />
+                            Applied
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); void handleSaveJob(ref); }}
+                            disabled={savingRefs.has(ref)}
+                            className="inline-flex items-center gap-1.5 ml-auto px-2.5 py-1.5 text-xs font-medium rounded-lg border border-border bg-transparent text-text-muted hover:text-accent hover:border-accent disabled:opacity-60 transition-colors"
+                            title={savedRefs.has(ref) || listing.lifecycleStatus === 'saved' ? "Saved" : "Save job"}
+                          >
+                            {savingRefs.has(ref) ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (savedRefs.has(ref) || listing.lifecycleStatus === 'saved') ? (
+                              <BookmarkCheck className="w-3.5 h-3.5 text-accent" />
+                            ) : (
+                              <Bookmark className="w-3.5 h-3.5" />
+                            )}
+                            {(savedRefs.has(ref) || listing.lifecycleStatus === 'saved') ? "Saved" : "Save"}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </li>
                 );
@@ -490,6 +660,62 @@ export function DiscoverListPage() {
           )}
         </div>
       </main>
+
+      {/* Floating pipeline status notification */}
+      {floating.open && (
+        <div className="fixed bottom-6 right-6 z-[2000] w-[360px] max-w-[92vw]">
+          <div className="rounded-xl border border-border bg-card shadow-xl p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-text">
+                  {floating.done
+                    ? floating.error
+                      ? "Job failed"
+                      : "Job complete"
+                    : "Working on your job"}
+                </div>
+                <div className="text-xs text-text-muted mt-0.5 truncate">
+                  {floating.jobRef ?? "Handshake job"} ·{" "}
+                  {floating.phase ? floating.phase : floating.statusText}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFloating((p) => ({ ...p, open: false }))}
+                className="text-xs font-semibold text-text-muted hover:text-text"
+              >
+                Dismiss
+              </button>
+            </div>
+
+            {!floating.done && (
+              <div className="mt-3 flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-accent" />
+                <span className="text-xs text-text-muted">
+                  {floating.statusText}
+                </span>
+              </div>
+            )}
+
+            {floating.done && (
+              <div className="mt-3 flex items-center justify-between gap-2">
+                <span className={`text-xs ${floating.error ? "text-danger" : "text-text-muted"}`}>
+                  {floating.error ? floating.error : "You can review the documents in the job detail page."}
+                </span>
+                {floating.jobRef && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/discover/job/${encodeURIComponent(floating.jobRef!)}`)}
+                    className="text-xs font-semibold text-accent hover:text-accent-hover"
+                  >
+                    Open
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

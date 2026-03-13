@@ -7,6 +7,7 @@ import { existsSync } from 'fs';
 import { getPipelineJobById, updatePipelineJobStatus, updatePipelineJobPhase, updatePipelineJobSubmit } from '../data/pipeline-jobs.js';
 import { runPipelineForJob, JOB_CANCELLED_ERROR } from './run-pipeline.js';
 import { getJobIdFromUrl, getJobSiteFromUrl } from '../shared/job-from-url.js';
+import { setJobLifecycleStatus, toJobRef } from '../data/user-job-state.js';
 import { ensureResumePdfFromDb } from '../agents/resume_generator_agent/export-pdf.js';
 import { ensureCoverLetterPdfFromDb } from '../agents/resume_generator_agent/cover-letter.js';
 import { runHandshakeApply } from '../agents/auto_apply_agent/handshake-apply-real.js';
@@ -25,6 +26,15 @@ export async function runPipelineInBackground(
   if (!job || job.status !== 'pending') return;
 
   await updatePipelineJobStatus(jobId, 'running');
+
+  // Mark job as in_progress in lifecycle (best-effort; don't fail pipeline on error)
+  try {
+    const site = getJobSiteFromUrl(job.job_url);
+    const jobIdFromUrl = getJobIdFromUrl(job.job_url);
+    if (site && jobIdFromUrl) {
+      await setJobLifecycleStatus(job.user_id, toJobRef(site, jobIdFromUrl), 'in_progress');
+    }
+  } catch { /* ignore */ }
 
   try {
     const automationLevel =
@@ -47,6 +57,16 @@ export async function runPipelineInBackground(
     const current = await getPipelineJobById(jobId);
     if (current?.status === 'cancelled') return;
     await updatePipelineJobStatus(jobId, 'done', result);
+    // Mark submitted lifecycle when application was sent
+    if (result.outcome === 'submitted') {
+      try {
+        const site = getJobSiteFromUrl(job.job_url);
+        const jobIdFromUrl = getJobIdFromUrl(job.job_url);
+        if (site && jobIdFromUrl) {
+          await setJobLifecycleStatus(job.user_id, toJobRef(site, jobIdFromUrl), 'submitted');
+        }
+      } catch { /* ignore */ }
+    }
   } catch (err) {
     if (err === JOB_CANCELLED_ERROR || (err instanceof Error && err.message === 'JOB_CANCELLED')) {
       await updatePipelineJobStatus(jobId, 'cancelled');
@@ -136,6 +156,11 @@ export async function resumePipelineAfterApproval(jobId: string): Promise<void> 
       },
     };
     await updatePipelineJobStatus(jobId, 'done', result);
+    if (outcome === 'submitted') {
+      try {
+        await setJobLifecycleStatus(userId, toJobRef(site, jobIdFromUrl), 'submitted');
+      } catch { /* ignore */ }
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const code = isAppError(err) ? err.code : null;

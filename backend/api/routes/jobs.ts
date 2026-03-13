@@ -5,7 +5,7 @@ import type { Request, Response } from 'express';
 import { listJobsWithStatus } from '../../orchestration/list-jobs-with-status.js';
 import { getApplicationStatus, runJobScraper } from '../../agents/job_scraper_agent/index.js';
 import { getJob } from '../../data/jobs.js';
-import { getSubmittedJobs, getUserJobState } from '../../data/user-job-state.js';
+import { getSubmittedJobs, getUserJobState, setJobLifecycleStatus, getJobsByLifecycle } from '../../data/user-job-state.js';
 import { getResumeForJob } from '../../data/job-artifacts.js';
 import { getLatestPipelineJobByJobUrl } from '../../data/pipeline-jobs.js';
 import { normalizePipelineOutcome, getPipelineOutcomeMessage } from '../../shared/pipeline-outcome.js';
@@ -157,6 +157,48 @@ export async function getSubmittedJobList(req: Request, res: Response): Promise<
     res.status(200).json(jobs);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to get submitted jobs';
+    res.status(500).json({ error: message });
+  }
+}
+
+/** POST /jobs/save — mark a job as saved in the lifecycle. */
+export async function postSaveJob(req: Request, res: Response): Promise<void> {
+  const userId = req.userId;
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+  const { jobRef } = req.body ?? {};
+  if (typeof jobRef !== 'string' || !jobRef.includes(':')) {
+    res.status(400).json({ error: 'jobRef is required (e.g. handshake:10803825)' });
+    return;
+  }
+  try {
+    await setJobLifecycleStatus(userId, jobRef, 'saved');
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to save job';
+    res.status(500).json({ error: message });
+  }
+}
+
+/** GET /jobs/lifecycle-list?status=saved|in_progress|submitted */
+export async function getJobLifecycleList(req: Request, res: Response): Promise<void> {
+  const userId = req.userId;
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+  const status = typeof req.query.status === 'string' ? req.query.status : '';
+  if (status !== 'saved' && status !== 'in_progress' && status !== 'submitted') {
+    res.status(400).json({ error: 'status must be saved, in_progress, or submitted' });
+    return;
+  }
+  try {
+    const jobs = await getJobsByLifecycle(userId, status);
+    res.status(200).json(jobs);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to get jobs';
     res.status(500).json({ error: message });
   }
 }

@@ -31,6 +31,9 @@ export interface UserJobState {
   resumeBasename?: string;
   applicationSubmitted?: boolean;
   appliedAt?: string;
+  /** Job lifecycle state: saved → in_progress → submitted. */
+  lifecycleStatus?: 'saved' | 'in_progress' | 'submitted';
+  savedAt?: string;
 }
 
 /** One education entry in a profile. */
