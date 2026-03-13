@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { Check, Send, Sparkles, ArrowLeft, Eye, Pencil, Download } from "lucide-react";
 import { DiffView } from "../components/DiffView";
-import { postCoverLetterUpdate, putPipelineArtifactCover } from "../api";
+import { getPipelineJobStatus, postCoverLetterUpdate, putPipelineArtifactCover } from "../api";
 
 export interface CoverLetterEditorAppProps {
   initialText?: string;
@@ -27,8 +27,48 @@ export function CoverLetterEditorApp({
   const [aiInput, setAiInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   useEffect(() => { if (initialText && initialText !== text) setText(initialText); }, [initialText]);
+
+  // Enforce post-submission restrictions (read-only preview).
+  useEffect(() => {
+    if (!jobId) return;
+    let cancelled = false;
+    let timer: number | null = null;
+    let attempts = 0;
+
+    const poll = async () => {
+      attempts += 1;
+      try {
+        const s = await getPipelineJobStatus(jobId);
+        const submitted =
+          s.status === "submitted" ||
+          (s.status === "done" && s.submit === true);
+        if (!cancelled) {
+          setIsSubmitted(submitted);
+          if (submitted) return;
+        }
+      } catch {
+        // ignore
+      }
+      if (cancelled) return;
+      if (attempts >= 60) return;
+      timer = window.setTimeout(poll, 5000);
+    };
+
+    void poll();
+    return () => {
+      cancelled = true;
+      if (timer != null) window.clearTimeout(timer);
+    };
+  }, [jobId]);
+
+  useEffect(() => {
+    if (!isSubmitted) return;
+    setMode("preview");
+    setAiOpen(false);
+  }, [isSubmitted]);
 
   const handleSave = useCallback((next: string) => {
     setText(next);
@@ -66,8 +106,15 @@ export function CoverLetterEditorApp({
             <ArrowLeft size={16} /> Back
           </button>
           <div className="ml-auto flex items-center gap-2">
-            <button onClick={() => setMode(m => m === "edit" ? "preview" : "edit")}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50">
+            <button
+              onClick={() => {
+                if (isSubmitted) return;
+                setMode((m) => (m === "edit" ? "preview" : "edit"));
+              }}
+              disabled={isSubmitted}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed"
+              title={isSubmitted ? "This job has been submitted. Editing is disabled." : undefined}
+            >
               {mode === "edit" ? <><Eye size={14} /> Preview</> : <><Pencil size={14} /> Edit</>}
             </button>
           </div>
@@ -109,7 +156,7 @@ export function CoverLetterEditorApp({
 
       {/* AI Assistant */}
       <div className={`no-print fixed lg:left-1/2 left-6 lg:-translate-x-1/2 z-40 transition-[bottom] duration-200 ${hasProposal ? "bottom-24" : "bottom-6"}`}>
-        {!aiOpen && (
+        {!aiOpen && !isSubmitted && (
           <button onClick={() => { setAiOpen(true); setMode("preview"); }}
             className="group relative h-14 px-8 flex items-center gap-3 rounded-full bg-[#0f172a] text-white overflow-hidden transition-all hover:ring-2 hover:ring-slate-400 hover:ring-offset-2">
             <Sparkles size={20} className="text-amber-300 group-hover:rotate-12 transition-transform" />
@@ -118,7 +165,7 @@ export function CoverLetterEditorApp({
         )}
       </div>
       <div className="no-print fixed lg:bottom-6 bottom-24 left-1/2 -translate-x-1/2 z-50 transition-all">
-        {aiOpen && (
+        {aiOpen && !isSubmitted && (
           <div className="flex flex-col gap-3 bg-white/80 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-2xl p-4 border border-slate-200/50 w-[440px] max-w-[95vw]">
             <div className="flex items-center gap-2 px-1 text-slate-500">
               <Sparkles size={14} />

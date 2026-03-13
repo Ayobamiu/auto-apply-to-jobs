@@ -46,8 +46,7 @@ PS: Execute this task in the most token-efficent way. Use minimal tokens.
     - A way i can think of "You have complete X% of your profile. Then they can click and complete it"
     - from the section of adding Dynamic form, we have more info to get from the user, so add them and many common job Application details you can think of
 
-Modify the following files only:
-
+Modify the following files only if needed:
 frontend/components/ArtifactViewer.tsx
 frontend/hooks/useArtifacts.ts
 

@@ -96,6 +96,8 @@ export interface ResumeDocumentProps {
   onChange: (resume: Record<string, unknown>) => void;
   compact?: boolean;
   readOnly?: boolean;
+  /** When true, disables click-to-select blocks/highlights (used post-submission). */
+  disableSelection?: boolean;
   selectedNode?:
     | {
         path: string;
@@ -124,6 +126,7 @@ export function ResumeDocument({
   onChange,
   compact = false,
   readOnly = false,
+  disableSelection = false,
   selectedNode,
   setSelectedNode,
   proposedPatches = [], // From useAiEditor hook
@@ -185,6 +188,7 @@ export function ResumeDocument({
       // Prevent a highlight click from triggering a parent experience block click
       e.stopPropagation();
 
+      if (disableSelection) return;
       if (isSelected) {
         // Toggle off: if clicked again, reset focus to null or a general state
         setSelectedNode?.(null);
@@ -196,7 +200,7 @@ export function ResumeDocument({
     return (
       <div
         onClick={handleSelect}
-        className={`relative cursor-pointer transition-all duration-300 ${type === "highlight" ? "rounded-lg" : "rounded-xl"}
+        className={`relative transition-all duration-300 ${disableSelection ? "" : "cursor-pointer"} ${type === "highlight" ? "rounded-lg" : "rounded-xl"}
           ${type === "block" ? "p-0 border-2" : "p-0 border"}
           ${
             isSelected

@@ -3,7 +3,7 @@ import { ResumeDocument } from "./ResumeDocument";
 import { Check, Send, Sparkles, ArrowLeft, Eye, Pencil, Download } from "lucide-react";
 import { useAiEditor } from "../hooks/useAiEditor";
 import { ReviewBar } from "../components/ReviewBar";
-import { postResumeUpdate, putPipelineArtifactResume } from "../api";
+import { getPipelineJobStatus, postResumeUpdate, putPipelineArtifactResume } from "../api";
 
 const STANDALONE_KEY = "auto-apply-resume-editor-draft";
 
@@ -60,10 +60,52 @@ export function ResumeEditorApp({
   const [aiOpen, setAiOpen] = useState(false);
   const [aiInput, setAiInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   const [selectedNode, setSelectedNode] = useState<{
     path: string; label: string; data: string; type: "block" | "highlight";
   } | null | undefined>(null);
+
+  // Enforce post-submission restrictions (read-only preview).
+  useEffect(() => {
+    if (!jobId) return;
+    let cancelled = false;
+    let timer: number | null = null;
+    let attempts = 0;
+
+    const poll = async () => {
+      attempts += 1;
+      try {
+        const s = await getPipelineJobStatus(jobId);
+        const submitted =
+          s.status === "submitted" ||
+          (s.status === "done" && s.submit === true);
+        if (!cancelled) {
+          setIsSubmitted(submitted);
+          if (submitted) return; // stop polling once submitted
+        }
+      } catch {
+        // ignore (don't block preview)
+      }
+      if (cancelled) return;
+      if (attempts >= 60) return;
+      timer = window.setTimeout(poll, 5000);
+    };
+
+    void poll();
+    return () => {
+      cancelled = true;
+      if (timer != null) window.clearTimeout(timer);
+    };
+  }, [jobId]);
+
+  useEffect(() => {
+    if (!isSubmitted) return;
+    // Force preview mode and close assistant when submitted.
+    setMode("preview");
+    setAiOpen(false);
+    setSelectedNode(null);
+  }, [isSubmitted]);
 
   useEffect(() => {
     if (selectedNode?.type === "highlight") setAiOpen(true);
@@ -95,8 +137,15 @@ export function ResumeEditorApp({
             <ArrowLeft size={16} /> Back
           </button>
           <div className="ml-auto flex items-center gap-2">
-            <button onClick={() => setMode(m => m === "edit" ? "preview" : "edit")}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50">
+            <button
+              onClick={() => {
+                if (isSubmitted) return;
+                setMode((m) => (m === "edit" ? "preview" : "edit"));
+              }}
+              disabled={isSubmitted}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed"
+              title={isSubmitted ? "This job has been submitted. Editing is disabled." : undefined}
+            >
               {mode === "edit" ? <><Eye size={14} /> Preview</> : <><Pencil size={14} /> Edit</>}
             </button>
             {mode === "preview" && (
@@ -115,6 +164,7 @@ export function ResumeEditorApp({
           onChange={handleSave}
           compact={mode === "preview"}
           readOnly={mode === "preview"}
+          disableSelection={isSubmitted}
           selectedNode={selectedNode}
           setSelectedNode={setSelectedNode}
           proposedPatches={proposedPatches}
@@ -134,8 +184,16 @@ export function ResumeEditorApp({
               <span className="hidden lg:block font-semibold text-sm text-slate-600 group-hover:text-slate-900">Download PDF</span>
             </button>
           )}
-          <button type="button" onClick={() => setMode(m => m === "edit" ? "preview" : "edit")}
-            className="h-14 px-6 flex items-center gap-2 rounded-full bg-slate-900 text-white shadow-lg transition-all hover:bg-black hover:shadow-xl hover:-translate-y-0.5 active:scale-95">
+          <button
+            type="button"
+            onClick={() => {
+              if (isSubmitted) return;
+              setMode((m) => (m === "edit" ? "preview" : "edit"));
+            }}
+            disabled={isSubmitted}
+            className="h-14 px-6 flex items-center gap-2 rounded-full bg-slate-900 text-white shadow-lg transition-all hover:bg-black hover:shadow-xl hover:-translate-y-0.5 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+            title={isSubmitted ? "This job has been submitted. Editing is disabled." : undefined}
+          >
             {mode === "edit" ? <><Eye size={20} /><span className="hidden lg:block font-semibold text-sm">Preview</span></> : <><Pencil size={20} /><span className="hidden lg:block font-semibold text-sm">Edit</span></>}
           </button>
         </div>
@@ -143,7 +201,7 @@ export function ResumeEditorApp({
 
       {/* AI Assistant */}
       <div className={`no-print fixed lg:left-1/2 left-6 lg:-translate-x-1/2 z-40 transition-[bottom] duration-200 ${hasPatches ? "bottom-24" : "bottom-6"}`}>
-        {!aiOpen && (
+        {!aiOpen && !isSubmitted && (
           <button onClick={() => { setAiOpen(true); setMode("preview"); }}
             className="group relative h-14 px-8 flex items-center gap-3 rounded-full bg-[#0f172a] text-white overflow-hidden transition-all hover:ring-2 hover:ring-slate-400 hover:ring-offset-2 hover:ring-offset-white">
             <Sparkles size={20} className="text-amber-300 transition-transform group-hover:rotate-12" />
@@ -152,7 +210,7 @@ export function ResumeEditorApp({
         )}
       </div>
       <div className="no-print fixed lg:bottom-6 bottom-24 left-1/2 -translate-x-1/2 z-50 transition-all duration-200">
-        {aiOpen && (
+        {aiOpen && !isSubmitted && (
           <div className="flex flex-col gap-3 bg-white/80 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-2xl p-4 border border-slate-200/50 w-[440px] max-w-[95vw] animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center gap-2 px-1 text-slate-500">
               <Sparkles size={14} />

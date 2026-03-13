@@ -7,6 +7,7 @@ export interface EditableTextProps {
   className?: string;
   placeholder?: string;
   multiline?: boolean;
+  disabled?: boolean;
 }
 
 export function EditableText({
@@ -16,6 +17,7 @@ export function EditableText({
   className = '',
   placeholder = '',
   multiline = false,
+  disabled = false,
 }: EditableTextProps) {
   const [editing, setEditing] = useState(false);
   const [local, setLocal] = useState(value);
@@ -90,13 +92,18 @@ export function EditableText({
   return (
     <span
       role="button"
-      tabIndex={0}
       className={
         'min-h-[44px] inline-flex items-center py-1.5 px-2 rounded cursor-text border border-transparent hover:border-gray-300 touch-manipulation ' +
         (className || '')
       }
-      onClick={() => setEditing(true)}
+      aria-disabled={disabled}
+      tabIndex={disabled ? -1 : 0}
+      onClick={() => {
+        if (disabled) return;
+        setEditing(true);
+      }}
       onKeyDown={(e) => {
+        if (disabled) return;
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           setEditing(true);
