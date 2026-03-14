@@ -29,6 +29,7 @@ import {
 } from "../api";
 import { ResumeEditorApp } from "../resume-editor/ResumeEditorApp";
 import { CoverLetterEditorApp } from "../resume-editor/CoverLetterEditorApp";
+import dayjs from "dayjs";
 
 type DocTab = "resume" | "cover" | null;
 
@@ -52,50 +53,75 @@ export function DiscoverJobDetailPage() {
   const [saved, setSaved] = useState(false);
 
   const loadDetail = useCallback(async (ref: string, silent = false) => {
-    if (!silent) { setDetailLoading(true); setDetailError(null); }
-    try { setDetail(await getJobDetail(ref)); }
-    catch (err) {
+    if (!silent) {
+      setDetailLoading(true);
+      setDetailError(null);
+    }
+    try {
+      setDetail(await getJobDetail(ref));
+    } catch (err) {
       if (!silent) {
         setDetailError(err instanceof Error ? err.message : "Failed to load");
         setDetail(null);
       }
+    } finally {
+      if (!silent) setDetailLoading(false);
     }
-    finally { if (!silent) setDetailLoading(false); }
   }, []);
 
   const loadOrReloadArtifacts = useCallback(async () => {
     const pid = detail?.pipelineJob?.id;
     if (!pid) return;
     setArtifactsLoading(true);
-    try { setArtifacts(await getPipelineArtifacts(pid)); }
-    catch (err) { setDetailError(err instanceof Error ? err.message : "Failed to load artifacts"); }
-    finally { setArtifactsLoading(false); }
+    try {
+      setArtifacts(await getPipelineArtifacts(pid));
+    } catch (err) {
+      setDetailError(
+        err instanceof Error ? err.message : "Failed to load artifacts",
+      );
+    } finally {
+      setArtifactsLoading(false);
+    }
   }, [detail?.pipelineJob?.id]);
 
-  useEffect(() => { loadOrReloadArtifacts(); }, [detail?.pipelineJob?.id, loadOrReloadArtifacts]);
+  useEffect(() => {
+    loadOrReloadArtifacts();
+  }, [detail?.pipelineJob?.id, loadOrReloadArtifacts]);
 
   const scrapeJobDetail = useCallback(async (ref: string) => {
     setScrapingDetail(true);
     try {
       const data = await postScrapeJobDetail(ref);
-      setDetail(prev => prev ? { ...prev, job: data.job } : null);
+      setDetail((prev) => (prev ? { ...prev, job: data.job } : null));
+    } catch (err) {
+      setDetailError(err instanceof Error ? err.message : "Failed to scrape");
+    } finally {
+      setScrapingDetail(false);
     }
-    catch (err) { setDetailError(err instanceof Error ? err.message : "Failed to scrape"); }
-    finally { setScrapingDetail(false); }
   }, []);
 
   useEffect(() => {
-    if (!jobRef) { navigate("/discover", { replace: true }); return; }
+    if (!jobRef) {
+      navigate("/discover", { replace: true });
+      return;
+    }
     loadDetail(jobRef);
   }, [jobRef, loadDetail, navigate]);
 
   useEffect(() => {
     if (!jobRef || !detail?.job) return;
-    if (!detail.job.description || !detail.job.applyType) scrapeJobDetail(jobRef);
-  }, [jobRef, detail?.job?.description, detail?.job?.applyType, scrapeJobDetail]);
+    if (!detail.job.description || !detail.job.applyType)
+      scrapeJobDetail(jobRef);
+  }, [
+    jobRef,
+    detail?.job?.description,
+    detail?.job?.applyType,
+    scrapeJobDetail,
+  ]);
 
   const pipelineStatus = detail?.pipelineJob?.status;
-  const isPipelineActive = pipelineStatus === "pending" || pipelineStatus === "running";
+  const isPipelineActive =
+    pipelineStatus === "pending" || pipelineStatus === "running";
   useEffect(() => {
     if (!jobRef || !isPipelineActive) return;
     const id = setInterval(() => loadDetail(jobRef, true), 2500);
@@ -105,7 +131,8 @@ export function DiscoverJobDetailPage() {
   const pipelineId = detail?.pipelineJob?.id;
   useEffect(() => {
     if (!pipelineStatus || !pipelineId) return;
-    if (pipelineStatus !== "awaiting_approval" && pipelineStatus !== "done") return;
+    if (pipelineStatus !== "awaiting_approval" && pipelineStatus !== "done")
+      return;
     void loadOrReloadArtifacts();
   }, [pipelineStatus, pipelineId, loadOrReloadArtifacts]);
 
@@ -121,42 +148,73 @@ export function DiscoverJobDetailPage() {
     if (detail?.userState?.lifecycleStatus === "saved") setSaved(true);
   }, [detail?.userState?.lifecycleStatus]);
 
-  const handleRefresh = useCallback(() => { if (jobRef) loadDetail(jobRef); }, [jobRef, loadDetail]);
+  const handleRefresh = useCallback(() => {
+    if (jobRef) loadDetail(jobRef);
+  }, [jobRef, loadDetail]);
 
   const handleSave = useCallback(async () => {
     if (!jobRef || saving || saved) return;
     setSaving(true);
-    try { await saveJob(jobRef); setSaved(true); }
-    catch { /* silently ignore */ }
-    finally { setSaving(false); }
+    try {
+      await saveJob(jobRef);
+      setSaved(true);
+    } catch {
+      /* silently ignore */
+    } finally {
+      setSaving(false);
+    }
   }, [jobRef, saving, saved]);
 
-  const handleApply = useCallback(async (url: string) => {
-    setApplyingUrl(url);
-    try { await postPipeline(url, { submit: true }); if (jobRef) loadDetail(jobRef); }
-    catch (err) { setDetailError(err instanceof Error ? err.message : "Failed"); }
-    finally { setApplyingUrl(null); }
-  }, [jobRef, loadDetail]);
+  const handleApply = useCallback(
+    async (url: string) => {
+      setApplyingUrl(url);
+      try {
+        await postPipeline(url, { submit: true });
+        if (jobRef) loadDetail(jobRef);
+      } catch (err) {
+        setDetailError(err instanceof Error ? err.message : "Failed");
+      } finally {
+        setApplyingUrl(null);
+      }
+    },
+    [jobRef, loadDetail],
+  );
 
-  const handleGenerate = useCallback(async (url: string) => {
-    setGeneratingUrl(url);
-    try { await postPipeline(url, { submit: false }); if (jobRef) loadDetail(jobRef); }
-    catch (err) { setDetailError(err instanceof Error ? err.message : "Failed"); }
-    finally { setGeneratingUrl(null); }
-  }, [jobRef, loadDetail]);
+  const handleGenerate = useCallback(
+    async (url: string) => {
+      setGeneratingUrl(url);
+      try {
+        await postPipeline(url, { submit: false });
+        if (jobRef) loadDetail(jobRef);
+      } catch (err) {
+        setDetailError(err instanceof Error ? err.message : "Failed");
+      } finally {
+        setGeneratingUrl(null);
+      }
+    },
+    [jobRef, loadDetail],
+  );
 
   const handleApprove = useCallback(async () => {
     const pid = detail?.pipelineJob?.id;
     if (!pid) return;
-    try { await approvePipelineJob(pid); if (jobRef) loadDetail(jobRef); }
-    catch (err) { setDetailError(err instanceof Error ? err.message : "Failed to approve"); }
+    try {
+      await approvePipelineJob(pid);
+      if (jobRef) loadDetail(jobRef);
+    } catch (err) {
+      setDetailError(err instanceof Error ? err.message : "Failed to approve");
+    }
   }, [detail?.pipelineJob?.id, jobRef, loadDetail]);
 
   const handleCancel = useCallback(async () => {
     const pid = detail?.pipelineJob?.id;
     if (!pid) return;
-    try { await cancelPipelineJob(pid); if (jobRef) loadDetail(jobRef); }
-    catch (err) { setDetailError(err instanceof Error ? err.message : "Failed to cancel"); }
+    try {
+      await cancelPipelineJob(pid);
+      if (jobRef) loadDetail(jobRef);
+    } catch (err) {
+      setDetailError(err instanceof Error ? err.message : "Failed to cancel");
+    }
   }, [detail?.pipelineJob?.id, jobRef, loadDetail]);
 
   if (!jobRef) return null;
@@ -164,9 +222,20 @@ export function DiscoverJobDetailPage() {
   const pipeline = detail?.pipelineJob;
   const appliedAt = !!detail?.userState?.appliedAt;
   const hasResume = !!detail?.hasResume;
-  const showGenerate = !appliedAt && !hasResume && !(pipeline && (pipeline.status === "awaiting_approval" || pipeline.status === "done"));
-  const showApply = !appliedAt && !(pipeline?.status === "failed" && pipeline?.retryAllowed === false);
-  const cannotApply = pipeline?.status === "failed" && pipeline?.retryAllowed === false && !!detail?.job?.url;
+  const showGenerate =
+    !appliedAt &&
+    !hasResume &&
+    !(
+      pipeline &&
+      (pipeline.status === "awaiting_approval" || pipeline.status === "done")
+    );
+  const showApply =
+    !appliedAt &&
+    !(pipeline?.status === "failed" && pipeline?.retryAllowed === false);
+  const cannotApply =
+    pipeline?.status === "failed" &&
+    pipeline?.retryAllowed === false &&
+    !!detail?.job?.url;
   const jobDescription = detail?.job?.description ?? undefined;
 
   const renderDocEditor = () => {
@@ -177,8 +246,13 @@ export function DiscoverJobDetailPage() {
           initialResume={artifacts.resume}
           jobId={pipelineId}
           jobDescription={jobDescription}
-          onSave={(next) => setArtifacts(prev => prev ? { ...prev, resume: next } : prev)}
-          onBack={() => { setActiveDoc(null); setMobileDocOpen(false); }}
+          onSave={(next) =>
+            setArtifacts((prev) => (prev ? { ...prev, resume: next } : prev))
+          }
+          onBack={() => {
+            setActiveDoc(null);
+            setMobileDocOpen(false);
+          }}
         />
       );
     }
@@ -188,8 +262,15 @@ export function DiscoverJobDetailPage() {
           initialText={artifacts.cover.text}
           jobId={pipelineId}
           jobDescription={jobDescription}
-          onSave={(t) => setArtifacts(prev => prev ? { ...prev, cover: { text: t } } : prev)}
-          onBack={() => { setActiveDoc(null); setMobileDocOpen(false); }}
+          onSave={(t) =>
+            setArtifacts((prev) =>
+              prev ? { ...prev, cover: { text: t } } : prev,
+            )
+          }
+          onBack={() => {
+            setActiveDoc(null);
+            setMobileDocOpen(false);
+          }}
         />
       );
     }
@@ -229,12 +310,17 @@ export function DiscoverJobDetailPage() {
             <div className="rounded-2xl bg-red-50 border border-red-100 p-4 space-y-3">
               <p className="text-sm text-red-700">{detailError}</p>
               <div className="flex gap-2">
-                <button type="button" onClick={handleRefresh}
-                  className="px-3 py-1.5 text-xs font-medium text-red-700 bg-white border border-red-200 rounded-lg hover:bg-red-50 cursor-pointer">
+                <button
+                  type="button"
+                  onClick={handleRefresh}
+                  className="px-3 py-1.5 text-xs font-medium text-red-700 bg-white border border-red-200 rounded-lg hover:bg-red-50 cursor-pointer"
+                >
                   Try again
                 </button>
-                <Link to="/discover"
-                  className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 no-underline">
+                <Link
+                  to="/discover"
+                  className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 no-underline"
+                >
                   Back
                 </Link>
               </div>
@@ -261,17 +347,21 @@ export function DiscoverJobDetailPage() {
                     {detail.job.title || "Untitled"}
                   </h1>
                   {detail.job.company && (
-                    <p className="text-sm text-gray-500 mt-0.5">{detail.job.company}</p>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      {detail.job.company}
+                    </p>
                   )}
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-gray-400">
                     {detail.job.location && (
                       <span className="inline-flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />{detail.job.location}
+                        <MapPin className="w-3 h-3" />
+                        {detail.job.location}
                       </span>
                     )}
                     {detail.job.salaryEmploymentType && (
                       <span className="inline-flex items-center gap-1">
-                        <Briefcase className="w-3 h-3" />{detail.job.salaryEmploymentType}
+                        <Briefcase className="w-3 h-3" />
+                        {detail.job.salaryEmploymentType}
                       </span>
                     )}
                   </div>
@@ -294,7 +384,10 @@ export function DiscoverJobDetailPage() {
                 <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 border border-emerald-100 rounded-xl">
                   <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                   <span className="text-sm text-emerald-700 font-medium">
-                    Applied {detail.userState?.appliedAt ? `· ${detail.userState.appliedAt}` : ""}
+                    Applied{" "}
+                    {detail.userState?.appliedAt
+                      ? `· ${dayjs(detail.userState.appliedAt).format("MMMM D YYYY, h:mm:ss a")}`
+                      : ""}
                   </span>
                 </div>
               )}
@@ -330,15 +423,20 @@ export function DiscoverJobDetailPage() {
                         We can't apply to this job through the app.
                       </p>
                       <p className="text-xs text-amber-700">
-                        You can still generate a tailored resume and cover letter to use when applying manually.
+                        You can still generate a tailored resume and cover
+                        letter to use when applying manually.
                       </p>
                       {pipeline?.error && (
-                        <p className="text-xs text-amber-600">{pipeline.error}</p>
+                        <p className="text-xs text-amber-600">
+                          {pipeline.error}
+                        </p>
                       )}
                       {detail.job.url && (
                         <button
                           type="button"
-                          disabled={!!generatingUrl || !!applyingUrl || isPipelineActive}
+                          disabled={
+                            !!generatingUrl || !!applyingUrl || isPipelineActive
+                          }
                           onClick={() => handleGenerate(detail.job.url!)}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed border-0 cursor-pointer"
                         >
@@ -347,7 +445,9 @@ export function DiscoverJobDetailPage() {
                           ) : (
                             <FileText className="w-3.5 h-3.5" />
                           )}
-                          {generatingUrl === detail.job.url ? "Generating…" : "Generate documents"}
+                          {generatingUrl === detail.job.url
+                            ? "Generating…"
+                            : "Generate documents"}
                         </button>
                       )}
                     </div>
@@ -358,8 +458,13 @@ export function DiscoverJobDetailPage() {
                     <div className="space-y-1">
                       <button
                         type="button"
-                        disabled={!!generatingUrl || !!applyingUrl || isPipelineActive}
-                        onClick={() => { if (!cannotApply && detail.job.url) handleGenerate(detail.job.url); }}
+                        disabled={
+                          !!generatingUrl || !!applyingUrl || isPipelineActive
+                        }
+                        onClick={() => {
+                          if (!cannotApply && detail.job.url)
+                            handleGenerate(detail.job.url);
+                        }}
                         className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed border-0 cursor-pointer transition-colors"
                       >
                         {generatingUrl === detail.job.url ? (
@@ -370,8 +475,8 @@ export function DiscoverJobDetailPage() {
                         {generatingUrl === detail.job.url
                           ? "Generating…"
                           : isPipelineActive
-                          ? "Processing…"
-                          : "Generate resume & cover letter"}
+                            ? "Processing…"
+                            : "Generate resume & cover letter"}
                       </button>
                       <p className="text-xs text-gray-400 text-center">
                         Tailored to this job description
@@ -384,8 +489,13 @@ export function DiscoverJobDetailPage() {
                     <div className="space-y-1">
                       <button
                         type="button"
-                        disabled={!!applyingUrl || !!generatingUrl || isPipelineActive}
-                        onClick={() => { if (!cannotApply && detail.job.url) handleApply(detail.job.url); }}
+                        disabled={
+                          !!applyingUrl || !!generatingUrl || isPipelineActive
+                        }
+                        onClick={() => {
+                          if (!cannotApply && detail.job.url)
+                            handleApply(detail.job.url);
+                        }}
                         className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl disabled:opacity-60 disabled:cursor-not-allowed border-0 cursor-pointer transition-colors ${
                           showGenerate
                             ? "text-indigo-600 bg-indigo-50 hover:bg-indigo-100"
@@ -400,10 +510,10 @@ export function DiscoverJobDetailPage() {
                         {applyingUrl === detail.job.url
                           ? "Starting…"
                           : isPipelineActive
-                          ? "Applying…"
-                          : pipeline?.status === "failed"
-                          ? "Re-apply"
-                          : "Apply with AutoApply"}
+                            ? "Applying…"
+                            : pipeline?.status === "failed"
+                              ? "Re-apply"
+                              : "Apply with AutoApply"}
                       </button>
                       <p className="text-xs text-gray-400 text-center">
                         Generates docs and submits on Handshake
@@ -412,26 +522,31 @@ export function DiscoverJobDetailPage() {
                   )}
 
                   {/* Failed + retry allowed → also offer generate */}
-                  {pipeline?.status === "failed" && pipeline?.retryAllowed !== false && !cannotApply && detail.job.url && (
-                    <div className="space-y-1">
-                      <button
-                        type="button"
-                        disabled={!!generatingUrl || !!applyingUrl || isPipelineActive}
-                        onClick={() => handleGenerate(detail.job.url!)}
-                        className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:border-indigo-300 hover:text-indigo-600 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors"
-                      >
-                        {generatingUrl === detail.job.url ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <FileText className="w-3.5 h-3.5" />
-                        )}
-                        Generate resume and cover letter anyway
-                      </button>
-                      <p className="text-xs text-gray-400 text-center">
-                        You can still create documents to use elsewhere.
-                      </p>
-                    </div>
-                  )}
+                  {pipeline?.status === "failed" &&
+                    pipeline?.retryAllowed !== false &&
+                    !cannotApply &&
+                    detail.job.url && (
+                      <div className="space-y-1">
+                        <button
+                          type="button"
+                          disabled={
+                            !!generatingUrl || !!applyingUrl || isPipelineActive
+                          }
+                          onClick={() => handleGenerate(detail.job.url!)}
+                          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:border-indigo-300 hover:text-indigo-600 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                        >
+                          {generatingUrl === detail.job.url ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <FileText className="w-3.5 h-3.5" />
+                          )}
+                          Generate resume and cover letter anyway
+                        </button>
+                        <p className="text-xs text-gray-400 text-center">
+                          You can still create documents to use elsewhere.
+                        </p>
+                      </div>
+                    )}
                 </div>
               )}
 
@@ -454,19 +569,26 @@ export function DiscoverJobDetailPage() {
                   </div>
 
                   {isPipelineActive && pipeline.phase && (
-                    <p className="text-xs text-gray-500 pl-6">{pipeline.phase}</p>
+                    <p className="text-xs text-gray-500 pl-6">
+                      {pipeline.phase}
+                    </p>
                   )}
                   {pipeline.status === "done" && pipeline.userMessage && (
-                    <p className="text-xs text-gray-600 pl-6">{pipeline.userMessage}</p>
+                    <p className="text-xs text-gray-600 pl-6">
+                      {pipeline.userMessage}
+                    </p>
                   )}
                   {pipeline.status === "failed" && (
-                    <p className="text-xs text-red-600 pl-6">{pipeline.error ?? "Application failed."}</p>
+                    <p className="text-xs text-red-600 pl-6">
+                      {pipeline.error ?? "Application failed."}
+                    </p>
                   )}
 
                   {/* Scraping indicator */}
                   {scrapingDetail && (
                     <p className="text-xs text-gray-400 inline-flex items-center gap-1.5 pl-6">
-                      <Loader2 className="w-3 h-3 animate-spin" /> Loading job details…
+                      <Loader2 className="w-3 h-3 animate-spin" /> Loading job
+                      details…
                     </p>
                   )}
 
@@ -501,7 +623,10 @@ export function DiscoverJobDetailPage() {
                     {artifacts?.resume && (
                       <button
                         type="button"
-                        onClick={() => { setActiveDoc("resume"); setMobileDocOpen(true); }}
+                        onClick={() => {
+                          setActiveDoc("resume");
+                          setMobileDocOpen(true);
+                        }}
                         className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-xl border transition-colors cursor-pointer ${
                           activeDoc === "resume"
                             ? "bg-indigo-600 text-white border-indigo-600"
@@ -515,7 +640,10 @@ export function DiscoverJobDetailPage() {
                     {artifacts?.cover && (
                       <button
                         type="button"
-                        onClick={() => { setActiveDoc("cover"); setMobileDocOpen(true); }}
+                        onClick={() => {
+                          setActiveDoc("cover");
+                          setMobileDocOpen(true);
+                        }}
                         className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-xl border transition-colors cursor-pointer ${
                           activeDoc === "cover"
                             ? "bg-indigo-600 text-white border-indigo-600"
@@ -533,7 +661,8 @@ export function DiscoverJobDetailPage() {
               {/* Loading artifacts */}
               {artifactsLoading && (
                 <div className="flex items-center gap-2 text-xs text-gray-400">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading documents…
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading
+                  documents…
                 </div>
               )}
 
@@ -548,7 +677,10 @@ export function DiscoverJobDetailPage() {
                       descriptionExpanded ? "" : "max-h-48"
                     }`}
                   >
-                    {detail.job.description.slice(0, descriptionExpanded ? undefined : 5000)}
+                    {detail.job.description.slice(
+                      0,
+                      descriptionExpanded ? undefined : 5000,
+                    )}
                   </div>
                   {detail.job.description.length > 300 && (
                     <button
@@ -556,7 +688,9 @@ export function DiscoverJobDetailPage() {
                       onClick={() => setDescriptionExpanded((v) => !v)}
                       className="inline-flex items-center gap-1 mt-1.5 text-xs text-indigo-600 hover:text-indigo-700 bg-transparent border-0 cursor-pointer"
                     >
-                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${descriptionExpanded ? "rotate-180" : ""}`} />
+                      <ChevronDown
+                        className={`w-3.5 h-3.5 transition-transform ${descriptionExpanded ? "rotate-180" : ""}`}
+                      />
                       {descriptionExpanded ? "Show less" : "Show more"}
                     </button>
                   )}
@@ -579,7 +713,9 @@ export function DiscoverJobDetailPage() {
         ) : hasArtifacts && !activeDoc ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-400">
             <FileText className="w-12 h-12 opacity-20" />
-            <p className="text-sm">Select a document from the sidebar to preview or edit</p>
+            <p className="text-sm">
+              Select a document from the sidebar to preview or edit
+            </p>
           </div>
         ) : artifactsLoading ? (
           <div className="flex items-center justify-center h-full">
@@ -589,7 +725,8 @@ export function DiscoverJobDetailPage() {
           <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-400">
             <FileText className="w-12 h-12 opacity-20" />
             <p className="text-sm text-center max-w-xs">
-              Your tailored resume and cover letter will appear here after generation.
+              Your tailored resume and cover letter will appear here after
+              generation.
             </p>
           </div>
         )}
@@ -604,15 +741,16 @@ export function DiscoverJobDetailPage() {
             </span>
             <button
               type="button"
-              onClick={() => { setMobileDocOpen(false); setActiveDoc(null); }}
+              onClick={() => {
+                setMobileDocOpen(false);
+                setActiveDoc(null);
+              }}
               className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 bg-transparent border-0 cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
-          <div className="flex-1 overflow-hidden">
-            {renderDocEditor()}
-          </div>
+          <div className="flex-1 overflow-hidden">{renderDocEditor()}</div>
         </div>
       )}
     </div>

@@ -45,7 +45,8 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
   const [jobRef, setJobRef] = useState<string | null>(null);
   const [pipelineJobId, setPipelineJobId] = useState<string | null>(null);
   const pollingRef = useRef<boolean>(false);
-  const timerRef = useRef<number | null>(null);
+  const pollingTimerRef = useRef<number | null>(null);
+  const redirectTimerRef = useRef<number | null>(null);
 
   const resetState = useCallback(() => {
     setUrl("");
@@ -54,9 +55,13 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
     setJobRef(null);
     setPipelineJobId(null);
     pollingRef.current = false;
-    if (timerRef.current != null) {
-      window.clearTimeout(timerRef.current);
-      timerRef.current = null;
+    if (pollingTimerRef.current != null) {
+      window.clearTimeout(pollingTimerRef.current);
+      pollingTimerRef.current = null;
+    }
+    if (redirectTimerRef.current != null) {
+      window.clearTimeout(redirectTimerRef.current);
+      redirectTimerRef.current = null;
     }
   }, []);
 
@@ -79,9 +84,10 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
 
         if (nextStep === "done") {
           pollingRef.current = false;
-          // Navigate after a brief moment so user sees the "Ready!" message
-          timerRef.current = window.setTimeout(() => {
-            if (jobRef) navigate(`/discover/job/${encodeURIComponent(jobRef)}`);
+          const refToUse = jobRef;
+          // Use separate ref for redirect timer so effect cleanup doesn't clear it
+          redirectTimerRef.current = window.setTimeout(() => {
+            if (refToUse) navigate(`/discover/job/${encodeURIComponent(refToUse)}`);
             handleClose();
           }, 1200);
           return;
@@ -95,14 +101,14 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
         // transient error — keep polling
       }
       if (pollingRef.current) {
-        timerRef.current = window.setTimeout(poll, 2000);
+        pollingTimerRef.current = window.setTimeout(poll, 2000);
       }
     };
 
     void poll();
     return () => {
       pollingRef.current = false;
-      if (timerRef.current != null) window.clearTimeout(timerRef.current);
+      if (pollingTimerRef.current != null) window.clearTimeout(pollingTimerRef.current);
     };
   }, [pipelineJobId, jobRef, handleClose, navigate, step]);
 

@@ -39,7 +39,7 @@ import {
 } from './routes/pipeline-jobs.js';
 import { getSettings, putSettings } from './routes/settings.js';
 import { postChat, getChatMessages } from './routes/chat.js';
-import { transcriptUpload, postTranscript, getTranscriptStatus } from './routes/transcript.js';
+import { transcriptUpload, postTranscript, getTranscriptStatus, getTranscriptPreviewUrl } from './routes/transcript.js';
 import {
   userResumeUploadMiddleware,
   getUserResume,
@@ -100,6 +100,7 @@ app.put('/settings', authMiddleware, putSettings);
 app.post('/handshake/session/upload', authMiddleware, postHandshakeSessionUpload);
 app.get('/handshake/session/status', authMiddleware, getHandshakeSessionStatusHandler);
 app.get('/users/me/transcript', authMiddleware, getTranscriptStatus);
+app.get('/users/me/transcript/preview-url', authMiddleware, getTranscriptPreviewUrl);
 app.post('/users/me/transcript', authMiddleware, transcriptUpload, postTranscript);
 app.get('/users/me/resume', authMiddleware, getUserResume);
 app.put('/users/me/resume', authMiddleware, putUserResume);

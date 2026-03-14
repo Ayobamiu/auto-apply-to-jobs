@@ -105,8 +105,13 @@ export async function putProfile(data: Record<string, unknown>): Promise<Profile
   });
 }
 
-export async function getTranscriptStatus(): Promise<{ hasTranscript: boolean, transcriptStorageKey: string | null }> {
+export async function getTranscriptStatus(): Promise<{ hasTranscript: boolean; transcriptStorageKey: string | null }> {
   return request<{ hasTranscript: boolean; transcriptStorageKey: string | null }>('/users/me/transcript');
+}
+
+/** Get a presigned URL to preview the transcript PDF in the browser. */
+export async function getTranscriptPreviewUrl(): Promise<{ url: string }> {
+  return request<{ url: string }>('/users/me/transcript/preview-url');
 }
 
 /** Upload a resume PDF to set profile; extracts text and saves profile. */

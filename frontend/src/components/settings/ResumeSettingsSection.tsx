@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Upload, Loader2, CheckCircle, AlertCircle, Eye } from "lucide-react";
-import { getBaseResume, postBaseResumeFile } from "../../api";
+import { Upload, Loader2, CheckCircle, AlertCircle, Eye, Save } from "lucide-react";
+import { getBaseResume, postBaseResumeFile, putBaseResume } from "../../api";
 import { ResumeEditorApp } from "../../resume-editor/ResumeEditorApp";
 
 type Status = "idle" | "loading" | "uploading" | "error";
@@ -10,15 +10,20 @@ export function ResumeSettingsSection() {
   const [resume, setResume] = useState<Record<string, unknown> | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [showPreview, setShowPreview] = useState(false);
+  const [savingResume, setSavingResume] = useState(false);
+  const lastSavedResumeRef = useRef<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setStatus("loading");
     try {
       const res = await getBaseResume();
-      setResume(res.resume ?? null);
+      const data = res.resume ?? null;
+      setResume(data);
+      lastSavedResumeRef.current = data ? JSON.stringify(data) : null;
     } catch {
       setResume(null);
+      lastSavedResumeRef.current = null;
     } finally {
       setStatus("idle");
     }
@@ -37,7 +42,9 @@ export function ResumeSettingsSection() {
     setErrorMsg("");
     try {
       const res = await postBaseResumeFile(file);
-      setResume(res.resume ?? null);
+      const data = res.resume ?? null;
+      setResume(data);
+      lastSavedResumeRef.current = data ? JSON.stringify(data) : null;
       setStatus("idle");
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Upload failed");
@@ -63,16 +70,51 @@ export function ResumeSettingsSection() {
     [handleFile],
   );
 
+  const resumeDirty =
+    resume &&
+    lastSavedResumeRef.current !== null &&
+    JSON.stringify(resume) !== lastSavedResumeRef.current;
+
+  const handleSaveBaseResume = useCallback(async () => {
+    if (!resume || !resumeDirty || savingResume) return;
+    setSavingResume(true);
+    try {
+      await putBaseResume(resume);
+      lastSavedResumeRef.current = JSON.stringify(resume);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSavingResume(false);
+    }
+  }, [resume, resumeDirty, savingResume]);
+
   if (showPreview && resume) {
     return (
       <div className="flex flex-col gap-3">
-        <button
-          type="button"
-          onClick={() => setShowPreview(false)}
-          className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 bg-transparent border-0 cursor-pointer self-start"
-        >
-          ← Back to upload
-        </button>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setShowPreview(false)}
+            className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 bg-transparent border-0 cursor-pointer"
+          >
+            ← Back to upload
+          </button>
+          {resumeDirty && (
+            <button
+              type="button"
+              onClick={handleSaveBaseResume}
+              disabled={savingResume}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 disabled:opacity-60 border-0 cursor-pointer"
+            >
+              {savingResume ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Save changes
+            </button>
+          )}
+        </div>
         <div className="h-[600px] rounded-2xl overflow-hidden border border-gray-100">
           <ResumeEditorApp
             initialResume={resume}

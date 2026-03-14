@@ -166,7 +166,7 @@ async function checkPrerequisites(userId: string): Promise<{
   sessionStale: boolean;
   hasTranscript: boolean;
 }> {
-  const [profile, sessionAge, transcript] = await Promise.all([
+  const [profile, sessionAge, transcriptResult] = await Promise.all([
     getProfile(userId),
     getSessionAge(userId),
     hasTranscript(userId),
@@ -174,7 +174,7 @@ async function checkPrerequisites(userId: string): Promise<{
   const hasProfile = !!(profile?.name?.trim());
   const hasSession = sessionAge !== null;
   const sessionStale = hasSession && sessionAge! > SESSION_STALE_THRESHOLD_MS;
-  return { hasProfile, hasSession, sessionStale, hasTranscript: transcript };
+  return { hasProfile, hasSession, sessionStale, hasTranscript: transcriptResult.hasTranscript };
 }
 
 function looksLikeSkipOrContinue(message: string): boolean {
@@ -358,8 +358,8 @@ async function handleApply(
     const presentSections = cached?.presentSections as Array<{ key: string }> | undefined;
     const requiredKeys = Array.isArray(presentSections) ? presentSections.map((s) => s.key) : [];
     if (requiredKeys.includes('transcript')) {
-      const userHasTranscript = await hasTranscript(userId);
-      if (!userHasTranscript) {
+      const transcriptStatus = await hasTranscript(userId);
+      if (!transcriptStatus.hasTranscript) {
         return {
           reply:
             'This job requires a transcript. Please upload your transcript (PDF) first — use "Upload transcript" in the header, or in Settings. Then send this job URL again and I\'ll apply.',

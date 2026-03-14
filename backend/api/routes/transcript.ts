@@ -1,11 +1,11 @@
 /**
- * POST /users/me/transcript — upload transcript PDF (auth required).
+ * GET /users/me/transcript (status), GET /users/me/transcript/preview-url (presigned URL), POST /users/me/transcript (upload).
  * Stores in S3 and saves key in user_preferences. Requires S3 env vars.
  */
 import type { Request, Response } from 'express';
 import multer from 'multer';
-import { uploadTranscriptToS3 } from '../../shared/s3-transcript.js';
-import { setTranscriptStorageKey } from '../../data/user-preferences.js';
+import { uploadTranscriptToS3, getTranscriptPresignedUrl } from '../../shared/s3-transcript.js';
+import { setTranscriptStorageKey, getTranscriptStorageKey } from '../../data/user-preferences.js';
 import { hasTranscript } from '../../data/user-preferences.js';
 
 const memoryStorage = multer.memoryStorage();
@@ -23,6 +23,25 @@ export async function getTranscriptStatus(req: Request, res: Response): Promise<
   }
   const transcriptStatus = await hasTranscript(req.userId);
   res.status(200).json(transcriptStatus);
+}
+
+export async function getTranscriptPreviewUrl(req: Request, res: Response): Promise<void> {
+  if (!req.userId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+  const key = await getTranscriptStorageKey(req.userId);
+  if (!key) {
+    res.status(404).json({ error: 'No transcript on file.' });
+    return;
+  }
+  try {
+    const url = await getTranscriptPresignedUrl(key);
+    res.status(200).json({ url });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to generate preview URL';
+    res.status(500).json({ error: message });
+  }
 }
 
 export async function postTranscript(req: Request, res: Response): Promise<void> {

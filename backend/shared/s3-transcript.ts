@@ -3,6 +3,7 @@
  * When S3 env vars are not set, upload fails with a clear error; resolution falls back to TRANSCRIPT_PATH.
  */
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { createWriteStream } from 'fs';
 import { mkdtemp, unlink } from 'fs/promises';
 import { join } from 'path';
@@ -93,4 +94,15 @@ export function scheduleTempFileCleanup(filePath: string, delayMs: number = 60_0
   setTimeout(() => {
     unlink(filePath).catch(() => {});
   }, delayMs);
+}
+
+/** Get a presigned URL for the transcript PDF (e.g. for browser preview). Expires in 1 hour. */
+export async function getTranscriptPresignedUrl(storageKey: string): Promise<string> {
+  const client = getS3Client();
+  const bucket = process.env.S3_BUCKET?.trim();
+  if (!client || !bucket) {
+    throw new Error('S3 is not configured. Cannot generate preview URL.');
+  }
+  const command = new GetObjectCommand({ Bucket: bucket, Key: storageKey });
+  return getSignedUrl(client, command, { expiresIn: 3600 });
 }

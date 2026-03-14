@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Upload, Loader2, CheckCircle, AlertCircle, FileText } from "lucide-react";
-import { getTranscriptStatus, uploadTranscript } from "../../api";
+import {
+  Upload,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
+  FileText,
+  Eye,
+} from "lucide-react";
+import {
+  getTranscriptStatus,
+  getTranscriptPreviewUrl,
+  uploadTranscript,
+} from "../../api";
 
 type Status = "loading" | "idle" | "uploading" | "error";
 
@@ -9,6 +20,7 @@ export function TranscriptSettingsSection() {
   const [hasTranscript, setHasTranscript] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [previewLoading, setPreviewLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -23,7 +35,9 @@ export function TranscriptSettingsSection() {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const handleFile = useCallback(async (file: File) => {
     if (!file.name.toLowerCase().endsWith(".pdf")) {
@@ -62,10 +76,26 @@ export function TranscriptSettingsSection() {
     [handleFile],
   );
 
+  const handlePreview = useCallback(async () => {
+    setPreviewLoading(true);
+    setErrorMsg("");
+    try {
+      const { url } = await getTranscriptPreviewUrl();
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      setErrorMsg(
+        err instanceof Error ? err.message : "Failed to open preview",
+      );
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, []);
+
   return (
     <div className="space-y-5">
       <p className="text-sm text-gray-500">
-        Some jobs on Handshake require a transcript. Upload yours here so it's ready when needed.
+        Some jobs on Handshake require a transcript. Upload yours here so it's
+        ready when needed.
       </p>
 
       {/* Current status */}
@@ -83,15 +113,36 @@ export function TranscriptSettingsSection() {
             <FileText className="w-5 h-5 text-amber-500 flex-shrink-0" />
           )}
           <div>
-            <p className={`text-sm font-medium ${hasTranscript ? "text-emerald-800" : "text-amber-800"}`}>
+            <p
+              className={`text-sm font-medium ${hasTranscript ? "text-emerald-800" : "text-amber-800"}`}
+            >
               {hasTranscript ? "Transcript on file" : "No transcript uploaded"}
             </p>
-            <p className={`text-xs mt-0.5 ${hasTranscript ? "text-emerald-600" : "text-amber-600"}`}>
+            <p
+              className={`text-xs mt-0.5 ${hasTranscript ? "text-emerald-600" : "text-amber-600"}`}
+            >
               {hasTranscript
                 ? "Your transcript will be used automatically for jobs that require it."
                 : "Upload your transcript to apply to jobs that require it."}
             </p>
           </div>
+          {hasTranscript && (
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={handlePreview}
+                disabled={previewLoading}
+                className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-white border border-emerald-200 rounded-lg hover:bg-emerald-50 disabled:opacity-60 cursor-pointer transition-colors"
+              >
+                {previewLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+                Preview
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -126,8 +177,8 @@ export function TranscriptSettingsSection() {
             {status === "uploading"
               ? "Uploading…"
               : hasTranscript
-              ? "Click to replace transcript"
-              : "Click to upload or drag & drop"}
+                ? "Click to replace transcript"
+                : "Click to upload or drag & drop"}
           </p>
           <p className="text-xs text-gray-400 mt-0.5">PDF only · max 10 MB</p>
         </div>
