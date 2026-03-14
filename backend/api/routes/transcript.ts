@@ -6,6 +6,7 @@ import type { Request, Response } from 'express';
 import multer from 'multer';
 import { uploadTranscriptToS3 } from '../../shared/s3-transcript.js';
 import { setTranscriptStorageKey } from '../../data/user-preferences.js';
+import { hasTranscript } from '../../data/user-preferences.js';
 
 const memoryStorage = multer.memoryStorage();
 const upload = multer({
@@ -20,9 +21,8 @@ export async function getTranscriptStatus(req: Request, res: Response): Promise<
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
-  const { hasTranscript } = await import('../../data/user-preferences.js');
-  const ok = await hasTranscript(req.userId);
-  res.status(200).json({ hasTranscript: ok });
+  const transcriptStatus = await hasTranscript(req.userId);
+  res.status(200).json(transcriptStatus);
 }
 
 export async function postTranscript(req: Request, res: Response): Promise<void> {

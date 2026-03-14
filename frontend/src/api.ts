@@ -98,8 +98,15 @@ export async function getProfile(): Promise<ProfileResponse> {
   return request<ProfileResponse>('/profile');
 }
 
-export async function getTranscriptStatus(): Promise<{ hasTranscript: boolean }> {
-  return request<{ hasTranscript: boolean }>('/users/me/transcript');
+export async function putProfile(data: Record<string, unknown>): Promise<ProfileResponse> {
+  return request<ProfileResponse>('/profile', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getTranscriptStatus(): Promise<{ hasTranscript: boolean, transcriptStorageKey: string | null }> {
+  return request<{ hasTranscript: boolean; transcriptStorageKey: string | null }>('/users/me/transcript');
 }
 
 /** Upload a resume PDF to set profile; extracts text and saves profile. */

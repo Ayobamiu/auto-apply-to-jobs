@@ -9,16 +9,66 @@ import {
 import { clearToken, isLoggedIn, setOnUnauthorized } from "./api";
 import { Auth } from "./components/Auth";
 import { Chat } from "./components/Chat";
+import { AppShell } from "./components/AppShell";
 import { DiscoverListPage } from "./components/DiscoverListPage";
 import { DiscoverJobDetailPage } from "./components/DiscoverJobDetailPage";
+import { MyJobsPage } from "./components/MyJobsPage";
+import { SettingsPage } from "./components/settings/SettingsPage";
 
-function ChatRoute({ onLogout }: { onLogout: () => void }) {
+function AppRoutes({ onLogout }: { onLogout: () => void }) {
   const navigate = useNavigate();
+
   return (
-    <Chat
-      onLogout={onLogout}
-      onNavigateToDiscover={() => navigate("/discover")}
-    />
+    <Routes>
+      <Route path="/" element={<Navigate to="/discover" replace />} />
+
+      {/* Shell-wrapped pages */}
+      <Route
+        path="/discover"
+        element={
+          <AppShell onLogout={onLogout}>
+            <DiscoverListPage />
+          </AppShell>
+        }
+      />
+      <Route
+        path="/discover/job/:jobRef"
+        element={
+          <AppShell onLogout={onLogout}>
+            <DiscoverJobDetailPage />
+          </AppShell>
+        }
+      />
+      <Route
+        path="/jobs"
+        element={
+          <AppShell onLogout={onLogout}>
+            <MyJobsPage />
+          </AppShell>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <AppShell onLogout={onLogout}>
+            <SettingsPage />
+          </AppShell>
+        }
+      />
+
+      {/* Chat (standalone layout, no shell) */}
+      <Route
+        path="/chat"
+        element={
+          <Chat
+            onLogout={onLogout}
+            onNavigateToDiscover={() => navigate("/discover")}
+          />
+        }
+      />
+
+      <Route path="*" element={<Navigate to="/discover" replace />} />
+    </Routes>
   );
 }
 
@@ -38,26 +88,7 @@ export function App() {
 
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Navigate to="/discover" replace />} />
-        <Route path="/discover" element={<DiscoverListPage />} />
-        <Route
-          path="/discover/job/:jobRef"
-          element={<DiscoverJobDetailPage />}
-        />
-        <Route
-          path="/chat"
-          element={
-            <ChatRoute
-              onLogout={() => {
-                clearToken();
-                setShowChat(false);
-              }}
-            />
-          }
-        />
-        <Route path="*" element={<Navigate to="/discover" replace />} />
-      </Routes>
+      <AppRoutes onLogout={() => { clearToken(); setShowChat(false); }} />
     </BrowserRouter>
   );
 }

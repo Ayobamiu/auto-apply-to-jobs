@@ -1,36 +1,32 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   MapPin,
   Briefcase,
-  ChevronRight,
   RefreshCw,
-  Filter,
+  SlidersHorizontal,
   ExternalLink,
   CheckCircle,
   Bookmark,
   BookmarkCheck,
   Link2,
   Loader2,
+  ChevronDown,
 } from "lucide-react";
 import {
   findJobs,
   saveJob,
-  postPipeline,
-  getPipelineJobStatus,
   type JobListing,
 } from "../api";
-import { SubmitedJobsDrawer } from "./SubmitedJobsDrawer";
-import { HandshakeLoginStatus } from "./Statuses/HandshakeLoginStatus";
+import { HandshakeLinkModal } from "./HandshakeLinkModal";
 
 const STORAGE_KEY_SCROLL = "discover-list-scroll";
 
-const EMPLOYMENT_OPTIONS: { value: string; label: string }[] = [
+const EMPLOYMENT_OPTIONS = [
   { value: "1", label: "Full-Time" },
   { value: "2", label: "Part-Time" },
 ];
-
-const JOB_TYPE_OPTIONS: { value: string; label: string }[] = [
+const JOB_TYPE_OPTIONS = [
   { value: "9", label: "Job" },
   { value: "3", label: "Internship" },
   { value: "6", label: "On Campus" },
@@ -40,14 +36,12 @@ const JOB_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: "7", label: "Fellowship" },
   { value: "8", label: "Graduate School" },
 ];
-
-const REMOTE_OPTIONS: { value: string; label: string }[] = [
+const REMOTE_OPTIONS = [
   { value: "onsite", label: "Onsite" },
   { value: "remote", label: "Remote" },
   { value: "hybrid", label: "Hybrid" },
 ];
-
-const WORK_AUTH_OPTIONS: { value: string; label: string }[] = [
+const WORK_AUTH_OPTIONS = [
   { value: "openToUSVisaSponsorship", label: "Visa sponsorship" },
   { value: "openToOptionalPracticalTraining", label: "OPT" },
   { value: "openToCurricularPracticalTraining", label: "CPT" },
@@ -88,63 +82,63 @@ function countActiveFilters(
   return employment.size + jobTypes.size + remote.size + workAuth.size;
 }
 
-/** Extract handshake jobId from a Handshake job URL (supports common variants). */
-function parseHandshakeJobRef(url: string): string | null {
-  const m = url.match(/\/jobs\/(\d+)/);
-  return m ? `handshake:${m[1]}` : null;
+/** A single pill checkbox group */
+function PillGroup({
+  label,
+  options,
+  selected,
+  onToggle,
+}: {
+  label: string;
+  options: { value: string; label: string }[];
+  selected: Set<string>;
+  onToggle: (v: string) => void;
+}) {
+  return (
+    <div>
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{label}</p>
+      <div className="flex flex-wrap gap-2">
+        {options.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => onToggle(o.value)}
+            className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
+              selected.has(o.value)
+                ? "bg-indigo-600 text-white border-indigo-600"
+                : "bg-white text-gray-600 border-gray-200 hover:border-indigo-400 hover:text-indigo-600"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function DiscoverListPage() {
-  const navigate = useNavigate();
   const [listings, setListings] = useState<JobListing[]>([]);
   const [lastRefreshAt, setLastRefreshAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterQuery, setFilterQuery] = useState("");
   const [filterLocation, setFilterLocation] = useState("");
-  const [employmentTypes, setEmploymentTypes] = useState<Set<string>>(
-    new Set(),
-  );
+  const [employmentTypes, setEmploymentTypes] = useState<Set<string>>(new Set());
   const [jobTypes, setJobTypes] = useState<Set<string>>(new Set());
   const [remoteWork, setRemoteWork] = useState<Set<string>>(new Set());
-  const [workAuthorization, setWorkAuthorization] = useState<Set<string>>(
-    new Set(),
-  );
+  const [workAuthorization, setWorkAuthorization] = useState<Set<string>>(new Set());
   const [perPage, setPerPage] = useState(25);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // Handshake link input state
-  const [handshakeUrl, setHandshakeUrl] = useState("");
-  const [handshakeSubmitting, setHandshakeSubmitting] = useState(false);
-  const [handshakeMsg, setHandshakeMsg] = useState<{
-    text: string;
-    ok: boolean;
-  } | null>(null);
-  const handshakeMsgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Handshake modal
+  const [handshakeModalOpen, setHandshakeModalOpen] = useState(false);
 
   // Optimistic saved-job tracking
   const [savedRefs, setSavedRefs] = useState<Set<string>>(new Set());
   const [savingRefs, setSavingRefs] = useState<Set<string>>(new Set());
 
-  // Floating pipeline status notification (for Handshake link starts)
-  const [floating, setFloating] = useState<{
-    open: boolean;
-    jobId: string | null;
-    jobRef: string | null;
-    statusText: string;
-    phase: string | null;
-    lastUpdatedAt: string | null;
-    done: boolean;
-    error: string | null;
-  }>({
-    open: false,
-    jobId: null,
-    jobRef: null,
-    statusText: "",
-    phase: null,
-    lastUpdatedAt: null,
-    done: false,
-    error: null,
-  });
+  const scrollTimerRef = useRef<number | null>(null);
 
   const loadList = useCallback(
     async (refresh = false) => {
@@ -157,14 +151,10 @@ export function DiscoverListPage() {
           refresh,
           query: filterQuery || undefined,
           location: filterLocation || undefined,
-          employmentTypes: employmentTypes.size
-            ? Array.from(employmentTypes)
-            : undefined,
+          employmentTypes: employmentTypes.size ? Array.from(employmentTypes) : undefined,
           jobTypes: jobTypes.size ? Array.from(jobTypes) : undefined,
           remoteWork: remoteWork.size ? Array.from(remoteWork) : undefined,
-          workAuthorization: workAuthorization.size
-            ? Array.from(workAuthorization)
-            : undefined,
+          workAuthorization: workAuthorization.size ? Array.from(workAuthorization) : undefined,
           page: 1,
           perPage,
         });
@@ -177,20 +167,10 @@ export function DiscoverListPage() {
         setLoading(false);
       }
     },
-    [
-      filterQuery,
-      filterLocation,
-      employmentTypes,
-      jobTypes,
-      remoteWork,
-      workAuthorization,
-      perPage,
-    ],
+    [filterQuery, filterLocation, employmentTypes, jobTypes, remoteWork, workAuthorization, perPage],
   );
 
-  useEffect(() => {
-    loadList(false);
-  }, [loadList]);
+  useEffect(() => { loadList(false); }, [loadList]);
 
   useEffect(() => {
     const raw = sessionStorage.getItem(STORAGE_KEY_SCROLL);
@@ -201,15 +181,15 @@ export function DiscoverListPage() {
     }
   }, []);
 
+  useEffect(() => {
+    return () => { if (scrollTimerRef.current != null) window.clearTimeout(scrollTimerRef.current); };
+  }, []);
+
   const handleRefresh = useCallback(() => loadList(true), [loadList]);
-  const handleApplyFilters = useCallback(() => loadList(false), [loadList]);
+  const handleApplyFilters = useCallback(() => { setFiltersOpen(false); loadList(false); }, [loadList]);
 
   const handleCardClick = useCallback(() => {
-    try {
-      sessionStorage.setItem(STORAGE_KEY_SCROLL, String(window.scrollY));
-    } catch {
-      /* ignore */
-    }
+    try { sessionStorage.setItem(STORAGE_KEY_SCROLL, String(window.scrollY)); } catch { /* ignore */ }
   }, []);
 
   const handleSaveJob = useCallback(
@@ -220,564 +200,312 @@ export function DiscoverListPage() {
         await saveJob(ref);
         setSavedRefs((s) => new Set(s).add(ref));
       } catch {
-        // silently ignore; user can retry
+        // silently ignore
       } finally {
-        setSavingRefs((s) => {
-          const n = new Set(s);
-          n.delete(ref);
-          return n;
-        });
+        setSavingRefs((s) => { const n = new Set(s); n.delete(ref); return n; });
       }
     },
     [savingRefs, savedRefs],
   );
 
-  const handleHandshakeSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      const url = handshakeUrl.trim();
-      if (!url) return;
-      const ref = parseHandshakeJobRef(url);
-      if (!ref) {
-        setHandshakeMsg({
-          text: "Couldn't parse a job ID from that URL. Make sure it's a Handshake job link.",
-          ok: false,
-        });
-        return;
-      }
-      setHandshakeSubmitting(true);
-      setHandshakeMsg(null);
-      try {
-        const { jobId } = await postPipeline(url, { submit: false });
-        setHandshakeUrl("");
-        setHandshakeMsg({
-          text: "Started generating documents. The job will appear in 'In Progress'.",
-          ok: true,
-        });
-        setFloating({
-          open: true,
-          jobId,
-          jobRef: ref,
-          statusText: "Starting…",
-          phase: "Queued",
-          lastUpdatedAt: new Date().toISOString(),
-          done: false,
-          error: null,
-        });
-        // Navigate to the job detail once we have the ref
-        if (handshakeMsgTimer.current) clearTimeout(handshakeMsgTimer.current);
-        handshakeMsgTimer.current = setTimeout(() => {
-          navigate(`/discover/job/${encodeURIComponent(ref)}`);
-        }, 1500);
-      } catch (err) {
-        setHandshakeMsg({
-          text:
-            err instanceof Error ? err.message : "Failed to start pipeline.",
-          ok: false,
-        });
-      } finally {
-        setHandshakeSubmitting(false);
-      }
-    },
-    [handshakeUrl, navigate],
-  );
-
-  // Poll pipeline status for the floating notification (avoid loops by keying to jobId).
-  useEffect(() => {
-    if (!floating.open || !floating.jobId || floating.done) return;
-    let cancelled = false;
-    let timer: number | null = null;
-
-    const poll = async () => {
-      try {
-        const s = await getPipelineJobStatus(floating.jobId!);
-        if (cancelled) return;
-        const status = s.status || "running";
-        const done =
-          status === "done" || status === "failed" || status === "cancelled";
-        setFloating((prev) => ({
-          ...prev,
-          statusText: status.replace(/_/g, " "),
-          phase: s.phase ?? null,
-          lastUpdatedAt: s.updatedAt ?? new Date().toISOString(),
-          done,
-          error: status === "failed" ? (s.error ?? "Failed") : null,
-        }));
-        if (done) return;
-      } catch {
-        // ignore transient failures; keep polling
-      }
-      timer = window.setTimeout(poll, 2000);
-    };
-
-    void poll();
-    return () => {
-      cancelled = true;
-      if (timer != null) window.clearTimeout(timer);
-    };
-  }, [floating.open, floating.jobId, floating.done]);
-
-  const activeCount = countActiveFilters(
-    employmentTypes,
-    jobTypes,
-    remoteWork,
-    workAuthorization,
-  );
+  const activeCount = countActiveFilters(employmentTypes, jobTypes, remoteWork, workAuthorization);
 
   return (
-    <div className="flex flex-col min-h-full w-full">
-      <header className="flex-shrink-0 border-b border-border bg-card px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-xl font-semibold text-text">Discover jobs</h1>
-        <HandshakeLoginStatus />
+    <div className="max-w-5xl mx-auto px-4 md:px-6 py-8">
+      {/* Hero: paste Handshake link */}
+      <div className="mb-8 rounded-2xl bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center flex-shrink-0">
+          <Link2 className="w-5 h-5 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-[15px] font-semibold text-gray-900">
+            Have a specific job in mind?
+          </h2>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Paste a Handshake link and we'll generate a tailored resume and cover letter.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setHandshakeModalOpen(true)}
+          className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition-colors border-0 cursor-pointer"
+        >
+          <Link2 className="w-4 h-4" />
+          Paste link
+        </button>
+      </div>
+
+      {/* Search & filter bar */}
+      <div className="mb-6">
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Handshake link input */}
-          <form
-            onSubmit={handleHandshakeSubmit}
-            className="flex items-center gap-2"
+          <input
+            type="text"
+            placeholder="Search jobs…"
+            value={filterQuery}
+            onChange={(e) => setFilterQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleApplyFilters()}
+            className="flex-1 min-w-[140px] max-w-xs px-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+          />
+          <input
+            type="text"
+            placeholder="Location"
+            value={filterLocation}
+            onChange={(e) => setFilterLocation(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleApplyFilters()}
+            className="flex-1 min-w-[120px] max-w-[200px] px-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+          />
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((v) => !v)}
+            className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium border rounded-xl transition-colors cursor-pointer ${
+              filtersOpen || activeCount > 0
+                ? "bg-indigo-50 text-indigo-700 border-indigo-300"
+                : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+            }`}
           >
-            <div className="relative">
-              <Link2 className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-              <input
-                type="url"
-                value={handshakeUrl}
-                onChange={(e) => setHandshakeUrl(e.target.value)}
-                placeholder="Paste Handshake job link…"
-                className="pl-8 pr-3 py-2 text-sm bg-input border border-border rounded-lg text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent w-[220px] md:w-[280px]"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={handshakeSubmitting || !handshakeUrl.trim()}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {handshakeSubmitting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : null}
-              {handshakeSubmitting ? "Starting…" : "Start"}
-            </button>
-          </form>
-          {handshakeMsg && (
-            <span
-              className={`text-xs ${handshakeMsg.ok ? "text-green-600" : "text-danger"}`}
-            >
-              {handshakeMsg.text}
-            </span>
-          )}
-          <SubmitedJobsDrawer />
+            <SlidersHorizontal className="w-4 h-4" />
+            Filters
+            {activeCount > 0 && (
+              <span className="w-5 h-5 flex items-center justify-center text-[10px] font-bold text-white bg-indigo-600 rounded-full">
+                {activeCount}
+              </span>
+            )}
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
+          </button>
+          <button
+            type="button"
+            onClick={handleApplyFilters}
+            className="px-4 py-2.5 text-sm font-semibold text-white bg-indigo-600 border-0 rounded-xl hover:bg-indigo-700 cursor-pointer transition-colors"
+          >
+            Search
+          </button>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={loading}
+            title="Fetch new listings from Handshake"
+            className="inline-flex items-center gap-1.5 px-3 py-2.5 text-sm text-gray-500 border border-gray-200 rounded-xl bg-white hover:bg-gray-50 disabled:opacity-60 cursor-pointer transition-colors"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+          </button>
         </div>
-      </header>
 
-      <main className="flex-1 w-full p-4 md:p-6">
-        <div className="w-full mx-auto px-2 sm:px-4">
-          <div className="mb-6">
-            <div className="flex flex-wrap items-center gap-3 p-4 rounded-xl border border-border bg-card shadow-sm">
-              <input
-                type="text"
-                placeholder="Keyword"
-                value={filterQuery}
-                onChange={(e) => setFilterQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleApplyFilters()}
-                className="flex-1 min-w-[120px] max-w-[240px] px-3 py-2.5 text-sm bg-input border border-border rounded-lg text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
-              />
-              <input
-                type="text"
-                placeholder="Location"
-                value={filterLocation}
-                onChange={(e) => setFilterLocation(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleApplyFilters()}
-                className="flex-1 min-w-[120px] max-w-[240px] px-3 py-2.5 text-sm bg-input border border-border rounded-lg text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
-              />
-              <div className="relative">
-                <details className="group">
-                  <summary className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-text bg-input border border-border rounded-lg cursor-pointer list-none hover:bg-border focus:outline-none focus:ring-2 focus:ring-accent/20">
-                    <Filter className="w-4 h-4 text-text-muted" aria-hidden />
-                    <span>Filters</span>
-                    {activeCount > 0 && (
-                      <span className="min-w-[1.25rem] h-5 flex items-center justify-center px-1.5 text-xs font-semibold text-white bg-accent rounded-full">
-                        {activeCount}
-                      </span>
-                    )}
-                    <ChevronRight
-                      className="w-4 h-4 text-text-muted transition-transform group-open:rotate-90"
-                      aria-hidden
-                    />
-                  </summary>
-                  <div className="absolute left-0 top-full mt-2 z-50 min-w-[300px] max-w-[min(400px,90vw)] max-h-[70vh] overflow-y-auto p-4 rounded-xl border border-border bg-card shadow-xl">
-                    <div className="space-y-4">
-                      <div>
-                        <span className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">
-                          Employment type
-                        </span>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1">
-                          {EMPLOYMENT_OPTIONS.map((o) => (
-                            <label
-                              key={o.value}
-                              className="inline-flex items-center gap-2 text-sm text-text cursor-pointer"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={employmentTypes.has(o.value)}
-                                onChange={() =>
-                                  setEmploymentTypes((s) =>
-                                    toggleSet(s, o.value),
-                                  )
-                                }
-                                className="w-4 h-4 accent-accent"
-                              />
-                              {o.label}
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <span className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">
-                          Job type
-                        </span>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1">
-                          {JOB_TYPE_OPTIONS.map((o) => (
-                            <label
-                              key={o.value}
-                              className="inline-flex items-center gap-2 text-sm text-text cursor-pointer"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={jobTypes.has(o.value)}
-                                onChange={() =>
-                                  setJobTypes((s) => toggleSet(s, o.value))
-                                }
-                                className="w-4 h-4 accent-accent"
-                              />
-                              {o.label}
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <span className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">
-                          Work style
-                        </span>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1">
-                          {REMOTE_OPTIONS.map((o) => (
-                            <label
-                              key={o.value}
-                              className="inline-flex items-center gap-2 text-sm text-text cursor-pointer"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={remoteWork.has(o.value)}
-                                onChange={() =>
-                                  setRemoteWork((s) => toggleSet(s, o.value))
-                                }
-                                className="w-4 h-4 accent-accent"
-                              />
-                              {o.label}
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <span className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">
-                          Work authorization
-                        </span>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1">
-                          {WORK_AUTH_OPTIONS.map((o) => (
-                            <label
-                              key={o.value}
-                              className="inline-flex items-center gap-2 text-sm text-text cursor-pointer"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={workAuthorization.has(o.value)}
-                                onChange={() =>
-                                  setWorkAuthorization((s) =>
-                                    toggleSet(s, o.value),
-                                  )
-                                }
-                                className="w-4 h-4 accent-accent"
-                              />
-                              {o.label}
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-                          Per page
-                        </span>
-                        <select
-                          value={perPage}
-                          onChange={(e) => setPerPage(Number(e.target.value))}
-                          className="px-2 py-1.5 text-sm bg-input border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-accent/20"
-                        >
-                          <option value={25}>25</option>
-                          <option value={50}>50</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </details>
-              </div>
-              <button
-                type="button"
-                onClick={handleApplyFilters}
-                className="px-4 py-2.5 text-sm font-medium text-white bg-accent border-0 rounded-lg cursor-pointer hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-card"
+        {/* Filter panel */}
+        {filtersOpen && (
+          <div className="mt-3 p-5 bg-white border border-gray-200 rounded-2xl shadow-sm space-y-5">
+            <PillGroup
+              label="Employment type"
+              options={EMPLOYMENT_OPTIONS}
+              selected={employmentTypes}
+              onToggle={(v) => setEmploymentTypes((s) => toggleSet(s, v))}
+            />
+            <PillGroup
+              label="Job type"
+              options={JOB_TYPE_OPTIONS}
+              selected={jobTypes}
+              onToggle={(v) => setJobTypes((s) => toggleSet(s, v))}
+            />
+            <PillGroup
+              label="Work style"
+              options={REMOTE_OPTIONS}
+              selected={remoteWork}
+              onToggle={(v) => setRemoteWork((s) => toggleSet(s, v))}
+            />
+            <PillGroup
+              label="Work authorization"
+              options={WORK_AUTH_OPTIONS}
+              selected={workAuthorization}
+              onToggle={(v) => setWorkAuthorization((s) => toggleSet(s, v))}
+            />
+            <div className="flex items-center gap-3 pt-1 border-t border-gray-100">
+              <label className="text-xs font-medium text-gray-500">Results per page</label>
+              <select
+                value={perPage}
+                onChange={(e) => setPerPage(Number(e.target.value))}
+                className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
               >
-                Apply
-              </button>
-            </div>
-            <div className="flex items-center gap-3 mt-3">
-              <button
-                type="button"
-                onClick={handleRefresh}
-                disabled={loading}
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm text-text-muted bg-transparent border border-border rounded-lg cursor-pointer hover:text-text hover:bg-input focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                <RefreshCw
-                  className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
-                  aria-hidden
-                />
-                Refresh
-              </button>
-              {lastRefreshAt && (
-                <span className="text-sm text-text-muted">
-                  List from {formatListAge(lastRefreshAt)}
-                  {listings.length > 0 && ` · ${listings.length} job(s)`}
-                </span>
-              )}
-              {!lastRefreshAt && listings.length > 0 && (
-                <span className="text-sm text-text-muted">
-                  {listings.length} job(s)
-                </span>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+              {activeCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmploymentTypes(new Set());
+                    setJobTypes(new Set());
+                    setRemoteWork(new Set());
+                    setWorkAuthorization(new Set());
+                  }}
+                  className="ml-auto text-xs text-red-500 hover:text-red-600 bg-transparent border-0 cursor-pointer"
+                >
+                  Clear all
+                </button>
               )}
             </div>
           </div>
+        )}
 
-          {loading ? (
-            <div
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-              aria-live="polite"
-            >
-              {Array.from({ length: 9 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="rounded-xl border border-border bg-card p-4 animate-pulse"
-                >
-                  <div className="h-12 w-12 rounded-lg bg-border mb-3" />
-                  <div className="h-5 bg-border rounded w-3/4 mb-2" />
-                  <div className="h-4 bg-border rounded w-1/2 mb-2" />
-                  <div className="h-4 bg-border rounded w-full" />
+        {/* Meta row */}
+        {(lastRefreshAt || listings.length > 0) && !loading && (
+          <p className="mt-3 text-xs text-gray-400">
+            {lastRefreshAt
+              ? `Updated ${formatListAge(lastRefreshAt)} · ${listings.length} job${listings.length === 1 ? "" : "s"}`
+              : `${listings.length} job${listings.length === 1 ? "" : "s"}`}
+          </p>
+        )}
+      </div>
+
+      {/* Job list */}
+      {loading ? (
+        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 list-none p-0 m-0">
+          {Array.from({ length: 9 }).map((_, i) => (
+            <li key={i} className="rounded-2xl border border-gray-100 bg-white p-5 animate-pulse">
+              <div className="flex gap-3 mb-3">
+                <div className="w-11 h-11 rounded-xl bg-gray-100 flex-shrink-0" />
+                <div className="flex-1 space-y-2 pt-1">
+                  <div className="h-4 bg-gray-100 rounded w-3/4" />
+                  <div className="h-3 bg-gray-100 rounded w-1/2" />
                 </div>
-              ))}
-            </div>
-          ) : error ? (
-            <div className="flex flex-col items-center justify-center gap-4 p-8 rounded-xl border border-border bg-card">
-              <p className="text-text">{error}</p>
-              <button
-                type="button"
-                onClick={() => loadList(false)}
-                className="px-4 py-2 text-sm font-medium text-text bg-input border border-border rounded-lg hover:bg-border focus:outline-none focus:ring-2 focus:ring-accent/20"
-              >
-                Try again
-              </button>
-            </div>
-          ) : listings.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-4 p-8 rounded-xl border border-border bg-card text-center">
-              <p className="text-text-muted">
-                No jobs found. Adjust filters or refresh to try again.
-              </p>
-              <button
-                type="button"
-                onClick={handleRefresh}
-                className="px-4 py-2 text-sm font-medium text-text bg-input border border-border rounded-lg hover:bg-border focus:outline-none focus:ring-2 focus:ring-accent/20"
-              >
-                Refresh
-              </button>
-            </div>
-          ) : (
-            <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 list-none p-0 m-0">
-              {listings.map((listing) => {
-                const ref = jobRef(listing);
-                const encodedRef = encodeURIComponent(ref);
-                return (
-                  <li key={ref}>
-                    <div className="rounded-xl border border-border bg-card p-4 hover:border-accent hover:shadow-md transition-all">
-                      <Link
-                        to={`/discover/job/${encodedRef}`}
-                        onClick={handleCardClick}
-                        className="block text-left no-underline text-inherit focus:outline-none focus:ring-2 focus:ring-accent/20 rounded"
-                      >
-                        <div className="flex gap-3">
-                          {listing.companyLogoUrl ? (
-                            <img
-                              src={listing.companyLogoUrl}
-                              alt=""
-                              className="w-12 h-12 rounded-lg object-contain flex-shrink-0 bg-input"
-                            />
-                          ) : (
-                            <div className="w-12 h-12 rounded-lg bg-input flex-shrink-0 flex items-center justify-center">
-                              <Briefcase
-                                className="w-6 h-6 text-text-muted"
-                                aria-hidden
-                              />
-                            </div>
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <h2 className="font-semibold text-text truncate">
-                              {listing.title || "Untitled"}
-                            </h2>
-                            {listing.company && (
-                              <p className="text-sm text-text-muted truncate">
-                                {listing.company}
-                              </p>
-                            )}
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-text-muted">
-                              {listing.location && (
-                                <span className="inline-flex items-center gap-1">
-                                  <MapPin className="w-3.5 h-3.5" aria-hidden />
-                                  {listing.location}
-                                </span>
-                              )}
-                              {listing.salaryEmploymentType && (
-                                <span className="inline-flex items-center gap-1">
-                                  <Briefcase
-                                    className="w-3.5 h-3.5"
-                                    aria-hidden
-                                  />
-                                  {listing.salaryEmploymentType}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <ChevronRight
-                            className="w-5 h-5 text-text-muted flex-shrink-0 self-center"
-                            aria-hidden
-                          />
-                        </div>
-                      </Link>
-                      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border flex-wrap">
-                        {listing.url && (
-                          <a
-                            href={listing.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:text-accent-hover focus:outline-none rounded no-underline"
-                          >
-                            <ExternalLink className="w-4 h-4" aria-hidden />
-                            Open on Handshake
-                          </a>
-                        )}
-                        {listing.applicationSubmitted ? (
-                          <span className="inline-flex items-center gap-1.5 text-sm text-text-muted ml-auto">
-                            <CheckCircle
-                              className="w-4 h-4 text-green-600"
-                              aria-hidden
-                            />
-                            Applied
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              void handleSaveJob(ref);
-                            }}
-                            disabled={savingRefs.has(ref)}
-                            className="inline-flex items-center gap-1.5 ml-auto px-2.5 py-1.5 text-xs font-medium rounded-lg border border-border bg-transparent text-text-muted hover:text-accent hover:border-accent disabled:opacity-60 transition-colors"
-                            title={
-                              savedRefs.has(ref) ||
-                              listing.lifecycleStatus === "saved"
-                                ? "Saved"
-                                : "Save job"
-                            }
-                          >
-                            {savingRefs.has(ref) ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : savedRefs.has(ref) ||
-                              listing.lifecycleStatus === "saved" ? (
-                              <BookmarkCheck className="w-3.5 h-3.5 text-accent" />
-                            ) : (
-                              <Bookmark className="w-3.5 h-3.5" />
-                            )}
-                            {savedRefs.has(ref) ||
-                            listing.lifecycleStatus === "saved"
-                              ? "Saved"
-                              : "Save"}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+              </div>
+              <div className="h-3 bg-gray-100 rounded w-2/3" />
+            </li>
+          ))}
+        </ul>
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+          <p className="text-gray-600">{error}</p>
+          <button
+            type="button"
+            onClick={() => loadList(false)}
+            className="px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 border-0 cursor-pointer"
+          >
+            Try again
+          </button>
         </div>
-      </main>
+      ) : listings.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+          <p className="text-gray-500 text-sm">
+            No jobs found. Try adjusting your filters or refreshing.
+          </p>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            className="px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 border-0 cursor-pointer"
+          >
+            Refresh listings
+          </button>
+        </div>
+      ) : (
+        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 list-none p-0 m-0">
+          {listings.map((listing) => {
+            const ref = jobRef(listing);
+            const encodedRef = encodeURIComponent(ref);
+            const isSaved =
+              savedRefs.has(ref) || listing.lifecycleStatus === "saved";
+            const isSaving = savingRefs.has(ref);
 
-      {/* Floating pipeline status notification */}
-      {floating.open && (
-        <div className="fixed bottom-6 right-6 z-[2000] w-[360px] max-w-[92vw]">
-          <div className="rounded-xl border border-border bg-card shadow-xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-text">
-                  {floating.done
-                    ? floating.error
-                      ? "Job failed"
-                      : "Job complete"
-                    : "Working on your job"}
-                </div>
-                <div className="text-xs text-text-muted mt-0.5 truncate">
-                  {floating.jobRef ?? "Handshake job"} ·{" "}
-                  {floating.phase ? floating.phase : floating.statusText}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setFloating((p) => ({ ...p, open: false }))}
-                className="text-xs font-semibold text-text-muted hover:text-text"
-              >
-                Dismiss
-              </button>
-            </div>
-
-            {!floating.done && (
-              <div className="mt-3 flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-accent" />
-                <span className="text-xs text-text-muted">
-                  {floating.statusText}
-                </span>
-              </div>
-            )}
-
-            {floating.done && (
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <span
-                  className={`text-xs ${floating.error ? "text-danger" : "text-text-muted"}`}
-                >
-                  {floating.error
-                    ? floating.error
-                    : "You can review the documents in the job detail page."}
-                </span>
-                {floating.jobRef && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      navigate(
-                        `/discover/job/${encodeURIComponent(floating.jobRef!)}`,
-                      )
-                    }
-                    className="text-xs font-semibold text-accent hover:text-accent-hover"
+            return (
+              <li key={ref}>
+                <div className="group rounded-2xl border border-gray-100 bg-white hover:border-indigo-200 hover:shadow-md transition-all duration-150">
+                  <Link
+                    to={`/discover/job/${encodedRef}`}
+                    onClick={handleCardClick}
+                    className="block p-5 no-underline text-inherit focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-t-2xl"
                   >
-                    Open
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+                    <div className="flex items-start gap-3">
+                      {listing.companyLogoUrl ? (
+                        <img
+                          src={listing.companyLogoUrl}
+                          alt=""
+                          className="w-11 h-11 rounded-xl object-contain flex-shrink-0 bg-gray-50 border border-gray-100"
+                        />
+                      ) : (
+                        <div className="w-11 h-11 rounded-xl bg-gray-100 flex-shrink-0 flex items-center justify-center">
+                          <Briefcase className="w-5 h-5 text-gray-400" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <h2 className="font-semibold text-[14px] text-gray-900 truncate leading-snug">
+                          {listing.title || "Untitled"}
+                        </h2>
+                        {listing.company && (
+                          <p className="text-[13px] text-gray-500 truncate mt-0.5">
+                            {listing.company}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3 text-xs text-gray-400">
+                      {listing.location && (
+                        <span className="inline-flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          {listing.location}
+                        </span>
+                      )}
+                      {listing.salaryEmploymentType && (
+                        <span className="inline-flex items-center gap-1">
+                          <Briefcase className="w-3 h-3" />
+                          {listing.salaryEmploymentType}
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+
+                  {/* Footer row */}
+                  <div className="flex items-center gap-2 px-5 pb-4 pt-1">
+                    {listing.url && (
+                      <a
+                        href={listing.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-indigo-600 no-underline transition-colors"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Handshake
+                      </a>
+                    )}
+                    {listing.applicationSubmitted ? (
+                      <span className="ml-auto inline-flex items-center gap-1 text-xs text-emerald-600 font-medium">
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        Applied
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); void handleSaveJob(ref); }}
+                        disabled={isSaving || isSaved}
+                        title={isSaved ? "Saved" : "Save job"}
+                        className={`ml-auto inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg border transition-colors cursor-pointer ${
+                          isSaved
+                            ? "border-indigo-200 text-indigo-600 bg-indigo-50"
+                            : "border-gray-200 text-gray-500 bg-white hover:border-indigo-300 hover:text-indigo-600"
+                        } disabled:opacity-60`}
+                      >
+                        {isSaving ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : isSaved ? (
+                          <BookmarkCheck className="w-3.5 h-3.5" />
+                        ) : (
+                          <Bookmark className="w-3.5 h-3.5" />
+                        )}
+                        {isSaved ? "Saved" : "Save"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
+
+      {/* Handshake link modal */}
+      <HandshakeLinkModal
+        open={handshakeModalOpen}
+        onClose={() => setHandshakeModalOpen(false)}
+      />
     </div>
   );
 }
