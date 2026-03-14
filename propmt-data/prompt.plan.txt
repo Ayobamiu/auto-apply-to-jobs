@@ -76,3 +76,24 @@ how the code should work, to the best of my knowledge, when user clicks:
 b. on a new job (from link pasted): same process as 1a only that the job is just scraped newly
 
 2. "
+
+
+
+
+Some new UI to Introduce:
+1. pasting a link from handshake to start a new application: it is currently on the navbar. 
+My Suggestion:
+    - make it the first card on the job list. 
+    - when user clicks, show a full modal Instructing them to enter the link
+    - when they click start, show the loading state in details. let user know what is Happening 
+    - When some artifacts are generated, you can Redirect them to the job page
+Take my Suggestion with a pinch of salt. Please design a better flow as you see fit.
+2. A settings/profile page
+- user can see a preview of Their profile in a form and it is Editable. See profile schema here backend/shared/profile_schema.json. See app.put('/profile', authMiddleware, putProfile);
+inside backend/api/server.ts to update profile
+- they can set thier profile by uploading a new resume. (see uploadResumePdf function @ frontend/src/api.ts#L106)
+- user should be able to preview thier resume using our existing ResumeEditorApp (not Editable). They can change it by uploading a new one.  (see uploadResumePdf function @ frontend/src/api.ts#L106 )
+- user should be able to preview thier transcript (it is a pdf), and update (see uploadTranscript @ frontend/src/api.ts#L130). If they have no transcript, ask user to uplaod
+- HandshakeLoginStatus component shows the status and let user reconnect. Add a new a better Experience in the settings/profile page
+
+These are 
