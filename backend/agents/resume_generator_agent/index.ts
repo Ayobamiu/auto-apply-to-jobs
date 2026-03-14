@@ -14,6 +14,7 @@ import { profileToJsonResume } from '../../shared/json-resume.js';
 import { generateResumeWithAssistant } from './assistant.js';
 import { fileURLToPath } from 'url';
 import type { Profile, Job } from '../../shared/types.js';
+import { formatResume } from '../../utils/format-resume.js';
 
 const __filename = fileURLToPath(import.meta.url);
 
@@ -56,6 +57,8 @@ export async function runResumeGenerator(options: RunResumeGeneratorOptions = {}
   } else {
     resumeJson = profileToJsonResume(profile, (job || {}) as Job) as Record<string, unknown>;
   }
+
+  resumeJson = formatResume(resumeJson) as unknown as Record<string, unknown>;
 
   if (jobRef) {
     await saveResumeForJob(userId, site!, jobId!, resumeJson);
