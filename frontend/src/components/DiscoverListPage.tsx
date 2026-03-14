@@ -13,8 +13,15 @@ import {
   Link2,
   Loader2,
 } from "lucide-react";
-import { findJobs, saveJob, postPipeline, getPipelineJobStatus, type JobListing } from "../api";
+import {
+  findJobs,
+  saveJob,
+  postPipeline,
+  getPipelineJobStatus,
+  type JobListing,
+} from "../api";
 import { SubmitedJobsDrawer } from "./SubmitedJobsDrawer";
+import { HandshakeLoginStatus } from "./Statuses/HandshakeLoginStatus";
 
 const STORAGE_KEY_SCROLL = "discover-list-scroll";
 
@@ -108,7 +115,10 @@ export function DiscoverListPage() {
   // Handshake link input state
   const [handshakeUrl, setHandshakeUrl] = useState("");
   const [handshakeSubmitting, setHandshakeSubmitting] = useState(false);
-  const [handshakeMsg, setHandshakeMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [handshakeMsg, setHandshakeMsg] = useState<{
+    text: string;
+    ok: boolean;
+  } | null>(null);
   const handshakeMsgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Optimistic saved-job tracking
@@ -202,55 +212,75 @@ export function DiscoverListPage() {
     }
   }, []);
 
-  const handleSaveJob = useCallback(async (ref: string) => {
-    if (savingRefs.has(ref) || savedRefs.has(ref)) return;
-    setSavingRefs((s) => new Set(s).add(ref));
-    try {
-      await saveJob(ref);
-      setSavedRefs((s) => new Set(s).add(ref));
-    } catch {
-      // silently ignore; user can retry
-    } finally {
-      setSavingRefs((s) => { const n = new Set(s); n.delete(ref); return n; });
-    }
-  }, [savingRefs, savedRefs]);
+  const handleSaveJob = useCallback(
+    async (ref: string) => {
+      if (savingRefs.has(ref) || savedRefs.has(ref)) return;
+      setSavingRefs((s) => new Set(s).add(ref));
+      try {
+        await saveJob(ref);
+        setSavedRefs((s) => new Set(s).add(ref));
+      } catch {
+        // silently ignore; user can retry
+      } finally {
+        setSavingRefs((s) => {
+          const n = new Set(s);
+          n.delete(ref);
+          return n;
+        });
+      }
+    },
+    [savingRefs, savedRefs],
+  );
 
-  const handleHandshakeSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    const url = handshakeUrl.trim();
-    if (!url) return;
-    const ref = parseHandshakeJobRef(url);
-    if (!ref) {
-      setHandshakeMsg({ text: "Couldn't parse a job ID from that URL. Make sure it's a Handshake job link.", ok: false });
-      return;
-    }
-    setHandshakeSubmitting(true);
-    setHandshakeMsg(null);
-    try {
-      const { jobId } = await postPipeline(url, { submit: false });
-      setHandshakeUrl("");
-      setHandshakeMsg({ text: "Started generating documents. The job will appear in 'In Progress'.", ok: true });
-      setFloating({
-        open: true,
-        jobId,
-        jobRef: ref,
-        statusText: "Starting…",
-        phase: "Queued",
-        lastUpdatedAt: new Date().toISOString(),
-        done: false,
-        error: null,
-      });
-      // Navigate to the job detail once we have the ref
-      if (handshakeMsgTimer.current) clearTimeout(handshakeMsgTimer.current);
-      handshakeMsgTimer.current = setTimeout(() => {
-        navigate(`/discover/job/${encodeURIComponent(ref)}`);
-      }, 1500);
-    } catch (err) {
-      setHandshakeMsg({ text: err instanceof Error ? err.message : "Failed to start pipeline.", ok: false });
-    } finally {
-      setHandshakeSubmitting(false);
-    }
-  }, [handshakeUrl, navigate]);
+  const handleHandshakeSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      const url = handshakeUrl.trim();
+      if (!url) return;
+      const ref = parseHandshakeJobRef(url);
+      if (!ref) {
+        setHandshakeMsg({
+          text: "Couldn't parse a job ID from that URL. Make sure it's a Handshake job link.",
+          ok: false,
+        });
+        return;
+      }
+      setHandshakeSubmitting(true);
+      setHandshakeMsg(null);
+      try {
+        const { jobId } = await postPipeline(url, { submit: false });
+        setHandshakeUrl("");
+        setHandshakeMsg({
+          text: "Started generating documents. The job will appear in 'In Progress'.",
+          ok: true,
+        });
+        setFloating({
+          open: true,
+          jobId,
+          jobRef: ref,
+          statusText: "Starting…",
+          phase: "Queued",
+          lastUpdatedAt: new Date().toISOString(),
+          done: false,
+          error: null,
+        });
+        // Navigate to the job detail once we have the ref
+        if (handshakeMsgTimer.current) clearTimeout(handshakeMsgTimer.current);
+        handshakeMsgTimer.current = setTimeout(() => {
+          navigate(`/discover/job/${encodeURIComponent(ref)}`);
+        }, 1500);
+      } catch (err) {
+        setHandshakeMsg({
+          text:
+            err instanceof Error ? err.message : "Failed to start pipeline.",
+          ok: false,
+        });
+      } finally {
+        setHandshakeSubmitting(false);
+      }
+    },
+    [handshakeUrl, navigate],
+  );
 
   // Poll pipeline status for the floating notification (avoid loops by keying to jobId).
   useEffect(() => {
@@ -263,7 +293,8 @@ export function DiscoverListPage() {
         const s = await getPipelineJobStatus(floating.jobId!);
         if (cancelled) return;
         const status = s.status || "running";
-        const done = status === "done" || status === "failed" || status === "cancelled";
+        const done =
+          status === "done" || status === "failed" || status === "cancelled";
         setFloating((prev) => ({
           ...prev,
           statusText: status.replace(/_/g, " "),
@@ -297,9 +328,13 @@ export function DiscoverListPage() {
     <div className="flex flex-col min-h-full w-full">
       <header className="flex-shrink-0 border-b border-border bg-card px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-xl font-semibold text-text">Discover jobs</h1>
+        <HandshakeLoginStatus />
         <div className="flex items-center gap-2 flex-wrap">
           {/* Handshake link input */}
-          <form onSubmit={handleHandshakeSubmit} className="flex items-center gap-2">
+          <form
+            onSubmit={handleHandshakeSubmit}
+            className="flex items-center gap-2"
+          >
             <div className="relative">
               <Link2 className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
               <input
@@ -315,12 +350,16 @@ export function DiscoverListPage() {
               disabled={handshakeSubmitting || !handshakeUrl.trim()}
               className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {handshakeSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {handshakeSubmitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : null}
               {handshakeSubmitting ? "Starting…" : "Start"}
             </button>
           </form>
           {handshakeMsg && (
-            <span className={`text-xs ${handshakeMsg.ok ? "text-green-600" : "text-danger"}`}>
+            <span
+              className={`text-xs ${handshakeMsg.ok ? "text-green-600" : "text-danger"}`}
+            >
               {handshakeMsg.text}
             </span>
           )}
@@ -630,25 +669,40 @@ export function DiscoverListPage() {
                         )}
                         {listing.applicationSubmitted ? (
                           <span className="inline-flex items-center gap-1.5 text-sm text-text-muted ml-auto">
-                            <CheckCircle className="w-4 h-4 text-green-600" aria-hidden />
+                            <CheckCircle
+                              className="w-4 h-4 text-green-600"
+                              aria-hidden
+                            />
                             Applied
                           </span>
                         ) : (
                           <button
                             type="button"
-                            onClick={(e) => { e.preventDefault(); void handleSaveJob(ref); }}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              void handleSaveJob(ref);
+                            }}
                             disabled={savingRefs.has(ref)}
                             className="inline-flex items-center gap-1.5 ml-auto px-2.5 py-1.5 text-xs font-medium rounded-lg border border-border bg-transparent text-text-muted hover:text-accent hover:border-accent disabled:opacity-60 transition-colors"
-                            title={savedRefs.has(ref) || listing.lifecycleStatus === 'saved' ? "Saved" : "Save job"}
+                            title={
+                              savedRefs.has(ref) ||
+                              listing.lifecycleStatus === "saved"
+                                ? "Saved"
+                                : "Save job"
+                            }
                           >
                             {savingRefs.has(ref) ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (savedRefs.has(ref) || listing.lifecycleStatus === 'saved') ? (
+                            ) : savedRefs.has(ref) ||
+                              listing.lifecycleStatus === "saved" ? (
                               <BookmarkCheck className="w-3.5 h-3.5 text-accent" />
                             ) : (
                               <Bookmark className="w-3.5 h-3.5" />
                             )}
-                            {(savedRefs.has(ref) || listing.lifecycleStatus === 'saved') ? "Saved" : "Save"}
+                            {savedRefs.has(ref) ||
+                            listing.lifecycleStatus === "saved"
+                              ? "Saved"
+                              : "Save"}
                           </button>
                         )}
                       </div>
@@ -699,13 +753,21 @@ export function DiscoverListPage() {
 
             {floating.done && (
               <div className="mt-3 flex items-center justify-between gap-2">
-                <span className={`text-xs ${floating.error ? "text-danger" : "text-text-muted"}`}>
-                  {floating.error ? floating.error : "You can review the documents in the job detail page."}
+                <span
+                  className={`text-xs ${floating.error ? "text-danger" : "text-text-muted"}`}
+                >
+                  {floating.error
+                    ? floating.error
+                    : "You can review the documents in the job detail page."}
                 </span>
                 {floating.jobRef && (
                   <button
                     type="button"
-                    onClick={() => navigate(`/discover/job/${encodeURIComponent(floating.jobRef!)}`)}
+                    onClick={() =>
+                      navigate(
+                        `/discover/job/${encodeURIComponent(floating.jobRef!)}`,
+                      )
+                    }
                     className="text-xs font-semibold text-accent hover:text-accent-hover"
                   >
                     Open

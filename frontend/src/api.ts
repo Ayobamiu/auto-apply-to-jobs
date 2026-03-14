@@ -492,6 +492,7 @@ export async function putSettings(settings: { automationLevel: AutomationLevel }
 export interface HandshakeSessionStatus {
   connected: boolean;
   updatedAt: string | null;
+  expired: boolean;
 }
 
 export async function getHandshakeSessionStatus(): Promise<HandshakeSessionStatus> {

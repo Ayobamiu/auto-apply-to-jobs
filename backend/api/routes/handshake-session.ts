@@ -4,30 +4,8 @@
  */
 import type { Request, Response } from 'express';
 import { saveHandshakeSession, getHandshakeSessionStatus } from '../../data/handshake-session.js';
+import type { ChromeCookie, PlaywrightCookie } from '../../types/cookies.js';
 
-/** Chrome cookie format (from chrome.cookies API). */
-interface ChromeCookie {
-  name: string;
-  value: string;
-  domain?: string;
-  path?: string;
-  secure?: boolean;
-  httpOnly?: boolean;
-  expirationDate?: number;
-  sameSite?: 'no_restriction' | 'lax' | 'strict';
-}
-
-/** Playwright storage state cookie (expires in seconds since epoch). */
-interface PlaywrightCookie {
-  name: string;
-  value: string;
-  domain: string;
-  path: string;
-  expires: number;
-  httpOnly?: boolean;
-  secure?: boolean;
-  sameSite?: 'Strict' | 'Lax' | 'None';
-}
 
 function chromeToPlaywrightCookie(c: ChromeCookie): PlaywrightCookie {
   const expires =
@@ -80,7 +58,7 @@ export async function postHandshakeSessionUpload(req: Request, res: Response): P
 
 /**
  * GET /handshake/session/status
- * Returns { connected: boolean, updatedAt: string | null }.
+ * Returns { connected: boolean, updatedAt: string | null, expired: boolean }.
  */
 export async function getHandshakeSessionStatusHandler(req: Request, res: Response): Promise<void> {
   const userId = (req as Request & { userId?: string }).userId;
@@ -92,6 +70,6 @@ export async function getHandshakeSessionStatusHandler(req: Request, res: Respon
     const status = await getHandshakeSessionStatus(userId);
     res.status(200).json(status);
   } catch {
-    res.status(200).json({ connected: false, updatedAt: null });
+    res.status(200).json({ connected: false, updatedAt: null, expired: true });
   }
 }
