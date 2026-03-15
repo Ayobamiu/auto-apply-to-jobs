@@ -1,5 +1,8 @@
 publish extension
-deploy frontend and back to get thier https url
+connect frontend url to Extension
+deploy frontend
+connect backend url to Extension
+x deploy backend
 x Make Extension use email (Instead of token) and auto-detect
 Remove "wmich.handshake" as base url
 Handle more than resume, cover letter and Transcript. Add dynamic forms

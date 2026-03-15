@@ -101,3 +101,9 @@ Fixes to make:
 - after the link was processed and i see "Ready! Taking you to the job…". I was not redirected to the job
 - on the resume preview in settings, show a Save changes button when there are unsaved changes. to update user resume, use putBaseResume @ frontend/src/api.ts#L203
 - add a preview button for the Transcript on file. I added AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, S3_BUCKET to frontend/.env. getTranscriptStatus now returns { hasTranscript: boolean, transcriptStorageKey: string | null }
+
+
+Fixes on ResumeEditorApp:
+- Chnages on the basic section, including profiles are not preveiwed before I can 'accept' or 'discard'
+- For other parts like Experience and skills bullets, additions are not previewed before I can 'accept' or 'discard'
+- On the resume, for any parts, additions, removal and replacements should be previewed before user can 'accept' or 'discard'
