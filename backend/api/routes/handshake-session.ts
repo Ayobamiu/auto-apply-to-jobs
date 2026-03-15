@@ -30,26 +30,54 @@ function chromeToPlaywrightCookie(c: ChromeCookie): PlaywrightCookie {
 
 /**
  * POST /handshake/session/upload
- * Body: { cookies: ChromeCookie[], origins?: unknown[] }
- * Stores Playwright-compatible state in handshake_sessions for req.userId.
+ * Body: { cookies: ChromeCookie[], originUrl: string }
+ * Stores the specific university origin alongside session cookies.
  */
 export async function postHandshakeSessionUpload(req: Request, res: Response): Promise<void> {
   const userId = (req as Request & { userId?: string }).userId;
+
   if (!userId) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
-  const body = req.body as { cookies?: ChromeCookie[]; origins?: unknown[] } | undefined;
-  if (!body || !Array.isArray(body.cookies)) {
+
+  const { cookies: rawCookies, originUrl } = req.body as {
+    cookies?: any[];
+    originUrl?: string
+  };
+
+  if (!rawCookies || !Array.isArray(rawCookies)) {
     res.status(400).json({ error: 'Body must include cookies array' });
     return;
   }
+
+  if (!originUrl) {
+    res.status(400).json({ error: 'Missing originUrl (University Portal)' });
+    return;
+  }
+
   try {
-    const cookies = body.cookies.map(chromeToPlaywrightCookie);
-    const origins = Array.isArray(body.origins) ? body.origins : [];
-    const stateJson = { cookies, origins };
+    // 1. Convert Chrome cookies to Playwright format
+    const cookies = rawCookies.map(chromeToPlaywrightCookie);
+
+    // 2. Extract the University slug for internal tracking (optional)
+    // e.g., "wmich" from "https://wmich.joinhandshake.com"
+    const universityDomain = new URL(originUrl).hostname;
+
+    // 3. Save the full state (Cookies + Origin)
+    const stateJson = {
+      cookies,
+      originUrl,
+      syncedAt: new Date().toISOString(),
+      domain: universityDomain
+    };
+
     await saveHandshakeSession(userId, stateJson);
-    res.status(200).json({ ok: true });
+
+    res.status(200).json({
+      ok: true,
+      message: `Session synced for ${universityDomain}`
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to save session';
     res.status(500).json({ error: message });

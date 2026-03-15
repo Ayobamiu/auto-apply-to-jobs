@@ -1,63 +1,41 @@
-(function () {
-  const DEFAULT_API = 'http://localhost:3000';
-  const STORAGE_KEY = 'handshake-extension-apiBase';
+async function updateStatus() {
+  const appDot = document.getElementById('app-dot');
+  const appText = document.getElementById('app-text');
+  const hsDot = document.getElementById('hs-dot');
+  const hsText = document.getElementById('hs-text');
 
-  const apiBaseEl = document.getElementById('apiBase');
-  const tokenEl = document.getElementById('token');
-  const sendBtn = document.getElementById('send');
-  const statusEl = document.getElementById('status');
+  // 1. Check App Connection (Localhost Tab)
+  const tabs = await chrome.tabs.query({ url: "http://localhost/*" });
 
-  chrome.storage.local.get([STORAGE_KEY], function (result) {
-    apiBaseEl.value = result[STORAGE_KEY] || DEFAULT_API;
-  });
-
-  apiBaseEl.addEventListener('change', function () {
-    chrome.storage.local.set({ [STORAGE_KEY]: apiBaseEl.value || DEFAULT_API });
-  });
-
-  function setStatus(text, type, linkUrl) {
-    statusEl.textContent = '';
-    statusEl.className = type || '';
-    statusEl.appendChild(document.createTextNode(text));
-    if (linkUrl) {
-      statusEl.appendChild(document.createElement('br'));
-      const link = document.createElement('a');
-      link.href = linkUrl;
-      link.textContent = 'Open app';
-      link.target = '_blank';
-      link.rel = 'noopener';
-      link.style.display = 'inline-block';
-      link.style.marginTop = '8px';
-      link.style.color = '#2563eb';
-      statusEl.appendChild(link);
-    }
+  if (tabs.length > 0) {
+    chrome.tabs.sendMessage(tabs[0].id, { action: "getToken" }, (response) => {
+      if (response && response.token) {
+        appDot.className = 'status-dot active';
+        appText.innerText = 'Connected to App';
+      } else {
+        appDot.className = 'status-dot error';
+        appText.innerText = 'Logged out of App';
+      }
+    });
+  } else {
+    appDot.className = 'status-dot error';
+    appText.innerText = 'App Tab Not Open';
   }
 
-  sendBtn.addEventListener('click', function () {
-    const apiBase = (apiBaseEl.value || DEFAULT_API).replace(/\/$/, '');
-    const token = (tokenEl.value || '').trim();
-    if (!token) {
-      setStatus('Enter a JWT token.', 'error');
-      return;
+  // 2. Check Handshake Sync Status (From Background Badge)
+  chrome.action.getBadgeText({}, (text) => {
+    if (text === "ON") {
+      hsDot.className = 'status-dot active';
+      hsText.innerText = 'Handshake: Synced';
+    } else if (text === "ERR") {
+      hsDot.className = 'status-dot error';
+      hsText.innerText = 'Handshake: Sync Error';
+    } else {
+      hsDot.className = 'status-dot';
+      hsText.innerText = 'Handshake: Not Synced';
     }
-    setStatus('Sending…');
-    sendBtn.disabled = true;
-
-    chrome.runtime.sendMessage(
-      { action: 'uploadSession', apiBase, token },
-      function (response) {
-        sendBtn.disabled = false;
-        if (chrome.runtime.lastError) {
-          setStatus('Error: ' + chrome.runtime.lastError.message, 'error');
-          return;
-        }
-        if (response && response.ok) {
-          setStatus('Handshake connected! Open the app to continue.', 'success', apiBase + '/?session=uploaded');
-        } else {
-          const msg = (response && response.error) || 'Request failed';
-          setStatus(msg, 'error');
-        }
-      }
-    );
   });
-})();
+}
+
+// Run immediately
+updateStatus();
