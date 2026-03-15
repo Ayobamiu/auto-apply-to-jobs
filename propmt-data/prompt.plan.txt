@@ -96,4 +96,8 @@ inside backend/api/server.ts to update profile
 - user should be able to preview thier transcript (it is a pdf), and update (see uploadTranscript @ frontend/src/api.ts#L130). If they have no transcript, ask user to uplaod
 - HandshakeLoginStatus component shows the status and let user reconnect. Add a new a better Experience in the settings/profile page
 
-These are 
+
+Fixes to make:
+- after the link was processed and i see "Ready! Taking you to the job…". I was not redirected to the job
+- on the resume preview in settings, show a Save changes button when there are unsaved changes. to update user resume, use putBaseResume @ frontend/src/api.ts#L203
+- add a preview button for the Transcript on file. I added AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, S3_BUCKET to frontend/.env. getTranscriptStatus now returns { hasTranscript: boolean, transcriptStorageKey: string | null }

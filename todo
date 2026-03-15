@@ -1,7 +1,11 @@
-Redesign the discover page and job details page.
+publish extension
+deploy frontend and back to get thier https url
+x Make Extension use email (Instead of token) and auto-detect
+Remove "wmich.handshake" as base url
 Handle more than resume, cover letter and Transcript. Add dynamic forms
 Profile set as part of Onboarding
 Bug: edit hostories not saved
+x Redesign the discover page and job details page.
 x very Important! handle when user's Handshake's Session token expires.
 x Bug: Resume generated have Numbers as skills Categories and empty keywords e.g. "skills": [{ "name": "0", "keywords": []},{ "name": "1", "keywords": []},{ "name": "2", "keywords": []},{ "name": "3", "keywords": []}]
 x Bug: preview mode is still editable
