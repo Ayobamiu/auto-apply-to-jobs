@@ -97,13 +97,96 @@ inside backend/api/server.ts to update profile
 - HandshakeLoginStatus component shows the status and let user reconnect. Add a new a better Experience in the settings/profile page
 
 
-Fixes to make:
+Fixes to make: [done]
 - after the link was processed and i see "Ready! Taking you to the job…". I was not redirected to the job
 - on the resume preview in settings, show a Save changes button when there are unsaved changes. to update user resume, use putBaseResume @ frontend/src/api.ts#L203
 - add a preview button for the Transcript on file. I added AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, S3_BUCKET to frontend/.env. getTranscriptStatus now returns { hasTranscript: boolean, transcriptStorageKey: string | null }
 
 
-Fixes on ResumeEditorApp:
+Fixes on ResumeEditorApp: [not done]
 - Chnages on the basic section, including profiles are not preveiwed before I can 'accept' or 'discard'
 - For other parts like Experience and skills bullets, additions are not previewed before I can 'accept' or 'discard'
 - On the resume, for any parts, additions, removal and replacements should be previewed before user can 'accept' or 'discard'
+
+
+Design and implement a robust dynamic job application form architecture that works for Handshake now, but is extensible to other job sites later.
+
+Inputs:
+- current handshake form extraction data
+- examples in handshake-form-types.txt
+- html examples in examples/for-dev
+
+Core requirement:
+Do not design this as a Handshake-only solution. Design a reusable architecture for dynamic application forms across multiple job platforms.
+
+Primary goals:
+1. support multiple unknown form structures
+2. dynamically extract questions and form fields
+3. normalize fields into a reusable internal schema
+4. map questions to user profile data
+5. generate prefilled answers
+6. allow user to review and edit answers before submission
+7. make the system extensible for future job sites without major rewrites
+
+The Architecture Trick:
+Design the system around this pipeline:
+
+Question → Intent → Data Mapping
+
+Meaning:
+- first capture the raw question / field
+- infer the intent of the question
+- map that intent to structured profile data, reusable generated answers, or manual user input
+
+The architecture must clearly separate:
+1. site-specific extraction
+2. field normalization
+3. intent inference
+4. profile/data mapping
+5. answer generation
+6. frontend review/edit experience
+7. submission-ready output formatting
+
+Artifacts to support:
+- resume
+- cover letter
+- other written documents (e.g. Availability schedule in PDF)
+- dynamic generated answers
+
+UX requirements:
+- forms should appear as “Review prefilled forms”
+- clicking that opens an editable question-answer list
+- users can manually edit answers
+- architecture should also support AI-assisted editing of answers
+
+Before coding:
+First provide a concrete architecture and implementation plan.
+
+Cover these areas:
+- internal form schema
+- field normalization strategy
+- question/intent classification
+- profile mapping strategy
+- answer generation strategy
+- fallback handling for unknown questions
+- confidence-based rules for when to prefill vs leave blank vs require user confirmation
+- storage model for saved answers and reusable answers
+- frontend review/edit flow
+- API design needed for this system
+- how this architecture can extend to non-Handshake job sites later
+
+Implementation constraints:
+- make the design robust, not brittle to specific HTML layouts
+- avoid hardcoding for only the example forms
+- prefer adapter/plugin style architecture for future job sites
+- design for maintainability and low error rate
+- list assumptions and tradeoffs before coding
+
+Deliverables:
+1. architecture
+2. data model changes
+3. API changes
+4. frontend changes
+5. phased implementation plan
+
+Do not start coding until the architecture is presented first.
