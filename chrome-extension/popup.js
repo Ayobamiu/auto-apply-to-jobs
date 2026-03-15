@@ -5,7 +5,7 @@ async function updateStatus() {
   const hsText = document.getElementById('hs-text');
 
   // 1. Check App Connection (Localhost Tab)
-  const tabs = await chrome.tabs.query({ url: "http://localhost/*" });
+  const tabs = await chrome.tabs.query({ url: APP_MATCH });
 
   if (tabs.length > 0) {
     chrome.tabs.sendMessage(tabs[0].id, { action: "getToken" }, (response) => {

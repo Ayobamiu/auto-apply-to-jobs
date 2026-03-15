@@ -1,6 +1,6 @@
+const API_BASE = 'https://auto-apply-to-jobs-production-a171.up.railway.app';
 const APP_MATCH = "http://localhost/*";
 const HANDSHAKE_MATCH = ".joinhandshake.com";
-const API_BASE = 'http://localhost:3000';
 
 // Trigger sync when Handshake tabs are updated
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
