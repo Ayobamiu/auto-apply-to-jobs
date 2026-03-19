@@ -18,11 +18,15 @@ import {
   saveResumeForJob,
   getCoverLetterForJob,
   saveCoverLetterForJob,
+  getWrittenDocumentsForJob,
+  saveWrittenDocumentForJob,
   getEditHistory,
   appendEditHistory,
+  getWrittenDocumentForJobArtifact,
 } from '../../data/job-artifacts.js';
 import { toJobRef } from '../../data/user-job-state.js';
 import { getJob } from '../../data/jobs.js';
+import { getApplicationForm } from '../../data/application-forms.js';
 import { resumePipelineAfterApproval } from '../../orchestration/run-pipeline-background.js';
 import { ensureResumePdfFromDb, exportResumeToPdf } from '../../agents/resume_generator_agent/export-pdf.js';
 import { ensureCoverLetterPdfFromDb, generateCoverLetterPdfFromText } from '../../agents/resume_generator_agent/cover-letter.js';
@@ -145,11 +149,47 @@ export async function getPipelineJobArtifacts(req: Request, res: Response): Prom
     ? (job.artifacts as Record<string, unknown>).requiredSections
     : undefined;
   const requiredSections = Array.isArray(rawRequired) ? (rawRequired as string[]) : ['resume', 'coverLetter'];
+  const artifacts = job.artifacts as Record<string, unknown> | null;
+  const rawHasDynamicForm = artifacts?.hasDynamicForm ?? false;
+  const rawHasWrittenDocument = artifacts?.hasWrittenDocument ?? false;
+
+  let dynamicForm = null;
+  // if (rawHasDynamicForm) {
+  const jobRefStr = toJobRef(site, jobIdFromUrl);
+  if (jobRefStr) {
+    const formData = await getApplicationForm(userId, jobRefStr);
+    if (formData) {
+      dynamicForm = {
+        classifiedFields: formData.classifiedFields,
+        answers: formData.answers,
+        status: formData.status,
+      };
+    }
+  }
+  // }
+
+  let writtenDocument: { text: string; instructions?: string } | null = null;
+  let writtenDocuments:
+    | { artifactId: string | null; text: string; instructions?: string }[]
+    | null = null;
+  // if (rawHasWrittenDocument) {
+  const docs = await getWrittenDocumentsForJob(userId, site, jobIdFromUrl);
+  if (docs.length > 0) {
+    writtenDocuments = docs;
+    writtenDocument = { text: docs[0].text, instructions: docs[0].instructions };
+  }
+  // }
+
   res.status(200).json({
     resume: resume ?? null,
     cover: cover ? { text: cover.text } : null,
     jobTitle,
     requiredSections,
+    hasDynamicForm: !!rawHasDynamicForm,
+    dynamicForm,
+    hasWrittenDocument: !!rawHasWrittenDocument,
+    writtenDocument,
+    writtenDocuments,
   });
 }
 
@@ -257,6 +297,69 @@ export async function putPipelineJobArtifactsCover(req: Request, res: Response):
     res.status(200).json({ ok: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to save cover letter';
+    res.status(400).json({ error: message });
+  }
+}
+
+/** GET /pipeline/jobs/:jobId/artifacts/written-document — text or ?format=pdf. */
+export async function getPipelineJobArtifactsWrittenDoc(req: Request, res: Response): Promise<void> {
+  const ctx = await getPipelineJobAndSiteJobId(req, res);
+  if (!ctx) return;
+  const { job, site, jobIdFromUrl } = ctx;
+
+  const userId = req.userId!;
+  const format = req.query.format === 'pdf';
+  const artifactId = req.params.artifactId as string;
+  if (!artifactId) {
+    res.status(400).json({ error: 'Path must include artifactId (string)' });
+    return;
+  }
+  if (format) {
+    const { ensureWrittenDocumentPdfFromDbForArtifact } = await import('../../agents/resume_generator_agent/written-document.js');
+    const { docPath } = await ensureWrittenDocumentPdfFromDbForArtifact(userId, site, jobIdFromUrl, artifactId);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="written-document.pdf"');
+    createReadStream(docPath).pipe(res);
+    return;
+  }
+  const doc = await getWrittenDocumentForJobArtifact(userId, site, jobIdFromUrl, artifactId);
+  if (!doc) {
+    res.status(404).json({ error: 'No written document for this job' });
+    return;
+  }
+  res.status(200).json(doc);
+}
+
+/** PUT /pipeline/jobs/:jobId/artifacts/written-document — update written document text. */
+export async function putPipelineJobArtifactsWrittenDoc(req: Request, res: Response): Promise<void> {
+  const ctx = await getPipelineJobAndSiteJobId(req, res);
+  if (!ctx) return;
+  const { job, site, jobIdFromUrl } = ctx;
+  const artifactId = typeof req.body?.artifactId === 'string' ? req.body.artifactId : null;
+  if (!artifactId) {
+    res.status(400).json({ error: 'Body must include artifactId (string)' });
+    return;
+  }
+  if (job.status !== 'awaiting_approval') {
+    res.status(400).json({ error: 'Job is not awaiting approval' });
+    return;
+  }
+  const userId = req.userId!;
+  const text = typeof req.body?.text === 'string' ? req.body.text.trim() : '';
+  if (!text) {
+    res.status(400).json({ error: 'Body must include text (non-empty string)' });
+    return;
+  }
+  try {
+    // This endpoint edits the primary written document for the job (no specific artifact selection yet).
+    await saveWrittenDocumentForJob(userId, site, jobIdFromUrl, artifactId, {
+      text,
+      instructions:
+        typeof req.body?.instructions === 'string' ? req.body.instructions : undefined,
+    });
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to save written document';
     res.status(400).json({ error: message });
   }
 }

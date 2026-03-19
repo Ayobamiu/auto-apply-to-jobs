@@ -24,14 +24,19 @@ function parseHandshakeJobRef(url: string): string | null {
   return m ? `handshake:${m[1]}` : null;
 }
 
-function mapPhaseToStep(phase: string | null | undefined, status: string): Step {
+function mapPhaseToStep(
+  phase: string | null | undefined,
+  status: string,
+): Step {
   if (status === "failed" || status === "cancelled") return "error";
   if (status === "done" || status === "awaiting_approval") return "done";
   if (!phase) return "fetching";
   const p = phase.toLowerCase();
   if (p.includes("scrape") || p.includes("fetch")) return "fetching";
-  if (p.includes("resume") || p.includes("cover") || p.includes("generat")) return "generating";
-  if (p.includes("apply") || p.includes("prepar") || p.includes("submit")) return "preparing";
+  if (p.includes("resume") || p.includes("cover") || p.includes("generat"))
+    return "generating";
+  if (p.includes("apply") || p.includes("prepar") || p.includes("submit"))
+    return "preparing";
   return "generating";
 }
 
@@ -72,7 +77,13 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
 
   // Poll pipeline status to advance steps
   useEffect(() => {
-    if (!pipelineJobId || step === "done" || step === "error" || step === "idle") return;
+    if (
+      !pipelineJobId ||
+      step === "done" ||
+      step === "error" ||
+      step === "idle"
+    )
+      return;
     pollingRef.current = true;
 
     const poll = async () => {
@@ -87,7 +98,8 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
           const refToUse = jobRef;
           // Use separate ref for redirect timer so effect cleanup doesn't clear it
           redirectTimerRef.current = window.setTimeout(() => {
-            if (refToUse) navigate(`/discover/job/${encodeURIComponent(refToUse)}`);
+            if (refToUse)
+              navigate(`/discover/job/${encodeURIComponent(refToUse)}`);
             handleClose();
           }, 1200);
           return;
@@ -108,7 +120,8 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
     void poll();
     return () => {
       pollingRef.current = false;
-      if (pollingTimerRef.current != null) window.clearTimeout(pollingTimerRef.current);
+      if (pollingTimerRef.current != null)
+        window.clearTimeout(pollingTimerRef.current);
     };
   }, [pipelineJobId, jobRef, handleClose, navigate, step]);
 
@@ -117,29 +130,38 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
     if (!open) resetState();
   }, [open, resetState]);
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = url.trim();
-    if (!trimmed) return;
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      const trimmed = url.trim();
+      if (!trimmed) return;
 
-    const ref = parseHandshakeJobRef(trimmed);
-    if (!ref) {
-      setErrorMsg("Couldn't find a job ID in that link. Make sure it's a Handshake job URL.");
-      return;
-    }
+      const ref = parseHandshakeJobRef(trimmed);
+      if (!ref) {
+        setErrorMsg(
+          "Couldn't find a job ID in that link. Make sure it's a Handshake job URL.",
+        );
+        return;
+      }
 
-    setErrorMsg("");
-    setStep("fetching");
-    setJobRef(ref);
+      setErrorMsg("");
+      setStep("fetching");
+      setJobRef(ref);
 
-    try {
-      const { jobId } = await postPipeline(trimmed, { submit: false });
-      setPipelineJobId(jobId);
-    } catch (err) {
-      setStep("error");
-      setErrorMsg(err instanceof Error ? err.message : "Failed to start. Please try again.");
-    }
-  }, [url]);
+      try {
+        const { jobId } = await postPipeline(trimmed, { submit: false });
+        setPipelineJobId(jobId);
+      } catch (err) {
+        setStep("error");
+        setErrorMsg(
+          err instanceof Error
+            ? err.message
+            : "Failed to start. Please try again.",
+        );
+      }
+    },
+    [url],
+  );
 
   if (!open) return null;
 
@@ -195,7 +217,10 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
                   <input
                     type="url"
                     value={url}
-                    onChange={(e) => { setUrl(e.target.value); setErrorMsg(""); }}
+                    onChange={(e) => {
+                      setUrl(e.target.value);
+                      setErrorMsg("");
+                    }}
                     placeholder="https://app.joinhandshake.com/jobs/…"
                     autoFocus
                     className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 text-gray-900 placeholder:text-gray-400"
@@ -203,7 +228,8 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
                 </div>
                 {errorMsg && (
                   <p className="text-xs text-red-600 flex items-center gap-1">
-                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" /> {errorMsg}
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />{" "}
+                    {errorMsg}
                   </p>
                 )}
               </label>
@@ -229,42 +255,44 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
             <div className="flex flex-col gap-5">
               {/* Progress steps */}
               <div className="flex flex-col gap-3">
-                {STEP_ORDER.filter(s => s !== "done" || step === "done").map((s, idx) => {
-                  const isPast = currentStepIdx > idx;
-                  const isCurrent = currentStepIdx === idx;
-                  return (
-                    <div key={s} className="flex items-center gap-3">
-                      <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
-                          isPast || (s === "done" && step === "done")
-                            ? "bg-green-500"
-                            : isCurrent
-                            ? "bg-indigo-600"
-                            : "bg-gray-200"
-                        }`}
-                      >
-                        {isPast || (s === "done" && step === "done") ? (
-                          <CheckCircle className="w-3.5 h-3.5 text-white" />
-                        ) : isCurrent ? (
-                          <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
-                        ) : (
-                          <div className="w-2 h-2 rounded-full bg-gray-400" />
-                        )}
+                {STEP_ORDER.filter((s) => s !== "done" || step === "done").map(
+                  (s, idx) => {
+                    const isPast = currentStepIdx > idx;
+                    const isCurrent = currentStepIdx === idx;
+                    return (
+                      <div key={s} className="flex items-center gap-3">
+                        <div
+                          className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
+                            isPast || (s === "done" && step === "done")
+                              ? "bg-green-500"
+                              : isCurrent
+                                ? "bg-indigo-600"
+                                : "bg-gray-200"
+                          }`}
+                        >
+                          {isPast || (s === "done" && step === "done") ? (
+                            <CheckCircle className="w-3.5 h-3.5 text-white" />
+                          ) : isCurrent ? (
+                            <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+                          ) : (
+                            <div className="w-2 h-2 rounded-full bg-gray-400" />
+                          )}
+                        </div>
+                        <span
+                          className={`text-sm ${
+                            isCurrent
+                              ? "text-gray-900 font-medium"
+                              : isPast
+                                ? "text-gray-400 line-through"
+                                : "text-gray-400"
+                          }`}
+                        >
+                          {STEP_LABELS[s]}
+                        </span>
                       </div>
-                      <span
-                        className={`text-sm ${
-                          isCurrent
-                            ? "text-gray-900 font-medium"
-                            : isPast
-                            ? "text-gray-400 line-through"
-                            : "text-gray-400"
-                        }`}
-                      >
-                        {STEP_LABELS[s]}
-                      </span>
-                    </div>
-                  );
-                })}
+                    );
+                  },
+                )}
               </div>
             </div>
           )}
@@ -274,8 +302,12 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
               <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-100 rounded-xl">
                 <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-red-700">Something went wrong</p>
-                  {errorMsg && <p className="text-xs text-red-600 mt-0.5">{errorMsg}</p>}
+                  <p className="text-sm font-medium text-red-700">
+                    Something went wrong
+                  </p>
+                  {errorMsg && (
+                    <p className="text-xs text-red-600 mt-0.5">{errorMsg}</p>
+                  )}
                 </div>
               </div>
               <button

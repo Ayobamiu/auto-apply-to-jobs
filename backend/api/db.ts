@@ -90,7 +90,7 @@ const JOB_ARTIFACTS_TABLE_SQL = `
     content jsonb NOT NULL,
     updated_at timestamptz DEFAULT now(),
     PRIMARY KEY (user_id, job_ref, artifact_type),
-    CONSTRAINT job_artifacts_type_check CHECK (artifact_type IN ('resume', 'cover_letter'))
+    CONSTRAINT job_artifacts_type_check CHECK (artifact_type IN ('resume', 'cover_letter', 'written_document'))
   )
 `;
 
@@ -185,8 +185,50 @@ export async function ensureDataTables(): Promise<void> {
   await pool.query('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS salary_employment_type text');
   await pool.query('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS company_logo_url text');
   await pool.query("ALTER TABLE job_artifacts ADD COLUMN IF NOT EXISTS edit_history jsonb DEFAULT '[]'::jsonb");
+  // Expand artifact_type constraint to include written_document (safe if already correct)
+  await pool.query(`
+    DO $$ BEGIN
+      ALTER TABLE job_artifacts DROP CONSTRAINT IF EXISTS job_artifacts_type_check;
+      ALTER TABLE job_artifacts ADD CONSTRAINT job_artifacts_type_check
+        CHECK (artifact_type IN ('resume', 'cover_letter', 'written_document'));
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END $$
+  `);
   await pool.query("ALTER TABLE user_job_state ADD COLUMN IF NOT EXISTS lifecycle_status text");
   await pool.query("ALTER TABLE user_job_state ADD COLUMN IF NOT EXISTS saved_at timestamptz");
+
+  // ── Dynamic application forms ──
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS application_forms (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id text NOT NULL,
+      job_ref text NOT NULL,
+      site text NOT NULL DEFAULT 'handshake',
+      schema jsonb NOT NULL DEFAULT '{}',
+      classified_fields jsonb NOT NULL DEFAULT '[]',
+      answers jsonb NOT NULL DEFAULT '[]',
+      status text NOT NULL DEFAULT 'draft',
+      created_at timestamptz DEFAULT now(),
+      updated_at timestamptz DEFAULT now(),
+      UNIQUE(user_id, job_ref)
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS saved_answers (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id text NOT NULL,
+      intent text NOT NULL,
+      question_hash text,
+      answer_value text NOT NULL,
+      used_count int DEFAULT 1,
+      created_at timestamptz DEFAULT now(),
+      updated_at timestamptz DEFAULT now(),
+      UNIQUE(user_id, intent, question_hash)
+    )
+  `);
+  await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS extended jsonb DEFAULT '{}'");
+  await pool.query('ALTER TABLE job_artifacts ADD COLUMN IF NOT EXISTS artifact_id text');
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS job_artifacts_artifact_id_unique ON job_artifacts (artifact_id) WHERE artifact_id IS NOT NULL');
   dataTablesInitialized = true;
 }
 

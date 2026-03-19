@@ -266,12 +266,63 @@ export async function getPipelineJobStatus(jobId: string): Promise<PipelineJobSt
   return request<PipelineJobStatus>(`/pipeline/jobs/${encodeURIComponent(jobId)}`);
 }
 
+// ── Dynamic application forms ────────────────────────────────────────────
+
+export interface ClassifiedFieldOption {
+  label: string;
+  value: string;
+}
+
+export interface ClassifiedField {
+  id: string;
+  rawLabel: string;
+  rawInstructions?: string;
+  fieldType: 'file_upload' | 'text' | 'textarea' | 'select' | 'multi_select' | 'radio' | 'checkbox';
+  required: boolean;
+  options?: ClassifiedFieldOption[];
+  sectionHeading?: string;
+  sectionCategory?: string;
+  intent: string;
+  confidence: number;
+  selectors: Record<string, unknown>;
+}
+
+export interface GeneratedAnswer {
+  fieldId: string;
+  intent: string;
+  value: string | string[];
+  source: 'profile' | 'saved_answer' | 'ai_generated' | 'default_rule' | 'user_manual';
+  confidence: number;
+  requiresReview: boolean;
+}
+
+export interface DynamicFormData {
+  classifiedFields: ClassifiedField[];
+  answers: GeneratedAnswer[];
+  status: 'draft' | 'reviewed' | 'submitted';
+}
+
+export interface WrittenDocumentData {
+  text: string;
+  instructions?: string;
+}
+
+export interface WrittenDocumentArtifact {
+  artifactId: string | null;
+  text: string;
+  instructions?: string;
+}
+
 export interface PipelineArtifacts {
   resume: Record<string, unknown> | null;
   cover: { text: string } | null;
   jobTitle: string;
-  /** Sections the job requires; used to show only resume and/or cover in review UI. */
   requiredSections?: string[];
+  hasDynamicForm?: boolean;
+  dynamicForm?: DynamicFormData | null;
+  hasWrittenDocument?: boolean;
+  writtenDocument?: WrittenDocumentData | null;
+  writtenDocuments?: WrittenDocumentArtifact[] | null;
 }
 
 export async function getPipelineArtifacts(jobId: string): Promise<PipelineArtifacts> {
@@ -549,4 +600,125 @@ export async function appendArtifactEditHistory(jobId: string, type: 'resume' | 
     method: 'POST',
     body: JSON.stringify({ entry }),
   });
+}
+
+// ── Dynamic form API ─────────────────────────────────────────────────────
+
+export async function getApplicationForm(jobRef: string): Promise<{
+  classifiedFields: ClassifiedField[];
+  answers: GeneratedAnswer[];
+  status: string;
+} | null> {
+  try {
+    return await request(`/application-forms/${encodeURIComponent(jobRef)}`);
+  } catch {
+    return null;
+  }
+}
+
+export async function putApplicationFormAnswers(
+  jobRef: string,
+  answers: GeneratedAnswer[],
+): Promise<{ ok: boolean }> {
+  return request(`/application-forms/${encodeURIComponent(jobRef)}/answers`, {
+    method: 'PUT',
+    body: JSON.stringify({ answers }),
+  });
+}
+
+export async function postApplicationFormReview(
+  jobRef: string,
+  answers?: GeneratedAnswer[],
+): Promise<{ ok: boolean }> {
+  return request(`/application-forms/${encodeURIComponent(jobRef)}/review`, {
+    method: 'POST',
+    body: JSON.stringify({ answers }),
+  });
+}
+
+export async function postGenerateFieldAnswer(
+  jobRef: string,
+  fieldId: string,
+): Promise<{ fieldId: string; value: string; source: string; confidence: number }> {
+  return request(`/application-forms/${encodeURIComponent(jobRef)}/generate-answer`, {
+    method: 'POST',
+    body: JSON.stringify({ fieldId }),
+  });
+}
+
+export async function postAiEditFieldAnswer(
+  jobRef: string,
+  fieldId: string,
+  currentValue: string,
+  instruction: string,
+): Promise<{ fieldId: string; value: string; source: string; confidence: number }> {
+  return request(`/application-forms/${encodeURIComponent(jobRef)}/ai-edit`, {
+    method: 'POST',
+    body: JSON.stringify({ fieldId, currentValue, instruction }),
+  });
+}
+
+export interface ExtendedProfileFields {
+  website?: string;
+  github?: string;
+  work_authorization?: string;
+  requires_visa_sponsorship?: boolean;
+  willing_to_relocate?: boolean;
+  preferred_locations?: string[];
+  availability_start_date?: string;
+  current_degree_status?: string;
+  expected_graduation?: string;
+  eeo_gender?: string;
+  eeo_race?: string;
+  eeo_veteran_status?: string;
+  eeo_disability_status?: string;
+  referral_source?: string;
+}
+
+export async function getExtendedProfile(): Promise<ExtendedProfileFields> {
+  return request('/profile/extended');
+}
+
+export async function putExtendedProfile(fields: Partial<ExtendedProfileFields>): Promise<{ ok: boolean }> {
+  return request('/profile/extended', {
+    method: 'PUT',
+    body: JSON.stringify(fields),
+  });
+}
+
+// ── Written document API ──────────────────────────────────────────────────
+
+export async function getWrittenDocument(jobId: string): Promise<WrittenDocumentData | null> {
+  try {
+    return await request(`/pipeline/jobs/${encodeURIComponent(jobId)}/artifacts/written-document`);
+  } catch {
+    return null;
+  }
+}
+
+export async function putWrittenDocument(
+  jobId: string,
+  text: string,
+  instructions?: string,
+  artifactId?: string,
+): Promise<{ ok: boolean }> {
+  return request(`/pipeline/jobs/${encodeURIComponent(jobId)}/artifacts/written-document`, {
+    method: 'PUT',
+    body: JSON.stringify({ text, instructions, artifactId }),
+  });
+}
+
+export async function downloadWrittenDocumentPdf(jobId: string, artifactId: string): Promise<void> {
+  const path = `/pipeline/jobs/${encodeURIComponent(jobId)}/artifacts/written-document/${encodeURIComponent(artifactId)}?format=pdf`;
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(API_BASE + path, { headers });
+  if (!res.ok) throw new Error(res.status === 401 ? 'Session expired' : `Download failed: ${res.status}`);
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'written-document.pdf';
+  a.click();
+  URL.revokeObjectURL(a.href);
 }

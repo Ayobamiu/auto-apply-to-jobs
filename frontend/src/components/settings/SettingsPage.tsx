@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { User, FileText, GraduationCap, Link } from "lucide-react";
+import { User, FileText, GraduationCap, Link, ClipboardList } from "lucide-react";
 import { ProfileFormSection } from "./ProfileFormSection";
 import { ResumeSettingsSection } from "./ResumeSettingsSection";
 import { TranscriptSettingsSection } from "./TranscriptSettingsSection";
 import { HandshakeSettingsSection } from "./HandshakeSettingsSection";
+import { ApplicationSettingsSection } from "./ApplicationSettingsSection";
 
-type Tab = "profile" | "resume" | "transcript" | "handshake";
+type Tab = "profile" | "resume" | "transcript" | "application" | "handshake";
 
 const TABS: {
   key: Tab;
@@ -30,6 +31,12 @@ const TABS: {
     label: "Transcript",
     description: "For jobs that require it",
     icon: GraduationCap,
+  },
+  {
+    key: "application",
+    label: "Application",
+    description: "Auto-fill preferences",
+    icon: ClipboardList,
   },
   {
     key: "handshake",
@@ -111,6 +118,7 @@ export function SettingsPage() {
             {activeTab === "profile" && <ProfileFormSection />}
             {activeTab === "resume" && <ResumeSettingsSection />}
             {activeTab === "transcript" && <TranscriptSettingsSection />}
+            {activeTab === "application" && <ApplicationSettingsSection />}
             {activeTab === "handshake" && <HandshakeSettingsSection />}
           </div>
         </div>

@@ -18,6 +18,13 @@ import { ensureCoverLetterPdfFromDb } from '../resume_generator_agent/cover-lett
 import { getApplyFormSchema, saveApplyFormSchema } from '../../data/apply-forms.js';
 import { attachSection, getPresentSectionConfigs, type PresentSectionConfig } from '../../shared/handshake-attach-helper.js';
 import { captureApplyFormSchema } from '../../shared/apply-form-capture.js';
+import { fillDynamicFields } from '../../shared/form-extraction/handshake-form-filler.js';
+import { processDynamicForm } from '../../shared/form-extraction/dynamic-form-processor.js';
+import { getApplicationForm, updateApplicationFormStatus } from '../../data/application-forms.js';
+import {
+  getWrittenDocumentsForJob,
+} from '../../data/job-artifacts.js';
+import { ensureWrittenDocumentPdfFromDbForArtifact } from '../resume_generator_agent/written-document.js';
 import { AppError, CODES } from '../../shared/errors.js';
 import { getHandshakeSessionPath } from '../../data/handshake-session.js';
 import { checkSessionValid } from '../../shared/session-check.js';
@@ -85,7 +92,7 @@ async function getFixtures(
         const { coverPath } = await ensureCoverLetterPdfFromDb(userId, site, jobId);
         preferredCover = coverPath;
       }
-    } catch (_) {}
+    } catch (_) { }
   }
 
   return {
@@ -184,7 +191,7 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
       const appliedText = await appliedBanner.textContent();
       console.log('Already applied to this job.', (appliedText || '').trim() || 'Applied on [date]');
       return { applied: true, skipped: true };
-    } catch (_) {}
+    } catch (_) { }
 
     const endClickApply = startPhase('Apply: click Apply button + 1.5s');
     const applyBtn = page.getByRole('button', { name: /apply/i }).first();
@@ -288,6 +295,80 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
     }
     endAttach();
 
+    // ── Upload written document PDF if available ──
+    const site = getJobSiteFromUrl(jobUrl) ?? 'handshake';
+    const jid = getJobIdFromUrl(jobUrl) ?? '';
+    const jobRef = toJobRef(site, jid);
+
+    if (site && jid) {
+      const endWrittenDoc = startPhase('Apply: written document upload');
+      try {
+        let formData = await getApplicationForm(userId, jobRef);
+        const docs = await getWrittenDocumentsForJob(userId, site, jid);
+        if (docs.length > 0) {
+          for (const doc of docs) {
+            if (!doc.artifactId) continue;
+            const { docPath } = await ensureWrittenDocumentPdfFromDbForArtifact(userId, site, jid, doc.artifactId);
+            const classifiedField = formData?.classifiedFields.find((s) => s.id === doc.artifactId);
+            if (docPath && existsSync(docPath)) {
+              let uploaded = false;
+              const otherDocInput = modal.locator(`input[name="${classifiedField?.selectors?.fileInputName}"]`).first();
+              await otherDocInput.setInputFiles(docPath, { timeout: 3000 });
+              uploaded = true;
+
+              if (!uploaded) {
+                console.warn('Written document: could not find upload target on page', uploaded);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn(
+          '[apply] Written document upload failed (non-fatal):',
+          (err as Error).message,
+        );
+      }
+      endWrittenDoc();
+    }
+
+    // ── Fill dynamic form fields (text, radio, select, etc.) ──
+    const endDynamic = startPhase('Apply: fill dynamic form fields');
+    if (jobRef) {
+      try {
+        // Check for stored form with pre-generated answers
+        let formData = await getApplicationForm(userId, jobRef);
+        if (!formData) {
+          // Extract on the fly if probe didn't run
+          const jobRecord = (site && jid) ? await getJob(site, jid) : undefined;
+          const result = await processDynamicForm({
+            page,
+            modalLocator: applyModal,
+            jobRef,
+            site,
+            userId,
+            job: jobRecord ?? undefined,
+          });
+          formData = result.formRecord;
+        }
+
+        const dynamicFields = formData.classifiedFields.filter((f) => f.fieldType !== 'file_upload');
+        if (dynamicFields.length > 0) {
+          const answersWithValues = formData.answers.filter(
+            (a) => a.value && (!Array.isArray(a.value) || a.value.length > 0),
+          );
+          console.log(`[apply] Filling ${dynamicFields.length} dynamic fields (${answersWithValues.length} with values)...`);
+          const fillResults = await fillDynamicFields(page, applyModal, formData.classifiedFields, formData.answers);
+          const failed = fillResults.filter((r) => !r.success);
+          if (failed.length > 0) {
+            console.warn(`[apply] ${failed.length} field(s) failed to fill:`, failed.map((r) => r.error).join(', '));
+          }
+        }
+      } catch (err) {
+        console.warn('[apply] Dynamic form filling failed (non-fatal):', (err as Error).message);
+      }
+    }
+    endDynamic();
+
     let applied = false;
     if (doSubmit) {
       const endSubmit = startPhase('Apply: wait uploads + submit + confirm');
@@ -315,7 +396,7 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
       let submitted = false;
       for (let attempt = 1; attempt <= SUBMIT_MAX_RETRIES; attempt++) {
         const submitBtn = page.getByRole('button', { name: /submit\s*application/i }).first();
-        await submitBtn.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+        await submitBtn.waitFor({ state: 'visible', timeout: 5000 }).catch(() => { });
 
         const isDisabled = await submitBtn.isDisabled().catch(() => false);
         if (isDisabled && attempt < SUBMIT_MAX_RETRIES) {
@@ -364,13 +445,17 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
       await setApplicationState(jobUrl, { resumePath: files.resume, submittedAt }, userId);
       if (submitted) {
         applied = true;
-        const jid = getJobIdFromUrl(jobUrl);
-        const site = getJobSiteFromUrl(jobUrl);
-        if (jid && site) {
-          const jobRef = toJobRef(site, jid);
-          await setUserJobState(userId, jobRef, { applicationSubmitted: true, appliedAt: submittedAt });
-          const stored = await getJob(site, jid);
-          await updateJob(site, jid, { ...(stored || { url: jobUrl }) });
+        const submitSite = getJobSiteFromUrl(jobUrl);
+        const submitJid = getJobIdFromUrl(jobUrl);
+        if (submitJid && submitSite) {
+          const submitJobRef = toJobRef(submitSite, submitJid);
+          await setUserJobState(userId, submitJobRef, { applicationSubmitted: true, appliedAt: submittedAt });
+          const stored = await getJob(submitSite, submitJid);
+          await updateJob(submitSite, submitJid, { ...(stored || { url: jobUrl }) });
+          // Mark dynamic form as submitted
+          if (submitJobRef) {
+            await updateApplicationFormStatus(userId, submitJobRef, 'submitted').catch(() => { });
+          }
         }
       }
       endSubmit();

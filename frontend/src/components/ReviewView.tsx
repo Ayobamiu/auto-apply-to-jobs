@@ -4,15 +4,21 @@ import {
   downloadPipelineArtifactPdf,
   putPipelineArtifactCover,
   putPipelineArtifactResume,
+  putApplicationFormAnswers,
+  postApplicationFormReview,
   type PipelineArtifacts,
+  type GeneratedAnswer,
 } from "../api";
 import { createResumeForm } from "../resume-form";
 import { createResumePreview } from "../resume-preview";
 import { createCoverLetterEditor } from "../cover-letter-editor";
+import { FormReviewPanel } from "./FormReviewPanel";
 
 interface ReviewViewProps {
   jobId: string;
   artifacts: PipelineArtifacts;
+  /** jobRef (site::jobId) for dynamic form API calls. */
+  jobRef?: string;
   onApproved: () => void;
   onCancelled: () => void;
   /** When true, show only preview(s) + Close; no edit UI or Approve/Save. */
@@ -22,12 +28,20 @@ interface ReviewViewProps {
 export function ReviewView({
   jobId,
   artifacts,
+  jobRef,
   onApproved,
   onCancelled,
   previewOnly = false,
 }: ReviewViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [formAnswers, setFormAnswers] = useState<GeneratedAnswer[]>(
+    artifacts.dynamicForm?.answers ?? [],
+  );
+  const hasDynamicForm = !!artifacts.hasDynamicForm && !!artifacts.dynamicForm;
+  const [activeTab, setActiveTab] = useState<"documents" | "form">(
+    hasDynamicForm ? "form" : "documents",
+  );
   const resumeFormRef = useRef<ReturnType<typeof createResumeForm> | null>(
     null,
   );
@@ -72,10 +86,13 @@ export function ReviewView({
         const text = coverEditorRef.current.getValue().trim() || " ";
         await putPipelineArtifactCover(jobId, text);
       }
+      if (hasDynamicForm && jobRef && formAnswers.length > 0) {
+        await putApplicationFormAnswers(jobRef, formAnswers);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed.");
     }
-  }, [jobId]);
+  }, [jobId, hasDynamicForm, jobRef, formAnswers]);
 
   const handleSave = useCallback(async () => {
     setBusy(true);
@@ -91,6 +108,9 @@ export function ReviewView({
     setError(null);
     try {
       await doSave();
+      if (hasDynamicForm && jobRef) {
+        await postApplicationFormReview(jobRef, formAnswers);
+      }
       await approvePipelineJob(jobId);
       onApproved();
     } catch (err) {
@@ -98,7 +118,7 @@ export function ReviewView({
     } finally {
       setBusy(false);
     }
-  }, [jobId, doSave, onApproved]);
+  }, [jobId, doSave, onApproved, hasDynamicForm, jobRef, formAnswers]);
 
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent) => {
@@ -196,8 +216,71 @@ export function ReviewView({
           {previewOnly ? "Close" : "Back to chat"}
         </button>
       </header>
+      {/* Tab bar when dynamic form fields exist */}
+      {hasDynamicForm && !previewOnly && (
+        <div className="flex border-b border-border px-5">
+          <button
+            type="button"
+            className={`py-2 px-4 text-[13px] font-medium border-b-2 transition-colors ${
+              activeTab === "form"
+                ? "border-accent text-text"
+                : "border-transparent text-text-muted hover:text-text"
+            }`}
+            onClick={() => setActiveTab("form")}
+          >
+            Application form
+            {artifacts.dynamicForm && (
+              <span className="ml-1.5 text-[11px] px-1.5 py-0.5 rounded-full bg-accent/20 text-accent">
+                {artifacts.dynamicForm.answers.filter(
+                  (a) => a.requiresReview && a.value,
+                ).length || ""}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            className={`py-2 px-4 text-[13px] font-medium border-b-2 transition-colors ${
+              activeTab === "documents"
+                ? "border-accent text-text"
+                : "border-transparent text-text-muted hover:text-text"
+            }`}
+            onClick={() => setActiveTab("documents")}
+          >
+            Documents
+          </button>
+        </div>
+      )}
+
+      {/* Form review tab */}
+      {hasDynamicForm &&
+        activeTab === "form" &&
+        !previewOnly &&
+        artifacts.dynamicForm && (
+          <div className="flex-1 overflow-y-auto py-4 px-5">
+            <div className="mb-3">
+              <h3 className="text-sm font-medium text-text">
+                Review prefilled answers
+              </h3>
+              <p className="text-xs text-text-muted mt-0.5">
+                These answers were auto-generated from your profile. Review and
+                edit before submission.
+              </p>
+            </div>
+            <FormReviewPanel
+              fields={artifacts.dynamicForm.classifiedFields}
+              answers={formAnswers}
+              onChange={setFormAnswers}
+            />
+          </div>
+        )}
+
+      {/* Documents tab (existing layout) */}
       <div
-        className={`flex-1 grid gap-4 py-4 px-5 min-h-0 ${previewOnly ? "grid-cols-1" : "grid-cols-1 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)]"}`}
+        className={`flex-1 grid gap-4 py-4 px-5 min-h-0 ${previewOnly ? "grid-cols-1" : "grid-cols-1 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)]"} ${
+          hasDynamicForm && activeTab !== "documents" && !previewOnly
+            ? "hidden"
+            : ""
+        }`}
       >
         {!previewOnly && (
           <section

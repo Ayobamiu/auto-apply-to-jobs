@@ -24,14 +24,19 @@ import {
   approvePipelineJob,
   cancelPipelineJob,
   saveJob,
+  putApplicationFormAnswers,
+  postApplicationFormReview,
   type JobDetailResponse,
   type PipelineArtifacts,
+  type GeneratedAnswer,
 } from "../api";
 import { ResumeEditorApp } from "../resume-editor/ResumeEditorApp";
 import { CoverLetterEditorApp } from "../resume-editor/CoverLetterEditorApp";
+import { FormReviewPanel } from "./FormReviewPanel";
+import { WrittenDocsReviewPanel } from "./WrittenDocsReviewPanel";
 import dayjs from "dayjs";
 
-type DocTab = "resume" | "cover" | null;
+type DocTab = "resume" | "cover" | "form" | "written-doc" | null;
 
 export function DiscoverJobDetailPage() {
   const { jobRef: encodedRef } = useParams<{ jobRef: string }>();
@@ -51,6 +56,9 @@ export function DiscoverJobDetailPage() {
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [formSaving, setFormSaving] = useState(false);
+  const [formSaved, setFormSaved] = useState(false);
+  const [formAnswers, setFormAnswers] = useState<GeneratedAnswer[]>([]);
 
   const loadDetail = useCallback(async (ref: string, silent = false) => {
     if (!silent) {
@@ -137,12 +145,36 @@ export function DiscoverJobDetailPage() {
   }, [pipelineStatus, pipelineId, loadOrReloadArtifacts]);
 
   const hasArtifacts = !!(artifacts?.resume || artifacts?.cover);
+  // Show Dynamic Form if there are items in the classifiedFields with intent not "upload_other_document"
+  const hasDynamicForm =
+    !!artifacts?.dynamicForm &&
+    artifacts.dynamicForm.classifiedFields.some(
+      (f) => f.intent !== "upload_other_document",
+    );
+  const hasWrittenDocument =
+    !!artifacts?.writtenDocuments && artifacts.writtenDocuments.length > 0;
+
   useEffect(() => {
-    if (!hasArtifacts) return;
-    if (!activeDoc) {
-      setActiveDoc(artifacts?.resume ? "resume" : "cover");
+    if (artifacts?.dynamicForm?.answers) {
+      setFormAnswers(artifacts.dynamicForm.answers);
     }
-  }, [hasArtifacts, artifacts?.resume, artifacts?.cover, activeDoc]);
+  }, [artifacts?.dynamicForm?.answers]);
+
+  useEffect(() => {
+    if (!hasArtifacts && !hasDynamicForm && !hasWrittenDocument) return;
+    if (!activeDoc) {
+      if (hasDynamicForm) setActiveDoc("form");
+      else if (hasWrittenDocument) setActiveDoc("written-doc");
+      else setActiveDoc(artifacts?.resume ? "resume" : "cover");
+    }
+  }, [
+    hasArtifacts,
+    hasDynamicForm,
+    hasWrittenDocument,
+    artifacts?.resume,
+    artifacts?.cover,
+    activeDoc,
+  ]);
 
   useEffect(() => {
     if (detail?.userState?.lifecycleStatus === "saved") setSaved(true);
@@ -199,12 +231,21 @@ export function DiscoverJobDetailPage() {
     const pid = detail?.pipelineJob?.id;
     if (!pid) return;
     try {
+      if (hasDynamicForm && jobRef && formAnswers.length > 0) {
+        await postApplicationFormReview(jobRef, formAnswers);
+      }
       await approvePipelineJob(pid);
       if (jobRef) loadDetail(jobRef);
     } catch (err) {
       setDetailError(err instanceof Error ? err.message : "Failed to approve");
     }
-  }, [detail?.pipelineJob?.id, jobRef, loadDetail]);
+  }, [
+    detail?.pipelineJob?.id,
+    jobRef,
+    loadDetail,
+    hasDynamicForm,
+    formAnswers,
+  ]);
 
   const handleCancel = useCallback(async () => {
     const pid = detail?.pipelineJob?.id;
@@ -238,7 +279,105 @@ export function DiscoverJobDetailPage() {
     !!detail?.job?.url;
   const jobDescription = detail?.job?.description ?? undefined;
 
+  const handleFormSave = useCallback(async () => {
+    if (!jobRef || formAnswers.length === 0 || formSaving) return;
+    setFormSaving(true);
+    setFormSaved(false);
+    try {
+      await putApplicationFormAnswers(jobRef, formAnswers);
+      setFormSaved(true);
+      setTimeout(() => setFormSaved(false), 1500);
+    } catch (err) {
+      setDetailError(
+        err instanceof Error ? err.message : "Failed to save form answers",
+      );
+    } finally {
+      setFormSaving(false);
+    }
+  }, [jobRef, formAnswers, formSaving]);
+
+  const handleReviewAll = useCallback(() => {
+    setFormAnswers((prev) =>
+      prev.map((a) => {
+        const hasValue = Array.isArray(a.value)
+          ? a.value.length > 0
+          : !!a.value;
+        return hasValue ? { ...a, requiresReview: false } : a;
+      }),
+    );
+  }, []);
+
   const renderDocEditor = () => {
+    if (activeDoc === "written-doc") {
+      return (
+        <WrittenDocsReviewPanel
+          writtenDocs={artifacts?.writtenDocuments ?? []}
+          pipelineJobId={pipelineId ?? ""}
+          pipelineJobStatus={pipelineStatus}
+        />
+      );
+    }
+    if (activeDoc === "form" && hasDynamicForm && artifacts?.dynamicForm) {
+      const submitted = artifacts.dynamicForm.status === "submitted";
+      const reviewCount = formAnswers.filter(
+        (a) => a.requiresReview && a.value,
+      ).length;
+      return (
+        <div className="flex flex-col h-full">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-white flex-shrink-0">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">
+                Review prefilled form
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                These answers were auto-generated from your profile. Review and
+                edit before submission.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {!submitted && reviewCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleReviewAll}
+                  className="px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 cursor-pointer transition-colors"
+                >
+                  Review all
+                </button>
+              )}
+              {!submitted && (
+                <button
+                  type="button"
+                  onClick={handleFormSave}
+                  disabled={formSaving || formAnswers.length === 0}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {formSaving && (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  )}
+                  {formSaving ? "Saving…" : "Save changes"}
+                </button>
+              )}
+              {formSaved && (
+                <span className="text-xs text-green-700 inline-flex items-center gap-1">
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  Saved
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto p-5">
+            <FormReviewPanel
+              fields={artifacts.dynamicForm.classifiedFields}
+              answers={formAnswers}
+              onChange={setFormAnswers}
+              jobRef={jobRef ?? undefined}
+              submitted={submitted}
+              readOnly={submitted}
+            />
+          </div>
+        </div>
+      );
+    }
     if (!artifacts || !pipelineId) return null;
     if (activeDoc === "resume" && artifacts.resume) {
       return (
@@ -614,12 +753,56 @@ export function DiscoverJobDetailPage() {
               )}
 
               {/* Document tabs (sidebar) */}
-              {hasArtifacts && (
+              {(hasArtifacts || hasDynamicForm || hasWrittenDocument) && (
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Documents
                   </p>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    {hasWrittenDocument && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveDoc("written-doc");
+                          setMobileDocOpen(true);
+                        }}
+                        className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-xl border transition-colors cursor-pointer ${
+                          activeDoc === "written-doc"
+                            ? "bg-indigo-600 text-white border-indigo-600"
+                            : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
+                        }`}
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        Written Document
+                      </button>
+                    )}
+                    {hasDynamicForm && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveDoc("form");
+                          setMobileDocOpen(true);
+                        }}
+                        className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-xl border transition-colors cursor-pointer ${
+                          activeDoc === "form"
+                            ? "bg-indigo-600 text-white border-indigo-600"
+                            : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
+                        }`}
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        Application Form
+                        {(() => {
+                          const reviewCount = formAnswers.filter(
+                            (a) => a.requiresReview && a.value,
+                          ).length;
+                          return reviewCount > 0 ? (
+                            <span className="ml-1 px-1.5 py-0.5 text-[10px] rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                              {reviewCount}
+                            </span>
+                          ) : null;
+                        })()}
+                      </button>
+                    )}
                     {artifacts?.resume && (
                       <button
                         type="button"
@@ -708,9 +891,13 @@ export function DiscoverJobDetailPage() {
 
       {/* ── Right panel: document editor (desktop) ── */}
       <div className="hidden lg:flex flex-1 flex-col overflow-hidden bg-[#f8f9fb]">
-        {activeDoc && artifacts && pipelineId ? (
+        {(activeDoc === "form" && hasDynamicForm) ||
+        (activeDoc === "written-doc" && hasWrittenDocument) ? (
           renderDocEditor()
-        ) : hasArtifacts && !activeDoc ? (
+        ) : activeDoc && artifacts && pipelineId ? (
+          renderDocEditor()
+        ) : (hasArtifacts || hasDynamicForm || hasWrittenDocument) &&
+          !activeDoc ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-400">
             <FileText className="w-12 h-12 opacity-20" />
             <p className="text-sm">
@@ -733,26 +920,36 @@ export function DiscoverJobDetailPage() {
       </div>
 
       {/* ── Mobile fullscreen doc modal ── */}
-      {mobileDocOpen && activeDoc && artifacts && pipelineId && (
-        <div className="fixed inset-0 z-50 bg-white lg:hidden flex flex-col">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
-            <span className="text-sm font-semibold text-gray-800 capitalize">
-              {activeDoc === "cover" ? "Cover Letter" : "Resume"}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setMobileDocOpen(false);
-                setActiveDoc(null);
-              }}
-              className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 bg-transparent border-0 cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+      {mobileDocOpen &&
+        activeDoc &&
+        ((artifacts && pipelineId) ||
+          (activeDoc === "form" && hasDynamicForm) ||
+          (activeDoc === "written-doc" && hasWrittenDocument)) && (
+          <div className="fixed inset-0 z-50 bg-white lg:hidden flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
+              <span className="text-sm font-semibold text-gray-800 capitalize">
+                {activeDoc === "cover"
+                  ? "Cover Letter"
+                  : activeDoc === "written-doc"
+                    ? "Written Document"
+                    : activeDoc === "form"
+                      ? "Application Form"
+                      : "Resume"}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileDocOpen(false);
+                  setActiveDoc(null);
+                }}
+                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 bg-transparent border-0 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">{renderDocEditor()}</div>
           </div>
-          <div className="flex-1 overflow-hidden">{renderDocEditor()}</div>
-        </div>
-      )}
+        )}
     </div>
   );
 }

@@ -102,6 +102,7 @@ export interface RunPipelineForJobOptions {
   automationLevel?: 'full' | 'review';
   /** When provided, pipeline checks this before/after phases and throws if true (cancelled). */
   checkCancelled?: () => Promise<boolean>;
+  forceRegenerate?: boolean;
 }
 
 export interface RunPipelineForJobResult {
@@ -374,4 +375,190 @@ export interface FillJobApplicationFormOptions {
   keepOpen?: boolean;
   screenshotDir?: string;
   runId?: number | null;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ── Dynamic Application Forms (platform-agnostic) ────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+
+export type FormFieldType =
+  | 'file_upload'
+  | 'text'
+  | 'textarea'
+  | 'select'
+  | 'multi_select'
+  | 'radio'
+  | 'checkbox';
+
+export interface FieldOption {
+  label: string;
+  value: string;
+}
+
+/** Site-specific DOM selectors needed to fill a field at submission time. */
+export interface FieldSelectors {
+  inputSelector: string;
+  /** Stable input name (Handshake); use input[name="..."] at fill time instead of dynamic IDs. */
+  inputName?: string;
+  /** Stable select name (Handshake); use select[name="..."] to find combobox, then select option by text. */
+  selectName?: string;
+  optionSelectors?: Record<string, string>;
+  fileInputName?: string;
+  searchPlaceholder?: string;
+}
+
+/** A single form field normalized from any job site. */
+export interface NormalizedFormField {
+  id: string;
+  rawLabel: string;
+  rawInstructions?: string;
+  fieldType: FormFieldType;
+  required: boolean;
+  options?: FieldOption[];
+  sectionHeading?: string;
+  sectionCategory?: 'document_upload' | 'screening_questions' | 'employer_questions' | 'eeo' | 'other';
+  selectors: FieldSelectors;
+}
+
+/** Full form schema extracted from a job application page. */
+export interface NormalizedFormSchema {
+  jobRef: string;
+  site: string;
+  extractedAt: string;
+  fields: NormalizedFormField[];
+  presentSections?: PresentSectionConfig[];
+}
+
+// ── Field intent classification ──────────────────────────────────────────
+
+export type FieldIntent =
+  // Document uploads
+  | 'upload_resume'
+  | 'upload_cover_letter'
+  | 'upload_transcript'
+  | 'upload_other_document'
+  // Contact / profile
+  | 'phone'
+  | 'email'
+  | 'full_name'
+  | 'linkedin_url'
+  | 'website_url'
+  | 'github_url'
+  | 'address'
+  // Education / eligibility
+  | 'degree_status'
+  | 'graduation_date'
+  | 'school_name'
+  | 'major'
+  | 'gpa'
+  // Work authorization
+  | 'work_authorization'
+  | 'visa_sponsorship'
+  | 'relocation_willingness'
+  | 'availability_start_date'
+  | 'availability_schedule'
+  // EEO (voluntary)
+  | 'eeo_gender'
+  | 'eeo_race'
+  | 'eeo_veteran_status'
+  | 'eeo_disability'
+  // Screening
+  | 'screening_yes_no'
+  | 'screening_open_ended'
+  // Referral / source
+  | 'referral_source'
+  | 'referral_details'
+  // Data sharing consent
+  | 'data_sharing_consent'
+  // Fallback
+  | 'unknown';
+
+/** A form field after intent classification. */
+export interface ClassifiedField extends NormalizedFormField {
+  intent: FieldIntent;
+  confidence: number;
+}
+
+// ── Answer generation ────────────────────────────────────────────────────
+
+export type AnswerSource =
+  | 'profile'
+  | 'saved_answer'
+  | 'ai_generated'
+  | 'default_rule'
+  | 'user_manual';
+
+export interface GeneratedAnswer {
+  fieldId: string;
+  intent: FieldIntent;
+  value: string | string[];
+  source: AnswerSource;
+  confidence: number;
+  requiresReview: boolean;
+}
+
+/** Stored form state per job per user. */
+export interface ApplicationFormRecord {
+  id?: string;
+  userId: string;
+  jobRef: string;
+  site: string;
+  schema: NormalizedFormSchema;
+  classifiedFields: ClassifiedField[];
+  answers: GeneratedAnswer[];
+  status: 'draft' | 'reviewed' | 'submitted';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** Reusable answer across jobs. */
+export interface SavedAnswer {
+  id?: string;
+  userId: string;
+  intent: FieldIntent;
+  questionHash?: string;
+  answerValue: string;
+  usedCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// ── Extended profile fields ──────────────────────────────────────────────
+
+export interface ExtendedProfileFields {
+  website?: string;
+  github?: string;
+  work_authorization?: string;
+  requires_visa_sponsorship?: boolean;
+  willing_to_relocate?: boolean;
+  preferred_locations?: string[];
+  availability_start_date?: string;
+  current_degree_status?: string;
+  expected_graduation?: string;
+  eeo_gender?: string;
+  eeo_race?: string;
+  eeo_veteran_status?: string;
+  eeo_disability_status?: string;
+  referral_source?: string;
+}
+
+// ── Site form extractor interface ────────────────────────────────────────
+
+export interface SiteFormExtractorResult {
+  schema: NormalizedFormSchema;
+  presentSections: PresentSectionConfig[];
+}
+
+/**
+ * Formal site adapter contract. Each job site implements this interface.
+ * New sites (LinkedIn, Greenhouse, etc.) can be added by implementing this
+ * and registering in the adapter registry.
+ */
+export interface SiteFormExtractor {
+  /** Unique site identifier (e.g. 'handshake', 'linkedin'). */
+  site: string;
+  /** Extract form fields from the live page modal/form. */
+  extractForm(page: unknown, modalLocator: unknown, jobRef: string): Promise<SiteFormExtractorResult>;
+  /** Fill non-file form fields using classified fields and answers. */
+  fillForm(page: unknown, modalLocator: unknown, fields: ClassifiedField[], answers: GeneratedAnswer[]): Promise<Array<{ fieldId: string; success: boolean; error?: string }>>;
 }

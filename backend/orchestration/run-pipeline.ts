@@ -16,11 +16,13 @@ import { isAppError } from '../shared/errors.js';
 import { preflightForPipeline } from '../shared/preflight.js';
 import { probeRequiredSections } from '../shared/probe-apply-modal.js';
 import { generateCoverLetter } from '../agents/resume_generator_agent/cover-letter.js';
+import { generateWrittenDocument } from '../agents/resume_generator_agent/written-document.js';
 import { runHandshakeApply } from '../agents/auto_apply_agent/handshake-apply-real.js';
 import { getApplicationStatus } from '../agents/job_scraper_agent/index.js';
 import { startPhase, startTotal, isTimingEnabled } from '../shared/timing.js';
 import { setPipelineJobAwaitingApproval } from '../data/pipeline-jobs.js';
-import { getResumeForJob, getCoverLetterForJob } from '../data/job-artifacts.js';
+import { getResumeForJob, getCoverLetterForJob, getWrittenDocumentForJob, getWrittenDocumentForJobArtifact } from '../data/job-artifacts.js';
+import { getApplicationForm } from '../data/application-forms.js';
 import type { Job, PipelineApplyOutcome, RunPipelineForJobOptions, RunPipelineForJobResult, SectionKey } from '../shared/types.js';
 import { SUPPORTED_SECTION_KEYS } from '../shared/types.js';
 
@@ -181,6 +183,56 @@ export async function runPipelineForJob(
       await throwIfCancelled(options.checkCancelled);
       console.log('Cover letter:', coverPath);
     }
+
+    // Generate written document(s) if the form has upload_other_document fields with instructions
+    if (siteFromUrl && jobIdFromUrl) {
+      const { toJobRef: buildJobRef } = await import('../data/user-job-state.js');
+      const jRef = buildJobRef(siteFromUrl, jobIdFromUrl);
+      if (jRef) {
+        const formData = await getApplicationForm(userId, jRef);
+        if (formData) {
+          const writtenDocFields = formData.classifiedFields.filter(
+            (f) => f.intent === 'upload_other_document' && f.rawInstructions,
+          );
+          if (writtenDocFields.length > 0) {
+            console.log(
+              `[pipeline] Found ${writtenDocFields.length} written-document field(s); generating per field...`,
+            );
+            for (const f of writtenDocFields) {
+              if (!f.rawInstructions) continue;
+              const existingForField = await getWrittenDocumentForJobArtifact(
+                userId,
+                siteFromUrl,
+                jobIdFromUrl,
+                f.id,
+              );
+              console.log({ existingForField });
+              if (existingForField && !options.forceRegenerate) {
+                continue;
+              }
+              const endWrittenDoc = startPhase(`Step 2c: Generate written document (${f.id})`);
+              try {
+                await generateWrittenDocument({
+                  job,
+                  userId,
+                  instructions: f.rawInstructions,
+                  artifactId: f.id,
+                });
+              } catch (err) {
+                console.warn(
+                  'Written document generation failed for field',
+                  f.id,
+                  '(non-fatal):',
+                  (err as Error).message,
+                );
+              }
+              endWrittenDoc();
+              await throwIfCancelled(options.checkCancelled);
+            }
+          }
+        }
+      }
+    }
   } catch (err) {
     const msg = (err as Error).message;
     if (msg === UNSUPPORTED_SECTIONS_MESSAGE) throw err;
@@ -190,10 +242,29 @@ export async function runPipelineForJob(
 
   const automationLevel = options.automationLevel ?? 'review';
   if (automationLevel === 'review' && options.jobId) {
+    let hasDynamicForm = false;
+    let hasWrittenDocument = false;
+    if (siteFromUrl && jobIdFromUrl) {
+      const { toJobRef } = await import('../data/user-job-state.js');
+      const jobRefStr = toJobRef(siteFromUrl, jobIdFromUrl);
+      if (jobRefStr) {
+        const formData = await getApplicationForm(userId, jobRefStr);
+        if (formData && formData.classifiedFields.some((f) => f.fieldType !== 'file_upload')) {
+          hasDynamicForm = true;
+        }
+      }
+      const writtenDoc = await getWrittenDocumentForJob(userId, siteFromUrl, jobIdFromUrl);
+      if (writtenDoc) {
+        hasWrittenDocument = true;
+      }
+    }
+
     await setPipelineJobAwaitingApproval(options.jobId, {
       jobTitle: job.title,
       jobUrl: jobUrl,
       requiredSections,
+      hasDynamicForm,
+      hasWrittenDocument,
     });
     endTotal();
     return {

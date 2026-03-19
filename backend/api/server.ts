@@ -28,8 +28,10 @@ import {
   getPipelineJobArtifacts,
   getPipelineJobArtifactsResume,
   getPipelineJobArtifactsCover,
+  getPipelineJobArtifactsWrittenDoc,
   putPipelineJobArtifactsResume,
   putPipelineJobArtifactsCover,
+  putPipelineJobArtifactsWrittenDoc,
   postPipelineJobApprove,
   postPipelineJobCancel,
   getAppliedArtifactsResume,
@@ -47,6 +49,17 @@ import {
   postUserResume,
 } from './routes/user-resume.js';
 import { postResumeUpdate, postCoverLetterUpdate } from './routes/resume.js';
+import {
+  getApplicationFormHandler,
+  putApplicationFormAnswers,
+  postApplicationFormReview,
+  postGenerateFieldAnswer,
+  postAiEditFieldAnswer,
+  getSavedAnswersHandler,
+  putSavedAnswerHandler,
+  getExtendedProfileHandler,
+  putExtendedProfileHandler,
+} from './routes/application-forms.js';
 
 if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
   console.error('JWT_SECRET is required in production');
@@ -87,9 +100,11 @@ app.post('/profile/from-resume', authMiddleware, profileFromResumeUpload, postPr
 app.get('/pipeline/jobs', authMiddleware, getPipelineJobList);
 app.get('/pipeline/jobs/:jobId/artifacts/resume', authMiddleware, getPipelineJobArtifactsResume);
 app.get('/pipeline/jobs/:jobId/artifacts/cover', authMiddleware, getPipelineJobArtifactsCover);
+app.get('/pipeline/jobs/:jobId/artifacts/written-document/:artifactId', authMiddleware, getPipelineJobArtifactsWrittenDoc);
 app.get('/pipeline/jobs/:jobId/artifacts', authMiddleware, getPipelineJobArtifacts);
 app.put('/pipeline/jobs/:jobId/artifacts/resume', authMiddleware, putPipelineJobArtifactsResume);
 app.put('/pipeline/jobs/:jobId/artifacts/cover', authMiddleware, putPipelineJobArtifactsCover);
+app.put('/pipeline/jobs/:jobId/artifacts/written-document', authMiddleware, putPipelineJobArtifactsWrittenDoc);
 app.post('/pipeline/jobs/:jobId/approve', authMiddleware, postPipelineJobApprove);
 app.post('/pipeline/jobs/:jobId/cancel', authMiddleware, postPipelineJobCancel);
 app.get('/pipeline/jobs/:jobId/applied-artifacts/resume', authMiddleware, getAppliedArtifactsResume);
@@ -111,6 +126,17 @@ app.post('/ai/resume/update', authMiddleware, postResumeUpdate);
 app.post('/ai/cover-letter/update', authMiddleware, postCoverLetterUpdate);
 app.get('/pipeline/jobs/:jobId/artifacts/:type/history', authMiddleware, getArtifactEditHistory);
 app.post('/pipeline/jobs/:jobId/artifacts/:type/history', authMiddleware, postArtifactEditHistory);
+
+// Dynamic application forms
+app.get('/application-forms/:jobRef', authMiddleware, getApplicationFormHandler);
+app.put('/application-forms/:jobRef/answers', authMiddleware, putApplicationFormAnswers);
+app.post('/application-forms/:jobRef/review', authMiddleware, postApplicationFormReview);
+app.post('/application-forms/:jobRef/generate-answer', authMiddleware, postGenerateFieldAnswer);
+app.post('/application-forms/:jobRef/ai-edit', authMiddleware, postAiEditFieldAnswer);
+app.get('/saved-answers', authMiddleware, getSavedAnswersHandler);
+app.put('/saved-answers', authMiddleware, putSavedAnswerHandler);
+app.get('/profile/extended', authMiddleware, getExtendedProfileHandler);
+app.put('/profile/extended', authMiddleware, putExtendedProfileHandler);
 
 // Serve frontend SPA (after API routes so API paths take priority)
 if (existsSync(FRONTEND_DIST)) {

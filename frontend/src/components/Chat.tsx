@@ -31,6 +31,18 @@ const MAX_MESSAGES_TO_BACKEND = 50;
 const POLL_INTERVAL_MS = 3_000;
 const MAX_POLL_ATTEMPTS = 100;
 
+function jobRefFromUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    const u = new URL(url);
+    const match = u.pathname.match(/\/jobs\/(\d+)/);
+    if (match) return `handshake:${match[1]}`;
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 interface ChatProps {
   onLogout: () => void;
   onNavigateToDiscover?: () => void;
@@ -43,7 +55,7 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [typing, setTyping] = useState<TypingState | null>(null);
-  const [reviewCard, setReviewCard] = useState<{ jobId: string; artifacts: PipelineArtifacts } | null>(null);
+  const [reviewCard, setReviewCard] = useState<{ jobId: string; artifacts: PipelineArtifacts; jobUrl?: string } | null>(null);
   const [reviewCardError, setReviewCardError] = useState<string | null>(null);
   const [appliedCard, setAppliedCard] = useState<{
     jobId: string;
@@ -54,6 +66,7 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
   const [reviewViewOpen, setReviewViewOpen] = useState<{
     jobId: string;
     artifacts: PipelineArtifacts;
+    jobRef?: string;
   } | null>(null);
   const [baseResumeModalOpen, setBaseResumeModalOpen] = useState(false);
   const [previewModal, setPreviewModal] = useState<{
@@ -216,7 +229,7 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
           if (job.status === 'awaiting_approval') {
             setTyping(null);
             getPipelineArtifacts(jobId)
-              .then((artifacts) => setReviewCard({ jobId, artifacts }))
+              .then((artifacts) => setReviewCard({ jobId, artifacts, jobUrl: job.jobUrl }))
               .catch(() => addMessage('assistant', 'Could not load artifacts for review.'));
             pollTimerRef.current = setTimeout(poll, POLL_INTERVAL_MS);
             return;
@@ -620,7 +633,7 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
             <ReviewCard
               jobId={reviewCard.jobId}
               artifacts={reviewCard.artifacts}
-              onOpenDetailed={() => setReviewViewOpen({ jobId: reviewCard.jobId, artifacts: reviewCard.artifacts })}
+              onOpenDetailed={() => setReviewViewOpen({ jobId: reviewCard.jobId, artifacts: reviewCard.artifacts, jobRef: jobRefFromUrl(reviewCard.jobUrl) })}
               onDownloadResume={async () => {
                 try {
                   await downloadPipelineArtifactPdf(reviewCard.jobId, 'resume');
@@ -670,6 +683,7 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
         <ReviewView
           jobId={reviewViewOpen.jobId}
           artifacts={reviewViewOpen.artifacts}
+          jobRef={reviewViewOpen.jobRef}
           onApproved={() => {
             setReviewViewOpen(null);
             setReviewCard(null);
