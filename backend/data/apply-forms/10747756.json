@@ -1,0 +1,34 @@
+{
+  "sections": [
+    {
+      "heading": "Attach your transcript",
+      "fileInputs": [
+        {
+          "name": "file-Transcript",
+          "id": "id-32ab9ee2-2ebf-4458-9696-a1bc178386be"
+        }
+      ]
+    },
+    {
+      "heading": "Attach your resume",
+      "fileInputs": []
+    }
+  ],
+  "capturedAt": "2026-02-28T20:36:13.954Z",
+  "presentSections": [
+    {
+      "key": "transcript",
+      "sectionHeading": "Attach your transcript",
+      "searchPlaceholder": "Search your transcripts",
+      "fileInputName": "file-Transcript",
+      "fileInputId": "file-transcript"
+    },
+    {
+      "key": "resume",
+      "sectionHeading": "Attach your resume",
+      "searchPlaceholder": "Search your resumes",
+      "fileInputName": "file-Resume",
+      "fileInputId": "file-resume"
+    }
+  ]
+}

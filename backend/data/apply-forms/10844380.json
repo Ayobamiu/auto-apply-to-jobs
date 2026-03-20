@@ -1,0 +1,50 @@
+{
+  "sections": [
+    {
+      "heading": "Attach your transcript",
+      "fileInputs": [
+        {
+          "name": "file-Transcript",
+          "id": "id-fda6821d-39fc-4713-90ac-69187066a49a"
+        }
+      ]
+    },
+    {
+      "heading": "Attach your cover letter",
+      "fileInputs": [
+        {
+          "name": "file-Cover Letter",
+          "id": "id-0947607b-b41b-45c3-9b23-b9ae68d12e9d"
+        }
+      ]
+    },
+    {
+      "heading": "Attach your resume",
+      "fileInputs": []
+    }
+  ],
+  "capturedAt": "2026-03-14T18:30:11.158Z",
+  "presentSections": [
+    {
+      "key": "transcript",
+      "sectionHeading": "Attach your transcript",
+      "searchPlaceholder": "Search your transcripts",
+      "fileInputName": "file-Transcript",
+      "fileInputId": "file-transcript"
+    },
+    {
+      "key": "resume",
+      "sectionHeading": "Attach your resume",
+      "searchPlaceholder": "Search your resumes",
+      "fileInputName": "file-Resume",
+      "fileInputId": "file-resume"
+    },
+    {
+      "key": "coverLetter",
+      "sectionHeading": "Attach your Cover letter",
+      "searchPlaceholder": "Search your cover letters",
+      "fileInputName": "file-CoverLetter",
+      "fileInputId": "file-cover"
+    }
+  ]
+}

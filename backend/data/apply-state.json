@@ -1,0 +1,41 @@
+{
+  "default": {
+    "https://wmich.joinhandshake.com/job-search/10747756?employmentTypes=1&jobRoleGroups=64&jobType=9&page=1&per_page=25": {
+      "resumePath": "/Users/usmanayobami/Documents/auto-apply-to-jobs/fixtures/sample-resume.pdf",
+      "uploadedAt": "2026-02-18T02:03:13.564Z"
+    },
+    "https://wmich.joinhandshake.com/public/jobs/10747756?utm_campaign=job_share&utm_content=stu-copy_link-job_page&utm_medium=copy_link&utm_source=web": {
+      "resumePath": "/Users/usmanayobami/Documents/auto-apply-to-jobs/output/resume-wmichjoinhandshakecom.pdf",
+      "uploadedAt": "2026-02-18T03:16:59.896Z"
+    },
+    "https://wmich.joinhandshake.com/job-search/10747756?employmentTypes=1&jobType=9&locationFilter=%7B%22distance%22%3A%2250mi%22%2C%22label%22%3A%22San+Francisco%2C+California%2C+United+States%22%2C%22type%22%3A%22place%22%2C%22point%22%3A%2237.779026%2C-122.419906%22%2C%22text%22%3Anull%2C%22id%22%3A%2237.779026%2C-122.419906%22%7D&page=1&per_page=25&sort=relevance&workAuthorization=openToUSVisaSponsorship&workAuthorization=openToOptionalPracticalTraining&workAuthorization=openToCurricularPracticalTraining": {
+      "resumePath": "/Users/usmanayobami/Documents/auto-apply-to-jobs/output/UsmanAyobami_SE_Firetiger_resume.pdf",
+      "uploadedAt": "2026-02-19T06:36:35.187Z"
+    },
+    "https://wmich.joinhandshake.com/job-search/10732713?employmentTypes=1&jobType=9&page=1&per_page=25&sort=relevance&workAuthorization=openToUSVisaSponsorship&workAuthorization=openToOptionalPracticalTraining&workAuthorization=openToCurricularPracticalTraining": {
+      "resumePath": "/Users/usmanayobami/Documents/auto-apply-to-jobs/output/resume-software-engineer.pdf",
+      "uploadedAt": "2026-02-18T05:29:33.573Z"
+    },
+    "https://wmich.joinhandshake.com/job-search/10732713?employmentTypes=1&jobType=9&page=1&per_page=25&workAuthorization=openToUSVisaSponsorship": {
+      "resumePath": "/Users/usmanayobami/Documents/auto-apply-to-jobs/output/resume-software-engineer.pdf",
+      "uploadedAt": "2026-02-18T05:44:38.090Z"
+    },
+    "https://wmich.joinhandshake.com/job-search/10732713?employmentTypes=1&jobType=9&locationFilter=%7B%22distance%22%3A%2250mi%22%2C%22label%22%3A%22San+Francisco%2C+California%2C+United+States%22%2C%22type%22%3A%22place%22%2C%22point%22%3A%2237.779026%2C-122.419906%22%2C%22text%22%3Anull%2C%22id%22%3A%2237.779026%2C-122.419906%22%7D&page=1&per_page=25&sort=relevance&workAuthorization=openToUSVisaSponsorship&workAuthorization=openToOptionalPracticalTraining&workAuthorization=openToCurricularPracticalTraining": {
+      "resumePath": "/Users/usmanayobami/Documents/auto-apply-to-jobs/output/UsmanAyobami_SE_ClockworkSystems_resume.pdf",
+      "uploadedAt": "2026-02-19T00:55:41.967Z"
+    },
+    "https://wmich.joinhandshake.com/jobs/10764179?searchId=356c1be2-e940-4266-b9d1-8b1ce4ea53f9": {
+      "resumePath": "/Users/usmanayobami/Documents/auto-apply-to-jobs/output/UsmanAyobami_PD_ProgressSolutions_resume.pdf",
+      "uploadedAt": "2026-02-20T03:25:45.813Z"
+    },
+    "https://wmich.joinhandshake.com/jobs/10764179": {
+      "resumePath": "/Users/usmanayobami/Documents/auto-apply-to-jobs/data/resumes/UsmanAyobami_PD_ProgressSolutions_resume.pdf",
+      "uploadedAt": "2026-02-22T07:00:16.262Z"
+    },
+    "https://wmich.joinhandshake.com/jobs/10755828": {
+      "resumePath": "/Users/usmanayobami/Documents/auto-apply-to-jobs/output/UsmanAyobami_SEEL_TataConsultancyServices_resume.pdf",
+      "uploadedAt": "2026-02-20T03:50:28.957Z",
+      "submittedAt": "2026-02-20T03:50:28.944Z"
+    }
+  }
+}

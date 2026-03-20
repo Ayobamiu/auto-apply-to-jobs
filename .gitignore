@@ -9,6 +9,7 @@ playwright/.cache/
 screenshots/
 .auth/
 output/
-data/
 *.tgz
 examples/
+backend/data/job-cache/*
+!backend/data/job-cache/.gitkeep

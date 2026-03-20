@@ -1,0 +1,18 @@
+{
+  "sections": [
+    {
+      "heading": "Attach your resume",
+      "fileInputs": []
+    }
+  ],
+  "capturedAt": "2026-03-14T18:39:45.155Z",
+  "presentSections": [
+    {
+      "key": "resume",
+      "sectionHeading": "Attach your resume",
+      "searchPlaceholder": "Search your resumes",
+      "fileInputName": "file-Resume",
+      "fileInputId": "file-resume"
+    }
+  ]
+}

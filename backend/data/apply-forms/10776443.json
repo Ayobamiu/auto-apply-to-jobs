@@ -1,0 +1,27 @@
+{
+  "sections": [
+    {
+      "heading": "Attach other required documents",
+      "fileInputs": [
+        {
+          "name": "file-Other Document",
+          "id": "id-eb873603-c68c-47cf-813d-6fe7a1c7baf4"
+        }
+      ]
+    },
+    {
+      "heading": "Attach your resume",
+      "fileInputs": []
+    }
+  ],
+  "capturedAt": "2026-03-18T05:02:28.071Z",
+  "presentSections": [
+    {
+      "key": "resume",
+      "sectionHeading": "Attach your resume",
+      "searchPlaceholder": "Search your resumes",
+      "fileInputName": "file-Resume",
+      "fileInputId": "file-resume"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "sections": [
+    {
+      "heading": "Attach your cover letter",
+      "fileInputs": [
+        {
+          "name": "file-Cover Letter",
+          "id": "id-ad6a5a56-d316-4405-99e5-1dfa36c32772"
+        }
+      ]
+    },
+    {
+      "heading": "Attach your resume",
+      "fileInputs": []
+    }
+  ],
+  "capturedAt": "2026-02-26T05:54:18.086Z",
+  "presentSections": [
+    {
+      "key": "resume",
+      "sectionHeading": "Attach your resume",
+      "searchPlaceholder": "Search your resumes",
+      "fileInputName": "file-Resume",
+      "fileInputId": "file-resume"
+    },
+    {
+      "key": "coverLetter",
+      "sectionHeading": "Attach your Cover letter",
+      "searchPlaceholder": "Search your cover letters",
+      "fileInputName": "file-CoverLetter",
+      "fileInputId": "file-cover"
+    }
+  ]
+}

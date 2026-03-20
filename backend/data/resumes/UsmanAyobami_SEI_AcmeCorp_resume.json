@@ -1,0 +1,176 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jsonresume/resume-schema/master/schema.json",
+  "basics": {
+    "name": "Usman Ayobami",
+    "label": "Software Engineer",
+    "email": "ayobamiu@gmail.com",
+    "phone": "269-220-1205",
+    "url": "https://github.com/ayobamiu",
+    "summary": "Detail-oriented software engineer with a strong foundation in algorithms, data structures, and full-stack web development. Over 2 years of experience in building and deploying scalable applications using React, TypeScript, Node.js, and Postgres. Proven ability to troubleshoot production issues, enhance user experience, and drive projects from conception to completion in dynamic environments.",
+    "location": {
+      "region": "San Francisco, CA"
+    },
+    "profiles": [
+      {
+        "network": "LinkedIn",
+        "url": "https://linkedin.com/in/usmanayobami"
+      },
+      {
+        "network": "GitHub",
+        "url": "https://github.com/ayobamiu"
+      }
+    ]
+  },
+  "work": [
+    {
+      "name": "Daylight Health",
+      "position": "Software Engineering Intern",
+      "location": "San Francisco, CA",
+      "startDate": "2025-05",
+      "endDate": "2025-09",
+      "highlights": [
+        "Developed patient-centric features using React, TypeScript, GraphQL, and Node.js, enhancing user engagement.",
+        "Engineered insurance-verification workflows that streamlined clinic operations by 40%.",
+        "Implemented a Next.js-based file upload interface with OCR capabilities and real-time validation.",
+        "Leveraged AI tools (Cursor, GPT-based refactoring) to optimize development processes and elevate code quality."
+      ]
+    },
+    {
+      "name": "Meeting Detection Engine",
+      "position": "Software Engineer – Open Source Contributor",
+      "endDate": "2025",
+      "highlights": [
+        "Engineered a cross-platform meeting detection engine utilizing a hybrid signal system.",
+        "Integrated Rust bindings with napi-rs, providing a seamless TypeScript API.",
+        "Published as an npm package, achieving full documentation and real-world usage."
+      ]
+    },
+    {
+      "name": "Michigan Geological Survey",
+      "position": "Graduate Research Assistant",
+      "startDate": "2023",
+      "endDate": "2025",
+      "highlights": [
+        "Developed interactive dashboards with React and Python for carbon sequestration research, improving data visualization.",
+        "Enhanced querying speed for large datasets by 30% through optimized data pipelines."
+      ]
+    },
+    {
+      "name": "PanAfrican Capital Holdings",
+      "position": "Software Engineer",
+      "location": "Lagos, Nigeria",
+      "startDate": "2022-06",
+      "endDate": "2023-01",
+      "highlights": [
+        "Designed scalable front-end systems using TypeScript, Redux, and CSS, aligning with business objectives.",
+        "Contributed to production-ready software solutions that met client needs."
+      ]
+    },
+    {
+      "name": "Genesys Tech Hub",
+      "position": "Web Developer",
+      "location": "Nigeria",
+      "startDate": "2019-06",
+      "endDate": "2020-12",
+      "highlights": [
+        "Developed responsive web and mobile applications using React Native, JavaScript, and MongoDB.",
+        "Collaborated on REST API integrations and frontend architecture to enhance application performance."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "Western Michigan University",
+      "area": "M.S. Computer Science",
+      "studyType": "Master",
+      "endDate": "2025"
+    },
+    {
+      "institution": "University of Ibadan",
+      "area": "B.S. Petroleum Engineering",
+      "studyType": "Bachelor",
+      "endDate": "2020"
+    }
+  ],
+  "skills": [
+    {
+      "name": "Languages & Frameworks",
+      "keywords": [
+        "TypeScript",
+        "JavaScript",
+        "Python",
+        "Node.js",
+        "React",
+        "Next.js",
+        "Rust",
+        "Django",
+        "C++"
+      ]
+    },
+    {
+      "name": "Backend",
+      "keywords": [
+        "NestJS",
+        "Express",
+        "Postgres",
+        "Redis",
+        "Prisma",
+        "TypeORM"
+      ]
+    },
+    {
+      "name": "Frontend",
+      "keywords": [
+        "Tailwind CSS",
+        "shadcn UI",
+        "SWR",
+        "Zustand"
+      ]
+    },
+    {
+      "name": "Tools",
+      "keywords": [
+        "GitHub Actions",
+        "Cursor",
+        "VSCode",
+        "GPT-based dev workflows"
+      ]
+    },
+    {
+      "name": "Systems & Concepts",
+      "keywords": [
+        "Full-stack development",
+        "REST APIs",
+        "debugging",
+        "data modeling",
+        "caching",
+        "CLI tools"
+      ]
+    },
+    {
+      "name": "Mindset",
+      "keywords": [
+        "High ownership",
+        "fast iteration",
+        "user-first approach",
+        "thrives under pressure"
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "HealthDisparity AI",
+      "description": "Developed an AI assistant recommending culturally competent care using React, Node.js, and OpenAI.",
+      "highlights": [
+        "Designed end-to-end products with analytics and a focus on user experience."
+      ]
+    },
+    {
+      "name": "Core Extract",
+      "description": "Created a reliable AI pipeline to extract structured data from PDFs using Python, Rust, and OCR.",
+      "highlights": [
+        "Emphasized accuracy and robust failure handling in data extraction."
+      ]
+    }
+  ]
+}

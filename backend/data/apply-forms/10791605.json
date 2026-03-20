@@ -1,0 +1,22 @@
+{
+  "sections": [
+    {
+      "heading": "Attach your resume",
+      "fileInputs": []
+    },
+    {
+      "heading": "Are you located in or willing to relocate to Redwood City, CA (Bay Area) or Nashua, NH?",
+      "fileInputs": []
+    }
+  ],
+  "capturedAt": "2026-03-06T05:33:15.813Z",
+  "presentSections": [
+    {
+      "key": "resume",
+      "sectionHeading": "Attach your resume",
+      "searchPlaceholder": "Search your resumes",
+      "fileInputName": "file-Resume",
+      "fileInputId": "file-resume"
+    }
+  ]
+}

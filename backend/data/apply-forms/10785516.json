@@ -1,0 +1,30 @@
+{
+  "sections": [
+    {
+      "heading": "Attach your resume",
+      "fileInputs": []
+    },
+    {
+      "heading": "Do you have or are you pursuing a degree in Systems Engineering, Mechanical Engineering, Electrical Engineering?",
+      "fileInputs": []
+    },
+    {
+      "heading": "Are you located in or willing to relocate to Grand Rapids?",
+      "fileInputs": []
+    },
+    {
+      "heading": "We are looking for someone, preferably local, for Summer 2026 start. Are you available for this upcoming Spring 2026 Spring Internship with no other offers?",
+      "fileInputs": []
+    }
+  ],
+  "capturedAt": "2026-03-17T01:13:02.338Z",
+  "presentSections": [
+    {
+      "key": "resume",
+      "sectionHeading": "Attach your resume",
+      "searchPlaceholder": "Search your resumes",
+      "fileInputName": "file-Resume",
+      "fileInputId": "file-resume"
+    }
+  ]
+}

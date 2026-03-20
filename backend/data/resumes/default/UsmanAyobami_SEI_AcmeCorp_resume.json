@@ -1,0 +1,174 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jsonresume/resume-schema/master/schema.json",
+  "basics": {
+    "name": "Usman Ayobami",
+    "label": "Software Engineer",
+    "email": "ayobamiu@gmail.com",
+    "phone": "269-220-1205",
+    "url": "https://github.com/ayobamiu",
+    "summary": "Product-focused software engineer with strong fundamentals in algorithms, data structures, and full-stack web development. 2+ years of experience building and shipping features using React, TypeScript, Node.js, and Postgres. Comfortable working across the stack, debugging production issues, and owning features end-to-end in fast-paced, high-stakes environments.",
+    "location": {
+      "region": "San Francisco, CA"
+    },
+    "profiles": [
+      {
+        "network": "LinkedIn",
+        "url": "https://linkedin.com/in/usmanayobami"
+      },
+      {
+        "network": "GitHub",
+        "url": "https://github.com/ayobamiu"
+      }
+    ]
+  },
+  "work": [
+    {
+      "name": "Daylight Health",
+      "position": "Software Engineering Intern",
+      "location": "San Francisco, CA",
+      "startDate": "2025-05",
+      "endDate": "2025-09",
+      "highlights": [
+        "Built patient-facing and internal features using React, TypeScript, GraphQL, and Node.js.",
+        "Designed and shipped insurance-verification flows that reduced clinic workload by 40%.",
+        "Delivered a Next.js-based file upload interface with OCR extraction and real-time validation.",
+        "Used AI tools (Cursor, GPT-based refactoring) to accelerate development and improve quality."
+      ]
+    },
+    {
+      "name": "Meeting Detection Engine",
+      "position": "Software Engineer – Open Source Contributor",
+      "endDate": "2025",
+      "highlights": [
+        "Created a cross-platform meeting detection engine with a hybrid signal system.",
+        "Integrated Rust bindings with napi-rs and exposed a clean TypeScript API.",
+        "Published as a npm package with full documentation and real-world adoption."
+      ]
+    },
+    {
+      "name": "Michigan Geological Survey",
+      "position": "Graduate Research Assistant",
+      "startDate": "2023",
+      "endDate": "2025",
+      "highlights": [
+        "Built interactive dashboards using React and Python for carbon sequestration research.",
+        "Improved large dataset querying speed by 30% with optimized data pipelines."
+      ]
+    },
+    {
+      "name": "PanAfrican Capital Holdings",
+      "position": "Software Engineer",
+      "location": "Lagos, Nigeria",
+      "startDate": "2022-06",
+      "endDate": "2023-01",
+      "highlights": [
+        "Developed scalable front-end systems with TypeScript, Redux, and CSS.",
+        "Contributed to business-aligned, production-ready software solutions."
+      ]
+    },
+    {
+      "name": "Genesys Tech Hub",
+      "position": "Web Developer",
+      "location": "Nigeria",
+      "startDate": "2019-06",
+      "endDate": "2020-12",
+      "highlights": [
+        "Built responsive web and mobile apps using React Native, JavaScript, and MongoDB.",
+        "Collaborated on REST API integrations and frontend architecture."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "Western Michigan University",
+      "area": "M.S. Computer Science",
+      "studyType": "Master",
+      "endDate": "2025"
+    },
+    {
+      "institution": "University of Ibadan",
+      "area": "B.S. Petroleum Engineering",
+      "studyType": "Bachelor",
+      "endDate": "2020"
+    }
+  ],
+  "skills": [
+    {
+      "name": "Languages & Frameworks",
+      "keywords": [
+        "TypeScript",
+        "JavaScript",
+        "Python",
+        "Node.js",
+        "React",
+        "Next.js",
+        "Rust"
+      ]
+    },
+    {
+      "name": "Backend",
+      "keywords": [
+        "NestJS",
+        "Express",
+        "Postgres",
+        "Redis",
+        "Prisma",
+        "TypeORM"
+      ]
+    },
+    {
+      "name": "Frontend",
+      "keywords": [
+        "Tailwind CSS",
+        "shadcn UI",
+        "SWR",
+        "Zustand"
+      ]
+    },
+    {
+      "name": "Tools",
+      "keywords": [
+        "GitHub Actions",
+        "Cursor",
+        "VSCode",
+        "GPT-based dev workflows"
+      ]
+    },
+    {
+      "name": "Systems & Concepts",
+      "keywords": [
+        "Full-stack dev",
+        "REST APIs",
+        "debugging",
+        "data modeling",
+        "caching",
+        "CLI tools"
+      ]
+    },
+    {
+      "name": "Mindset",
+      "keywords": [
+        "High ownership",
+        "fast iteration",
+        "user-first",
+        "thrives under pressure"
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "HealthDisparity AI",
+      "description": "Built an AI assistant recommending culturally competent care using React, Node.js, OpenAI.",
+      "highlights": [
+        "Designed end-to-end products with analytics and clean UX."
+      ]
+    },
+    {
+      "name": "Core Extract",
+      "description": "Developed a reliable AI pipeline to extract structured data from PDFs using Python, Rust, and OCR.",
+      "highlights": [
+        "Focused on accuracy and robust failure handling."
+      ]
+    }
+  ]
+}
