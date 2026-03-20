@@ -70,7 +70,9 @@ export async function getJobsDetail(req: Request, res: Response): Promise<void> 
       res.status(404).json({ error: 'Job not found' });
       return;
     }
-    const jobUrl = job.url || (site === 'handshake' ? `https://wmich.joinhandshake.com/jobs/${jobId}` : null);
+    const HANDSHAKE_JOBS_BASE = process.env.HANDSHAKE_JOBS_BASE_URL || 'https://wmich.joinhandshake.com';
+
+    const jobUrl = job.url || (site === 'handshake' ? `${HANDSHAKE_JOBS_BASE}/jobs/${jobId}` : null);
     const [userState, resume, pipelineJob] = await Promise.all([
       getUserJobState(userId, jobRef),
       getResumeForJob(userId, site, jobId),
@@ -133,7 +135,8 @@ export async function postScrapeJobDetail(req: Request, res: Response): Promise<
     res.status(400).json({ error: 'Invalid jobRef' });
     return;
   }
-  const jobUrl = site === 'handshake' ? `https://wmich.joinhandshake.com/jobs/${jobId}` : null;
+  const HANDSHAKE_JOBS_BASE = process.env.HANDSHAKE_JOBS_BASE_URL || 'https://wmich.joinhandshake.com';
+  const jobUrl = site === 'handshake' ? `${HANDSHAKE_JOBS_BASE}/jobs/${jobId}` : null;
   if (jobUrl) {
     const { job: scrapedJob } = await runJobScraper(jobUrl, { forceScrape: false });
     if (scrapedJob) {

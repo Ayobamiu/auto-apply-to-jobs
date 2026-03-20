@@ -9,7 +9,7 @@ import { AppError, CODES } from '../shared/errors.js';
 import { PAGE_GOTO_TIMEOUT_MS, POST_NAVIGATE_DELAY_MS } from '../shared/constants.js';
 import type { JobFinder, JobListing, FindJobsOptions, SearchFilters } from '../shared/job-finder-types.js';
 
-const HANDSHAKE_JOBS_BASE = process.env.HANDSHAKE_JOBS_BASE_URL || process.env.HANDSHAKE_JOBS_BASE || 'https://wmich.joinhandshake.com';
+const HANDSHAKE_JOBS_BASE = process.env.HANDSHAKE_JOBS_BASE_URL || 'https://wmich.joinhandshake.com';
 const JOB_SEARCH_PATH = '/job-search';
 
 const DEFAULT_PER_PAGE = 50;
