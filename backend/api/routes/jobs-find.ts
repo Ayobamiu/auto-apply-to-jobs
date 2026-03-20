@@ -91,7 +91,6 @@ export async function getJobsFind(req: Request, res: Response): Promise<void> {
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
-
   const site = typeof req.query.site === 'string' ? req.query.site.trim() : undefined;
   const refresh = req.query.refresh === '1' || req.query.refresh === 'true';
   const maxResults =
@@ -112,11 +111,20 @@ export async function getJobsFind(req: Request, res: Response): Promise<void> {
       pagination: fromQuery.pagination ?? saved?.pagination,
       handshake: fromQuery.handshake ?? saved?.handshake,
     };
-    await setJobSearchFilters(userId, merged);
+    const notMergedFilters: JobSearchFilters = {
+      query: fromQuery.query,
+      location: fromQuery.location,
+      employmentTypes: fromQuery.employmentTypes,
+      jobTypes: fromQuery.jobTypes,
+      remoteWork: fromQuery.remoteWork,
+      workAuthorization: fromQuery.workAuthorization,
+      pagination: fromQuery.pagination,
+      handshake: fromQuery.handshake,
+    };
+    await setJobSearchFilters(userId, refresh ? notMergedFilters : merged);
   }
 
   const filters = await getJobSearchFilters(userId);
-
   if (!refresh) {
     const listings = await getCachedListings(userId, maxResults, filters);
     const lastRefreshAt = await getLastRefreshAt(userId);
@@ -136,7 +144,7 @@ export async function getJobsFind(req: Request, res: Response): Promise<void> {
               );
             }
           })
-          .catch(() => {});
+          .catch(() => { });
       });
     }
     return;

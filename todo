@@ -1,13 +1,13 @@
 auto-fix and populate user's profile when they correct forms
-Fix search and limit filters to query, location and onsite/remote
 publish extension
 connect frontend url to Extension
 deploy frontend
 connect backend url to Extension
 deploy backend
-Remove "wmich.handshake" as base url
 Profile set as part of Onboarding
 Bug: edit hostories not saved
+x Fix search and limit filters to query, location and onsite/remote
+x Remove "wmich.joinhandshake" as base url
 x Fix "Review prefilled form" UI. finer UI, loading state for "Save chnages" button. Clear indication of Answered Inputs, those that need review. Maybe a button to say "Reviewed". Multi select has bad UX. like the resumeEditor and cover letter, the prefilled forms should be view-only after job is submitted
 x Handle more than resume, cover letter and Transcript. Add dynamic forms
 x create and deploy mini-backend

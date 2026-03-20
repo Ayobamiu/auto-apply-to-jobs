@@ -13,11 +13,7 @@ import {
   Loader2,
   ChevronDown,
 } from "lucide-react";
-import {
-  findJobs,
-  saveJob,
-  type JobListing,
-} from "../api";
+import { findJobs, saveJob, type JobListing } from "../api";
 import { HandshakeLinkModal } from "./HandshakeLinkModal";
 
 const STORAGE_KEY_SCROLL = "discover-list-scroll";
@@ -96,7 +92,9 @@ function PillGroup({
 }) {
   return (
     <div>
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{label}</p>
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+        {label}
+      </p>
       <div className="flex flex-wrap gap-2">
         {options.map((o) => (
           <button
@@ -124,10 +122,14 @@ export function DiscoverListPage() {
   const [error, setError] = useState<string | null>(null);
   const [filterQuery, setFilterQuery] = useState("");
   const [filterLocation, setFilterLocation] = useState("");
-  const [employmentTypes, setEmploymentTypes] = useState<Set<string>>(new Set());
+  const [employmentTypes, setEmploymentTypes] = useState<Set<string>>(
+    new Set(),
+  );
   const [jobTypes, setJobTypes] = useState<Set<string>>(new Set());
   const [remoteWork, setRemoteWork] = useState<Set<string>>(new Set());
-  const [workAuthorization, setWorkAuthorization] = useState<Set<string>>(new Set());
+  const [workAuthorization, setWorkAuthorization] = useState<Set<string>>(
+    new Set(),
+  );
   const [perPage, setPerPage] = useState(25);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -140,37 +142,40 @@ export function DiscoverListPage() {
 
   const scrollTimerRef = useRef<number | null>(null);
 
-  const loadList = useCallback(
-    async (refresh = false) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await findJobs({
-          site: "handshake",
-          maxResults: Math.max(perPage * 2, 50),
-          refresh,
-          query: filterQuery || undefined,
-          location: filterLocation || undefined,
-          employmentTypes: employmentTypes.size ? Array.from(employmentTypes) : undefined,
-          jobTypes: jobTypes.size ? Array.from(jobTypes) : undefined,
-          remoteWork: remoteWork.size ? Array.from(remoteWork) : undefined,
-          workAuthorization: workAuthorization.size ? Array.from(workAuthorization) : undefined,
-          page: 1,
-          perPage,
-        });
-        setListings(res.listings);
-        if (res.lastRefreshAt != null) setLastRefreshAt(res.lastRefreshAt);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load jobs");
-        setListings([]);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [filterQuery, filterLocation, employmentTypes, jobTypes, remoteWork, workAuthorization, perPage],
-  );
+  const loadList = useCallback(async (refresh = false) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await findJobs({
+        site: "handshake",
+        maxResults: Math.max(perPage * 2, 50),
+        refresh,
+        query: filterQuery || undefined,
+        location: filterLocation || undefined,
+        employmentTypes: employmentTypes.size
+          ? Array.from(employmentTypes)
+          : undefined,
+        jobTypes: jobTypes.size ? Array.from(jobTypes) : undefined,
+        remoteWork: remoteWork.size ? Array.from(remoteWork) : undefined,
+        workAuthorization: workAuthorization.size
+          ? Array.from(workAuthorization)
+          : undefined,
+        page: 1,
+        perPage,
+      });
+      setListings(res.listings);
+      if (res.lastRefreshAt != null) setLastRefreshAt(res.lastRefreshAt);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load jobs");
+      setListings([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  useEffect(() => { loadList(false); }, [loadList]);
+  useEffect(() => {
+    loadList(false);
+  }, [loadList]);
 
   useEffect(() => {
     const raw = sessionStorage.getItem(STORAGE_KEY_SCROLL);
@@ -182,14 +187,23 @@ export function DiscoverListPage() {
   }, []);
 
   useEffect(() => {
-    return () => { if (scrollTimerRef.current != null) window.clearTimeout(scrollTimerRef.current); };
+    return () => {
+      if (scrollTimerRef.current != null)
+        window.clearTimeout(scrollTimerRef.current);
+    };
   }, []);
 
-  const handleRefresh = useCallback(() => loadList(true), [loadList]);
-  const handleApplyFilters = useCallback(() => { setFiltersOpen(false); loadList(false); }, [loadList]);
+  const handleRefresh = useCallback(() => {
+    setFiltersOpen(false);
+    loadList(true);
+  }, [loadList]);
 
   const handleCardClick = useCallback(() => {
-    try { sessionStorage.setItem(STORAGE_KEY_SCROLL, String(window.scrollY)); } catch { /* ignore */ }
+    try {
+      sessionStorage.setItem(STORAGE_KEY_SCROLL, String(window.scrollY));
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   const handleSaveJob = useCallback(
@@ -202,13 +216,22 @@ export function DiscoverListPage() {
       } catch {
         // silently ignore
       } finally {
-        setSavingRefs((s) => { const n = new Set(s); n.delete(ref); return n; });
+        setSavingRefs((s) => {
+          const n = new Set(s);
+          n.delete(ref);
+          return n;
+        });
       }
     },
     [savingRefs, savedRefs],
   );
 
-  const activeCount = countActiveFilters(employmentTypes, jobTypes, remoteWork, workAuthorization);
+  const activeCount = countActiveFilters(
+    employmentTypes,
+    jobTypes,
+    remoteWork,
+    workAuthorization,
+  );
 
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-6 py-8">
@@ -222,7 +245,8 @@ export function DiscoverListPage() {
             Have a specific job in mind?
           </h2>
           <p className="text-sm text-gray-500 mt-0.5">
-            Paste a Handshake link and we'll generate a tailored resume and cover letter.
+            Paste a Handshake link and we'll generate a tailored resume and
+            cover letter.
           </p>
         </div>
         <button
@@ -243,7 +267,7 @@ export function DiscoverListPage() {
             placeholder="Search jobs…"
             value={filterQuery}
             onChange={(e) => setFilterQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleApplyFilters()}
+            // onKeyDown={(e) => e.key === "Enter" && handleApplyFilters()}
             className="flex-1 min-w-[140px] max-w-xs px-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
           />
           <input
@@ -251,7 +275,7 @@ export function DiscoverListPage() {
             placeholder="Location"
             value={filterLocation}
             onChange={(e) => setFilterLocation(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleApplyFilters()}
+            // onKeyDown={(e) => e.key === "Enter" && handleApplyFilters()}
             className="flex-1 min-w-[120px] max-w-[200px] px-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
           />
           <button
@@ -270,23 +294,18 @@ export function DiscoverListPage() {
                 {activeCount}
               </span>
             )}
-            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
+            <ChevronDown
+              className={`w-3.5 h-3.5 transition-transform ${filtersOpen ? "rotate-180" : ""}`}
+            />
           </button>
           <button
             type="button"
-            onClick={handleApplyFilters}
-            className="px-4 py-2.5 text-sm font-semibold text-white bg-indigo-600 border-0 rounded-xl hover:bg-indigo-700 cursor-pointer transition-colors"
-          >
-            Search
-          </button>
-          <button
-            type="button"
-            onClick={handleRefresh}
             disabled={loading}
             title="Fetch new listings from Handshake"
-            className="inline-flex items-center gap-1.5 px-3 py-2.5 text-sm text-gray-500 border border-gray-200 rounded-xl bg-white hover:bg-gray-50 disabled:opacity-60 cursor-pointer transition-colors"
+            onClick={handleRefresh}
+            className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-white bg-indigo-600 border-0 rounded-xl hover:bg-indigo-700 cursor-pointer transition-colors"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            Search {loading && <RefreshCw className="w-4 h-4 animate-spin" />}
           </button>
         </div>
 
@@ -318,7 +337,9 @@ export function DiscoverListPage() {
               onToggle={(v) => setWorkAuthorization((s) => toggleSet(s, v))}
             />
             <div className="flex items-center gap-3 pt-1 border-t border-gray-100">
-              <label className="text-xs font-medium text-gray-500">Results per page</label>
+              <label className="text-xs font-medium text-gray-500">
+                Results per page
+              </label>
               <select
                 value={perPage}
                 onChange={(e) => setPerPage(Number(e.target.value))}
@@ -359,7 +380,10 @@ export function DiscoverListPage() {
       {loading ? (
         <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 list-none p-0 m-0">
           {Array.from({ length: 9 }).map((_, i) => (
-            <li key={i} className="rounded-2xl border border-gray-100 bg-white p-5 animate-pulse">
+            <li
+              key={i}
+              className="rounded-2xl border border-gray-100 bg-white p-5 animate-pulse"
+            >
               <div className="flex gap-3 mb-3">
                 <div className="w-11 h-11 rounded-xl bg-gray-100 flex-shrink-0" />
                 <div className="flex-1 space-y-2 pt-1">
@@ -474,7 +498,10 @@ export function DiscoverListPage() {
                     ) : (
                       <button
                         type="button"
-                        onClick={(e) => { e.preventDefault(); void handleSaveJob(ref); }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          void handleSaveJob(ref);
+                        }}
                         disabled={isSaving || isSaved}
                         title={isSaved ? "Saved" : "Save job"}
                         className={`ml-auto inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg border transition-colors cursor-pointer ${

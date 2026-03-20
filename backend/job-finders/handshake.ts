@@ -17,10 +17,10 @@ const DEFAULT_PER_PAGE = 50;
 function buildHandshakeSearchUrl(base: string, filters: SearchFilters | undefined, page: number, perPage: number): string {
   const params = new URLSearchParams();
   if (filters?.query?.trim()) params.set('query', filters.query.trim());
-  (filters?.employmentTypes ?? []).forEach((v) => params.append('employmentTypes', v));
-  (filters?.jobTypes ?? []).forEach((v) => params.append('jobType', v));
-  (filters?.remoteWork ?? []).forEach((v) => params.append('remoteWork', v));
-  (filters?.workAuthorization ?? []).forEach((v) => params.append('workAuthorization', v));
+  if (filters?.employmentTypes?.length) filters.employmentTypes.forEach((v) => params.append('employmentTypes', v));
+  if (filters?.jobTypes?.length) filters.jobTypes.forEach((v) => params.append('jobType', v));
+  if (filters?.remoteWork?.length) filters.remoteWork.forEach((v) => params.append('remoteWork', v));
+  if (filters?.workAuthorization?.length) filters.workAuthorization.forEach((v) => params.append('workAuthorization', v));
   params.set('page', String(page));
   params.set('per_page', String(perPage));
 
@@ -102,22 +102,12 @@ export const handshakeJobFinder: JobFinder = {
 
               let company: string | undefined;
               let companyLogoUrl: string | undefined;
-              const logoCell = card.querySelector('.sc-gtWJRm.hUKJVK');
-              if (logoCell) {
-                const img = logoCell.querySelector('img[src]');
-                if (img) {
-                  const src = img.getAttribute('src');
-                  if (src) companyLogoUrl = src;
-                  const alt = img.getAttribute('alt');
-                  if (alt) company = alt.trim();
-                }
-                if (!company) {
-                  const companySpan = card.querySelector('.sc-hrCmsx.desELz .sc-bJjNXm.cqsULw');
-                  if (companySpan) company = (companySpan.textContent || '').trim() || undefined;
-                }
-              } else {
-                const companySpan = card.querySelector('.sc-hrCmsx.desELz .sc-bJjNXm.cqsULw');
-                if (companySpan) company = (companySpan.textContent || '').trim() || undefined;
+              const img = card.querySelector('img[src]');
+              if (img) {
+                const src = img.getAttribute('src');
+                if (src) companyLogoUrl = src;
+                const alt = img.getAttribute('alt');
+                if (alt) company = alt.trim();
               }
 
               const titleEl = card.querySelector('div[aria-label^="View "]');
@@ -170,15 +160,7 @@ export const handshakeJobFinder: JobFinder = {
           });
         }
       }
-      if (filters?.query?.trim() || filters?.location?.trim()) {
-        const q = filters.query?.trim().toLowerCase();
-        const loc = filters.location?.trim().toLowerCase();
-        out = out.filter((j) => {
-          if (q && !j.title?.toLowerCase().includes(q) && !j.company?.toLowerCase().includes(q)) return false;
-          if (loc && !j.title?.toLowerCase().includes(loc) && !j.company?.toLowerCase().includes(loc) && !j.location?.toLowerCase().includes(loc)) return false;
-          return true;
-        });
-      }
+
       return out;
     } finally {
       await browser.close();
