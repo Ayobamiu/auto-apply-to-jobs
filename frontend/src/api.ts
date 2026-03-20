@@ -1,5 +1,7 @@
-const API_BASE = 'http://localhost:3000';
-
+const API_BASE = import.meta.env.VITE_API_BASE;
+if (!API_BASE) {
+  throw new Error('API_BASE is not set');
+}
 let onUnauthorized: (() => void) | null = null;
 
 export function setOnUnauthorized(cb: () => void): void {
