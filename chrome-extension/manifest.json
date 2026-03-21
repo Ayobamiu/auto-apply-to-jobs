@@ -13,7 +13,7 @@
   "host_permissions": [
     "*://*.joinhandshake.com/*",
     "https://merithq.io/*",
-    "*://merithq.io/*"
+    "https://www.merithq.io/*"
   ],
   "action": {
     "default_popup": "popup.html"
@@ -23,8 +23,9 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://merithq.io/*"],
-      "js": ["content.js"]
+      "matches": ["https://merithq.io/*", "https://www.merithq.io/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
     }
   ]
 }

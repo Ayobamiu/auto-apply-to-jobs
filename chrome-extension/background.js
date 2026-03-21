@@ -1,5 +1,5 @@
 const API_BASE = 'https://api.merithq.io';
-const APP_MATCH = "https://www.merithq.io/*";
+const APP_MATCH = "*://*.merithq.io/*";
 const HANDSHAKE_MATCH = ".joinhandshake.com";
 
 // Trigger sync when Handshake tabs are updated

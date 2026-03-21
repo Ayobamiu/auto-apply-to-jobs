@@ -3,6 +3,8 @@ async function updateStatus() {
   const appText = document.getElementById('app-text');
   const hsDot = document.getElementById('hs-dot');
   const hsText = document.getElementById('hs-text');
+  const APP_MATCH = "https://www.merithq.io/*";
+
 
   // 1. Check App Connection (merithq.io Tab)
   const tabs = await chrome.tabs.query({ url: APP_MATCH });
