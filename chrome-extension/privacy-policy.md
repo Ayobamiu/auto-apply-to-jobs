@@ -24,4 +24,3 @@ You can stop data collection at any time by:
 - Logging out of the Handshake Sync Pro extension.
 - Uninstalling the extension from your Chrome browser.
 - Revoking access via your Handshake Sync Pro account settings.
-  https://github.com/ayobami-at-daylight/auto-apply-to-jobs/blob/7c80f85dc1ad39287c08161560a74fd99d59f084/chrome-extension/privacy-policy.md
