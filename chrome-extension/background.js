@@ -1,5 +1,5 @@
-const API_BASE = 'https://auto-apply-to-jobs-production-a171.up.railway.app';
-const APP_MATCH = "http://localhost/*";
+const API_BASE = 'https://api.merithq.io';
+const APP_MATCH = "https://www.merithq.io/*";
 const HANDSHAKE_MATCH = ".joinhandshake.com";
 
 // Trigger sync when Handshake tabs are updated
@@ -40,7 +40,7 @@ async function handleAutoSync(tabId, tabUrl) {
     return;
   }
 
-  // 2. Get identity from localhost
+  // 2. Get identity from merithq.io
   const token = await getAppToken();
   if (!token) {
     chrome.action.setBadgeText({ text: "AUTH" });

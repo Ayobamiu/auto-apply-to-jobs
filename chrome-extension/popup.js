@@ -4,7 +4,7 @@ async function updateStatus() {
   const hsDot = document.getElementById('hs-dot');
   const hsText = document.getElementById('hs-text');
 
-  // 1. Check App Connection (Localhost Tab)
+  // 1. Check App Connection (merithq.io Tab)
   const tabs = await chrome.tabs.query({ url: APP_MATCH });
 
   if (tabs.length > 0) {

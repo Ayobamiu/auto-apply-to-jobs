@@ -1,3 +1,3 @@
-const API_BASE = 'https://auto-apply-to-jobs-production-a171.up.railway.app';
-const APP_MATCH = "http://localhost/*";
+const API_BASE = 'https://api.merithq.io';
+const APP_MATCH = "https://www.merithq.io/*";
 const HANDSHAKE_MATCH = ".joinhandshake.com";
