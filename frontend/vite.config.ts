@@ -9,6 +9,7 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    // This is for development (npm run dev)
     proxy: {
       '/auth': 'http://localhost:3000',
       '/chat': 'http://localhost:3000',
@@ -19,4 +20,10 @@ export default defineConfig({
       '/users': 'http://localhost:3000',
     },
   },
+  preview: {
+    // This is for production preview (npm run preview)
+    allowedHosts: true,
+    host: '0.0.0.0',
+    port: 4173,
+  }
 });
