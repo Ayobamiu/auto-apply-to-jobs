@@ -19,7 +19,8 @@
     "resume:edit": "tsx agents/resume_generator_agent/resume-edit-cli.ts",
     "pipeline": "tsx orchestration/run-pipeline.ts",
     "api": "nodemon --exec tsx api/server.ts --watch api --watch shared --watch orchestration --watch agents --watch data --ext ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "install-browsers": "playwright install chromium --with-deps && npx camoufox-js fetch"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -31,7 +32,6 @@
     "@types/supertest": "^6.0.3",
     "jsonresume-theme-even": "^0.26.1",
     "nodemon": "^3.1.0",
-    "playwright": "^1.49.0",
     "puppeteer": "^24.37.3",
     "resumed": "^6.1.0",
     "supertest": "^7.2.2",
@@ -51,6 +51,7 @@
     "moment": "^2.30.1",
     "multer": "^2.1.0",
     "openai": "^6.22.0",
+    "playwright": "^1.49.0",
     "pdf-parse": "^2.4.5",
     "pg": "^8.18.0",
     "turndown": "^7.2.2"

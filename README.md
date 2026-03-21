@@ -191,6 +191,32 @@ The repo is structured for multiple agents (each with a clear input/output):
   - `npm run pipeline` — job from file; generates resume only (no apply).
   - `npm run pipeline -- 'https://...'` — scrapes/caches job from URL, generates resume from it, then runs apply with that PDF.
 
+## Backend production (Railway / Docker)
+
+Playwright **does not** ship browser binaries with `npm install`. You must download them during the **build** (or bake them into the image). Camoufox (`camoufox-js`) also downloads its own Firefox build to the user cache (`camoufox fetch`).
+
+1. **Dependencies** — `playwright` is listed under `dependencies` in `backend/package.json` so production installs (`npm ci --omit=dev`) still install it.
+
+2. **Build step** — From the `backend/` directory, run after `npm install`:
+
+   ```bash
+   npm run install-browsers
+   ```
+
+   This runs `playwright install chromium --with-deps` (Chromium + Linux libs, including the headless shell Playwright uses) and `npx camoufox-js fetch` (Camoufox binary from GitHub).
+
+3. **Railway** — Set **Root Directory** to `backend` (or your API folder). Set **Build Command** to something like:
+
+   ```bash
+   npm install && npm run install-browsers
+   ```
+
+   Ensure the build can reach GitHub (Camoufox release download) and that you **do not** set `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` in production if you want Camoufox installs/updates (that env is also honored by `camoufox-js` and skips its fetch).
+
+4. **Fallback** — If `--with-deps` fails on your stack (unusual images), use a **Dockerfile** based on `mcr.microsoft.com/playwright` (Ubuntu) and run the same `npm run install-browsers` in the image, or set `PLAYWRIGHT_BROWSERS_PATH` to a path you control and pre-cache browsers there.
+
+5. **Force engine** — `BROWSER_ENGINE=chromium` or `BROWSER_ENGINE=camoufox` in `backend/shared/browser.ts` (see file for behavior).
+
 ## Project layout
 
 - `shared/` – Profile and job loaders (`profile.js`, `job.js`, `config.js`), `job-from-url.js` (scrape + cache), `apply-state.js` (per-job state), `json-resume.js` (profile → JSON Resume), sample `profile.json`, `job.json`
