@@ -12,6 +12,7 @@ import { PATHS, getPathsForUser } from './config.js';
 import {
   JOB_CACHE_MAX_AGE_MS,
   EXPAND_DESCRIPTION_MAX_CLICKS,
+  MAX_HTML_FOR_TURNDOWN_CHARS,
   resolveScrapeTimeoutMs,
   PAGE_GOTO_TIMEOUT_MS,
   NETWORK_IDLE_TIMEOUT_MS,
@@ -26,8 +27,12 @@ const turndown = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fen
 
 function htmlToMarkdown(html: string): string {
   if (!html || typeof html !== 'string') return '';
+  const capped =
+    html.length > MAX_HTML_FOR_TURNDOWN_CHARS
+      ? html.slice(0, MAX_HTML_FOR_TURNDOWN_CHARS)
+      : html;
   try {
-    let md = turndown.turndown(html).trim();
+    let md = turndown.turndown(capped).trim();
     md = md.replace(/\n{3,}/g, '\n\n');
     return md;
   } catch {
@@ -114,11 +119,14 @@ export async function scrapeJobFromPage(page: Page): Promise<ScrapedJob> {
     }
   } catch (_) { }
 
+  const locTimeout = 4000;
   let applyType: ApplyType = 'none';
   const applyButton = page.getByRole('button', { name: /apply/i }).first();
   const applyLink = page.getByRole('link', { name: /apply/i }).first();
-  const buttonText = (await applyButton.textContent().catch(() => null))?.trim() ?? '';
-  const linkText = (await applyLink.textContent().catch(() => null))?.trim() ?? '';
+  const buttonText =
+    (await applyButton.textContent({ timeout: locTimeout }).catch(() => null))?.trim() ?? '';
+  const linkText =
+    (await applyLink.textContent({ timeout: locTimeout }).catch(() => null))?.trim() ?? '';
   if (/apply\s+externally|apply\s+external/i.test(buttonText) || /apply\s+externally|apply\s+external/i.test(linkText)) {
     applyType = 'apply_externally';
   } else if (buttonText.toLowerCase().includes('apply') || linkText.toLowerCase().includes('apply')) {
@@ -145,50 +153,44 @@ export async function scrapeJobFromPage(page: Page): Promise<ScrapedJob> {
     }
   } catch (_) { }
 
-  const title = (await page.locator('h1').first().textContent().catch(() => null))?.trim() || '';
+  const title =
+    (await page.locator('h1').first().textContent({ timeout: locTimeout }).catch(() => null))?.trim() ||
+    '';
 
-  let company = (await page.locator('a[href^="/e/"]').first().getAttribute('aria-label').catch(() => null))?.trim() || '';
+  const empLink = page.locator('a[href^="/e/"]').first();
+  let company =
+    (await empLink.getAttribute('aria-label', { timeout: locTimeout }).catch(() => null))?.trim() || '';
   if (!company) {
-    company = (await page.locator('a[href^="/e/"]').first().locator('div').first().textContent().catch(() => null))?.trim() || '';
+    company =
+      (await empLink.locator('div').first().textContent({ timeout: locTimeout }).catch(() => null))?.trim() ||
+      '';
   }
   if (!company) {
-    company = (await page.locator('a[href^="/e/"]').first().textContent().catch(() => null))?.trim() || '';
+    company =
+      (await empLink.textContent({ timeout: locTimeout }).catch(() => null))?.trim() || '';
   }
 
   await expandDescriptionSections(page);
   await new Promise((r) => setTimeout(r, 500));
 
   let description = '';
-  const jobDetailsPage = page.locator('[data-hook="job-details-page"]').first();
+
+  // Prefer text/DOM paths first. Turndown on full job-details HTML can take minutes on small CPUs.
+  const descriptionBlock = page.locator('.cSDQep').first();
   try {
-    await jobDetailsPage.waitFor({ state: 'attached', timeout: 4000 });
-    const htmlFromDetailsPage = await jobDetailsPage.evaluate((root: Element) => {
-      const container = root.firstElementChild;
-      if (!container) return root.innerHTML;
-      const children = Array.from(container.children);
-      if (children.length >= 2) {
-        children[children.length - 1].remove();
-        children[children.length - 2].remove();
-      }
-      return root.innerHTML;
-    });
-    description = htmlToMarkdown(htmlFromDetailsPage).replace(/\s*(More|Less)\s*$/gm, '').trim();
-    if (description.length > 500) description = description.slice(0, 20000);
+    await descriptionBlock.waitFor({ state: 'attached', timeout: 3000 });
+    await descriptionBlock.scrollIntoViewIfNeeded().catch(() => { });
+    await new Promise((r) => setTimeout(r, 300));
+    const raw = await descriptionBlock.evaluate((el: Element) => el?.textContent ?? '');
+    description = (
+      raw ||
+      (await descriptionBlock.innerText({ timeout: locTimeout }).catch(() => null))?.trim() ||
+      ''
+    ).trim();
+    description = description.replace(/\s*(More|Less)\s*$/gm, '').trim();
   } catch (_) { }
 
   if (!description || description.length < 100) {
-    const descriptionBlock = page.locator('.cSDQep').first();
-    try {
-      await descriptionBlock.waitFor({ state: 'attached', timeout: 3000 });
-      await descriptionBlock.scrollIntoViewIfNeeded().catch(() => { });
-      await new Promise((r) => setTimeout(r, 500));
-      const raw = await descriptionBlock.evaluate((el: Element) => el?.textContent ?? '');
-      description = (raw || (await descriptionBlock.innerText().catch(() => null))?.trim() || '').trim();
-      description = description.replace(/\s*(More|Less)\s*$/gm, '').trim();
-    } catch (_) { }
-  }
-
-  if (!description) {
     try {
       const fromViewMore = await page.evaluate(() => {
         const btn = document.querySelector('button.view-more-button');
@@ -204,9 +206,34 @@ export async function scrapeJobFromPage(page: Page): Promise<ScrapedJob> {
     } catch (_) { }
   }
 
-  if (!description) {
+  if (!description || description.length < 100) {
     description =
-      (await page.locator('[data-hook="job-detail-description"], [class*="description"]').first().innerText().catch(() => null))?.trim()?.slice(0, 12000) || '';
+      (await page
+        .locator('[data-hook="job-detail-description"], [class*="description"]')
+        .first()
+        .innerText({ timeout: locTimeout })
+        .catch(() => null))
+        ?.trim()
+        ?.slice(0, 12000) || '';
+  }
+
+  if (!description || description.length < 100) {
+    const jobDetailsPage = page.locator('[data-hook="job-details-page"]').first();
+    try {
+      await jobDetailsPage.waitFor({ state: 'attached', timeout: 4000 });
+      const htmlFromDetailsPage = await jobDetailsPage.evaluate((root: Element) => {
+        const container = root.firstElementChild;
+        if (!container) return root.innerHTML;
+        const children = Array.from(container.children);
+        if (children.length >= 2) {
+          children[children.length - 1].remove();
+          children[children.length - 2].remove();
+        }
+        return root.innerHTML;
+      });
+      description = htmlToMarkdown(htmlFromDetailsPage).replace(/\s*(More|Less)\s*$/gm, '').trim();
+      if (description.length > 500) description = description.slice(0, 20000);
+    } catch (_) { }
   }
 
   return { title, company, description, url, applyType, applicationSubmitted, jobClosed, ...(appliedAt && { appliedAt }) };

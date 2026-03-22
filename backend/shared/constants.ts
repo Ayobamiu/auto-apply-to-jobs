@@ -23,6 +23,9 @@ export function resolveScrapeTimeoutMs(headless: boolean): number {
 export const JOB_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
 export const EXPAND_DESCRIPTION_MAX_CLICKS = 20;
 
+/** Turndown on larger HTML can block the Node event loop for minutes on small hosts; truncate first. */
+export const MAX_HTML_FOR_TURNDOWN_CHARS = 200_000;
+
 /** Page.goto timeout for most navigations. */
 export const PAGE_GOTO_TIMEOUT_MS = 20_000;
 /** waitForLoadState('networkidle') timeout. */

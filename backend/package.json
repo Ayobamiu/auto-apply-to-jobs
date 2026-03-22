@@ -19,6 +19,7 @@
     "resume:edit": "tsx agents/resume_generator_agent/resume-edit-cli.ts",
     "pipeline": "tsx orchestration/run-pipeline.ts",
     "api": "nodemon --exec tsx api/server.ts --watch api --watch shared --watch orchestration --watch agents --watch data --ext ts",
+    "api:start": "tsx api/server.ts",
     "typecheck": "tsc --noEmit",
     "install-browsers": "playwright install chromium --with-deps && npx camoufox-js fetch"
   },

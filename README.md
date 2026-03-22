@@ -211,6 +211,8 @@ Playwright **does not** ship browser binaries with `npm install`. You must downl
    npm install && npm run install-browsers
    ```
 
+   Set **Start Command** to **`npm run api:start`** (runs `tsx api/server.ts`). **Do not** use `npm run api` in production — that wraps **nodemon**, which watches the filesystem and is prone to **SIGTERM** / restarts on PaaS.
+
    Ensure the build can reach GitHub (Camoufox release download) and that you **do not** set `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` in production if you want Camoufox installs/updates (that env is also honored by `camoufox-js` and skips its fetch).
 
 4. **Fallback** — If `--with-deps` fails on your stack (unusual images), use a **Dockerfile** based on `mcr.microsoft.com/playwright` (Ubuntu) and run the same `npm run install-browsers` in the image, or set `PLAYWRIGHT_BROWSERS_PATH` to a path you control and pre-cache browsers there.
@@ -219,8 +221,9 @@ Playwright **does not** ship browser binaries with `npm install`. You must downl
 
 6. **Job scrape timeouts** — Headless scrapes use a **90s** wall clock by default (`resolveScrapeTimeoutMs` in `backend/shared/constants.ts`). If production hits “Job scrape timed out”, try:
    - **`SCRAPE_TIMEOUT_MS`** — e.g. `180000` (3 minutes) on Railway to allow slow pages / cold starts.
-   - **Valid Handshake session** — Without `storageState` / logged-in cookies, the job page may never reach the description block; scraping waits until it times out. Ensure the server has the same session strategy your scraper expects (see `getPathsForUser` / auth state paths).
-   - **Resources** — Low CPU/RAM on the host slows Chromium; consider a larger Railway plan if timeouts persist after raising `SCRAPE_TIMEOUT_MS`.
+   - **Valid Handshake session** — `getJobFromUrl` loads **`getPathsForUser('default').authState`** only today. On Railway you need **`.auth/default/handshake-state.json`** (or equivalent deploy artifact) so Handshake isn’t a login/bot wall; otherwise Playwright used to sit on long default timeouts and Turndown on huge HTML could burn the rest of the budget.
+   - **Resources** — Low CPU/RAM on the host slows Chromium and **Turndown** (description extraction); the scraper now prefers **text** selectors before HTML→markdown and caps HTML size (`MAX_HTML_FOR_TURNDOWN_CHARS`).
+   - **Start command** — Use `api:start`, not nodemon (see above); random SIGTERM mid-scrape looks like timeouts.
 
 ## Project layout
 
