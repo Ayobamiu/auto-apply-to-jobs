@@ -7,6 +7,19 @@
 
 export const SCRAPE_TIMEOUT_HEADLESS_MS = 90_000;
 export const SCRAPE_TIMEOUT_HEADED_MS = 120_000;
+
+/**
+ * Production: set `SCRAPE_TIMEOUT_MS` (milliseconds, ≥5000, capped at 10 min) on the host
+ * when headless scrapes hit the default 90s limit (slow network, cold start, heavy pages).
+ */
+export function resolveScrapeTimeoutMs(headless: boolean): number {
+  const raw = process.env.SCRAPE_TIMEOUT_MS;
+  if (raw != null && raw !== "") {
+    const n = parseInt(String(raw), 10);
+    if (Number.isFinite(n) && n >= 5000) return Math.min(n, 600_000);
+  }
+  return headless ? SCRAPE_TIMEOUT_HEADLESS_MS : SCRAPE_TIMEOUT_HEADED_MS;
+}
 export const JOB_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
 export const EXPAND_DESCRIPTION_MAX_CLICKS = 20;
 

@@ -12,8 +12,7 @@ import { PATHS, getPathsForUser } from './config.js';
 import {
   JOB_CACHE_MAX_AGE_MS,
   EXPAND_DESCRIPTION_MAX_CLICKS,
-  SCRAPE_TIMEOUT_HEADLESS_MS,
-  SCRAPE_TIMEOUT_HEADED_MS,
+  resolveScrapeTimeoutMs,
   PAGE_GOTO_TIMEOUT_MS,
   NETWORK_IDLE_TIMEOUT_MS,
   POST_NAVIGATE_DELAY_MS,
@@ -236,7 +235,7 @@ export async function getJobFromUrl(jobUrl: string, options: GetJobFromUrlOption
     } catch (_) { }
   }
 
-  const SCRAPE_TIMEOUT_MS = headless ? SCRAPE_TIMEOUT_HEADLESS_MS : SCRAPE_TIMEOUT_HEADED_MS;
+  const SCRAPE_TIMEOUT_MS = resolveScrapeTimeoutMs(headless);
   if (!headless) {
     console.log('Job scrape: using visible browser (SCRAPE_HEADED=1). A window will open; it will close after scraping.');
   }

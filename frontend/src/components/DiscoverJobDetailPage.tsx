@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -60,11 +60,18 @@ export function DiscoverJobDetailPage() {
   const [formSaved, setFormSaved] = useState(false);
   const [formAnswers, setFormAnswers] = useState<GeneratedAnswer[]>([]);
 
+  /** Prevents overlapping silent pipeline polls (interval tick while prior GET still in flight). */
+  const silentPollInFlightRef = useRef(false);
+
   const loadDetail = useCallback(async (ref: string, silent = false) => {
+    if (silent && silentPollInFlightRef.current) {
+      return;
+    }
     if (!silent) {
       setDetailLoading(true);
       setDetailError(null);
     }
+    if (silent) silentPollInFlightRef.current = true;
     try {
       setDetail(await getJobDetail(ref));
     } catch (err) {
@@ -74,6 +81,7 @@ export function DiscoverJobDetailPage() {
       }
     } finally {
       if (!silent) setDetailLoading(false);
+      if (silent) silentPollInFlightRef.current = false;
     }
   }, []);
 
@@ -132,7 +140,7 @@ export function DiscoverJobDetailPage() {
     pipelineStatus === "pending" || pipelineStatus === "running";
   useEffect(() => {
     if (!jobRef || !isPipelineActive) return;
-    const id = setInterval(() => loadDetail(jobRef, true), 2500);
+    const id = setInterval(() => loadDetail(jobRef, true), 4000);
     return () => clearInterval(id);
   }, [jobRef, isPipelineActive, loadDetail]);
 

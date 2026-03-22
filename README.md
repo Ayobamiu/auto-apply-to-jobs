@@ -217,6 +217,11 @@ Playwright **does not** ship browser binaries with `npm install`. You must downl
 
 5. **Force engine** — `BROWSER_ENGINE=chromium` or `BROWSER_ENGINE=camoufox` in `backend/shared/browser.ts` (see file for behavior).
 
+6. **Job scrape timeouts** — Headless scrapes use a **90s** wall clock by default (`resolveScrapeTimeoutMs` in `backend/shared/constants.ts`). If production hits “Job scrape timed out”, try:
+   - **`SCRAPE_TIMEOUT_MS`** — e.g. `180000` (3 minutes) on Railway to allow slow pages / cold starts.
+   - **Valid Handshake session** — Without `storageState` / logged-in cookies, the job page may never reach the description block; scraping waits until it times out. Ensure the server has the same session strategy your scraper expects (see `getPathsForUser` / auth state paths).
+   - **Resources** — Low CPU/RAM on the host slows Chromium; consider a larger Railway plan if timeouts persist after raising `SCRAPE_TIMEOUT_MS`.
+
 ## Project layout
 
 - `shared/` – Profile and job loaders (`profile.js`, `job.js`, `config.js`), `job-from-url.js` (scrape + cache), `apply-state.js` (per-job state), `json-resume.js` (profile → JSON Resume), sample `profile.json`, `job.json`
