@@ -1,10 +1,10 @@
-publish extension
-connect frontend url to Extension
-deploy frontend
-connect backend url to Extension
-auto-fix and populate user's profile when they correct forms
 Profile set as part of Onboarding
+auto-fix and populate user's profile when they correct forms
 Bug: edit hostories not saved
+x publish extension
+x connect frontend url to Extension
+x deploy frontend
+x connect backend url to Extension
 x deploy backend
 x Fix search and limit filters to query, location and onsite/remote
 x Remove "wmich.joinhandshake" as base url

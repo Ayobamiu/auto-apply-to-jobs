@@ -155,9 +155,10 @@ export function DiscoverJobDetailPage() {
   const hasArtifacts = !!(artifacts?.resume || artifacts?.cover);
   // Show Dynamic Form if there are items in the classifiedFields with intent not "upload_other_document"
   const hasDynamicForm =
-    !!artifacts?.dynamicForm &&
+    artifacts?.dynamicForm &&
+    artifacts.dynamicForm.classifiedFields &&
     artifacts.dynamicForm.classifiedFields.some(
-      (f) => f.intent !== "upload_other_document",
+      (f) => f.fieldType !== "file_upload",
     );
   const hasWrittenDocument =
     !!artifacts?.writtenDocuments && artifacts.writtenDocuments.length > 0;
