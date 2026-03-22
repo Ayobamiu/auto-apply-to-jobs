@@ -8,7 +8,8 @@ import { join } from 'path';
 import type { Page } from 'playwright';
 import TurndownService from 'turndown';
 import { launchBrowser } from './browser.js';
-import { PATHS, getPathsForUser } from './config.js';
+import { PATHS } from './config.js';
+import { resolvePlaywrightStorageStateForUser } from '../data/handshake-session.js';
 import {
   JOB_CACHE_MAX_AGE_MS,
   EXPAND_DESCRIPTION_MAX_CLICKS,
@@ -269,9 +270,11 @@ export async function getJobFromUrl(jobUrl: string, options: GetJobFromUrlOption
 
   const useAuth = options.useAuth !== false;
   const browser = await launchBrowser({ headless });
-  const context = await browser.newContext(
-    useAuth && existsSync(getPathsForUser('default').authState) ? { storageState: getPathsForUser('default').authState } : {}
+  const storageOpts = await resolvePlaywrightStorageStateForUser(
+    options.userId,
+    useAuth,
   );
+  const context = await browser.newContext(storageOpts);
   const page = await context.newPage();
 
   const doScrape = async (): Promise<Job & { url: string }> => {
@@ -352,9 +355,11 @@ export async function getApplicationStatusFromUrl(
   const headless = options.headless ?? !(process.env.SCRAPE_HEADED === '1' || process.env.SCRAPE_HEADED === 'true');
   const useAuth = options.useAuth !== false;
   const browser = await launchBrowser({ headless });
-  const context = await browser.newContext(
-    useAuth && existsSync(getPathsForUser('default').authState) ? { storageState: getPathsForUser('default').authState } : {}
+  const storageOpts = await resolvePlaywrightStorageStateForUser(
+    options.userId,
+    useAuth,
   );
+  const context = await browser.newContext(storageOpts);
   const page = await context.newPage();
   try {
     await page.goto(normalized, { waitUntil: 'domcontentloaded', timeout: PAGE_GOTO_TIMEOUT_MS });

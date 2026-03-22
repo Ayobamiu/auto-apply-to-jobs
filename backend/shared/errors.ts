@@ -11,6 +11,8 @@ export const CODES = {
   JOB_NOT_FOUND: 'JOB_NOT_FOUND',
   PREFLIGHT_FAILED: 'PREFLIGHT_FAILED',
   SCRAPE_TIMEOUT: 'SCRAPE_TIMEOUT',
+  /** Scraped page looks like Handshake login / SSO (no server browser session). */
+  SCRAPE_LOGIN_WALL: 'SCRAPE_LOGIN_WALL',
   MISSING_API_KEY: 'MISSING_API_KEY',
   NOT_SUPPORTED_SITE: 'NOT_SUPPORTED_SITE',
 } as const;
@@ -27,6 +29,8 @@ const DEFAULT_MESSAGES: Record<AppErrorCode, string> = {
   [CODES.JOB_NOT_FOUND]: 'Job not found.',
   [CODES.PREFLIGHT_FAILED]: 'Preflight check failed.',
   [CODES.SCRAPE_TIMEOUT]: 'Job scrape timed out. Try SCRAPE_HEADED=1 or check the page.',
+  [CODES.SCRAPE_LOGIN_WALL]:
+    'Handshake returned a login page instead of the job. Configure a saved browser session on the server (e.g. .auth/default/handshake-state.json).',
   [CODES.MISSING_API_KEY]: 'OPENAI_API_KEY is required (or pass apiKey in options).',
   [CODES.NOT_SUPPORTED_SITE]: 'This job or site is not supported for apply.',
 };

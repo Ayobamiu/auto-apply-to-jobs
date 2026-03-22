@@ -9,7 +9,7 @@ import { getSubmittedJobs, getUserJobState, setJobLifecycleStatus, getJobsByLife
 import { getResumeForJob } from '../../data/job-artifacts.js';
 import { getLatestPipelineJobByJobUrl } from '../../data/pipeline-jobs.js';
 import { normalizePipelineOutcome, getPipelineOutcomeMessage } from '../../shared/pipeline-outcome.js';
-import { isNonRetryableFailureCode } from '../../shared/errors.js';
+import { isAppError, isNonRetryableFailureCode, CODES } from '../../shared/errors.js';
 
 export async function getJobs(req: Request, res: Response): Promise<void> {
   const userId = req.userId;
@@ -138,11 +138,23 @@ export async function postScrapeJobDetail(req: Request, res: Response): Promise<
   const HANDSHAKE_JOBS_BASE = process.env.HANDSHAKE_JOBS_BASE_URL || 'https://wmich.joinhandshake.com';
   const jobUrl = site === 'handshake' ? `${HANDSHAKE_JOBS_BASE}/jobs/${jobId}` : null;
   if (jobUrl) {
-    const { job: scrapedJob } = await runJobScraper(jobUrl, { forceScrape: false });
-    if (scrapedJob) {
-      res.status(200).json({ job: scrapedJob });
-    } else {
-      res.status(500).json({ error: 'Failed to scrape job' });
+    try {
+      const { job: scrapedJob } = await runJobScraper(jobUrl, {
+        forceScrape: false,
+        userId,
+      });
+      if (scrapedJob) {
+        res.status(200).json({ job: scrapedJob });
+      } else {
+        res.status(500).json({ error: 'Failed to scrape job' });
+      }
+    } catch (err) {
+      if (isAppError(err) && err.code === CODES.SCRAPE_LOGIN_WALL) {
+        res.status(503).json({ error: err.message, code: err.code });
+        return;
+      }
+      const message = err instanceof Error ? err.message : 'Failed to scrape job';
+      res.status(500).json({ error: message });
     }
   } else {
     res.status(404).json({ error: 'Job not found' });

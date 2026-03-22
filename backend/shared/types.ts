@@ -274,11 +274,14 @@ export interface GetJobFromUrlOptions {
   cacheDir?: string;
   maxAgeMs?: number;
   headless?: boolean;
+  /** Load Handshake cookies from DB (`handshake_sessions`) or `.auth/<userId>/` fallback. */
+  userId?: string;
 }
 
 export interface GetApplicationStatusFromUrlOptions {
   headless?: boolean;
   useAuth?: boolean;
+  userId?: string;
 }
 
 export interface ProbeResult {
@@ -292,6 +295,7 @@ export interface RunJobScraperOptions {
   useAuth?: boolean;
   maxAgeMs?: number;
   forceScrape?: boolean;
+  userId?: string;
 }
 
 export interface RunJobScraperResult {

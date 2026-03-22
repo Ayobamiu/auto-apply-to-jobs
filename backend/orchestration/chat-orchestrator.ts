@@ -373,7 +373,7 @@ async function handleApply(
   let mismatch: JobProfileMismatchResult | null = null;
   try {
     const profile = await getProfile(userId);
-    const { job } = await runJobScraper(url, { forceScrape: false });
+    const { job } = await runJobScraper(url, { forceScrape: false, userId });
     if (job.jobClosed === true) {
       return { reply: 'This job posting appears to be closed.' };
     }
@@ -381,8 +381,11 @@ async function handleApply(
       return { reply: messageForCode(CODES.APPLY_EXTERNALLY) };
     }
     mismatch = await checkJobProfileMismatch(profile ?? {}, job);
-  } catch {
-    // Ignore; proceed with apply
+  } catch (err) {
+    if (isAppError(err) && err.code === CODES.SCRAPE_LOGIN_WALL) {
+      return { reply: err.message };
+    }
+    // Ignore other scrape errors; proceed with apply (legacy behavior)
   }
 
   const mismatchPrefix = formatMismatchPrefix(mismatch);

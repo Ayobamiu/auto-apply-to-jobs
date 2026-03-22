@@ -69,7 +69,10 @@ export async function runPipelineForJob(
     onPhase?.('Scraping job...');
     console.log('Step 0: Get job from URL (scrape or cache)...');
     const endStep0 = startPhase('Step 0: Get job (scrape or cache)');
-    const { job: scrapedJob } = await runJobScraper(jobUrl, { forceScrape: options.forceScrape });
+    const { job: scrapedJob } = await runJobScraper(jobUrl, {
+      forceScrape: options.forceScrape,
+      userId,
+    });
     job = scrapedJob;
     endStep0();
     await throwIfCancelled(options.checkCancelled);

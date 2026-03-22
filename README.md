@@ -221,9 +221,10 @@ Playwright **does not** ship browser binaries with `npm install`. You must downl
 
 6. **Job scrape timeouts** — Headless scrapes use a **90s** wall clock by default (`resolveScrapeTimeoutMs` in `backend/shared/constants.ts`). If production hits “Job scrape timed out”, try:
    - **`SCRAPE_TIMEOUT_MS`** — e.g. `180000` (3 minutes) on Railway to allow slow pages / cold starts.
-   - **Valid Handshake session** — `getJobFromUrl` loads **`getPathsForUser('default').authState`** only today. On Railway you need **`.auth/default/handshake-state.json`** (or equivalent deploy artifact) so Handshake isn’t a login/bot wall; otherwise Playwright used to sit on long default timeouts and Turndown on huge HTML could burn the rest of the budget.
+   - **Valid Handshake session** — Job scrape and apply use **`resolvePlaywrightStorageStateForUser`** / **`getHandshakeSessionPath(userId)`**: **`handshake_sessions`** in Postgres first, then **`.auth/<userId>/handshake-state.json`** for CLI. API routes pass the JWT `userId`, so production users need a row in **`handshake_sessions`** (e.g. extension connect), not only a local default file.
    - **Resources** — Low CPU/RAM on the host slows Chromium and **Turndown** (description extraction); the scraper now prefers **text** selectors before HTML→markdown and caps HTML size (`MAX_HTML_FOR_TURNDOWN_CHARS`).
    - **Start command** — Use `api:start`, not nodemon (see above); random SIGTERM mid-scrape looks like timeouts.
+   - **Login-wall scrapes** — If Postgres shows `title` like **“Sign up or log in”**, the server scraped the auth page. The API returns **503** with `SCRAPE_LOGIN_WALL` and **does not overwrite** a row that already has real description/company. Fix the root cause with a server Handshake session; re-scrape or patch bad rows manually if they were saved before this guard.
 
 ## Project layout
 

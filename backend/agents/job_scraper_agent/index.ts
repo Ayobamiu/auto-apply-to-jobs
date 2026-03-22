@@ -14,6 +14,11 @@ import {
   toHandshakeJobDetailsUrl,
 } from '../../shared/job-from-url.js';
 import { getJob, updateJob } from '../../data/jobs.js';
+import { AppError, CODES } from '../../shared/errors.js';
+import {
+  isHandshakeAuthWallScrape,
+  jobRowHasSubstantialContent,
+} from '../../shared/scrape-auth-wall.js';
 import { PATHS, resolveUserId } from '../../shared/config.js';
 import { getUserJobState, toJobRef } from '../../data/user-job-state.js';
 import type { Job } from '../../shared/types.js';
@@ -48,10 +53,30 @@ export async function runJobScraper(jobUrl: string, options: RunJobScraperOption
     cacheDir: options.cacheDir,
     headless: options.headless,
     useAuth: options.useAuth,
+    maxAgeMs: options.maxAgeMs,
+    userId: options.userId,
   });
 
   const fileKey = jobId || cacheKey(jobUrl);
   const htmlPath = join(cacheDir, `${fileKey}.html`);
+
+  if (jobId && site && isHandshakeAuthWallScrape(job)) {
+    const existing = await getJob(site, jobId);
+    if (existing && jobRowHasSubstantialContent(existing)) {
+      return {
+        job: {
+          ...existing,
+          url: existing.url || job.url,
+          jobId: existing.jobId ?? jobId,
+          site: existing.site ?? site,
+        },
+        jobsFilePath: PATHS.jobsFile,
+        fromStore: true,
+        htmlPath: existsSync(htmlPath) ? htmlPath : null,
+      };
+    }
+    throw new AppError(CODES.SCRAPE_LOGIN_WALL);
+  }
 
   if (jobId && site) {
     const payload: Partial<Job> = {
@@ -102,7 +127,7 @@ export async function getApplicationStatus(
     return { applicationSubmitted: false, fromStore: false };
   }
 
-  const result = await getApplicationStatusFromUrl(jobUrl);
+  const result = await getApplicationStatusFromUrl(jobUrl, { userId });
   return { ...result, fromStore: false };
 }
 
@@ -152,7 +177,7 @@ if (process.argv[1] === __filename) {
       });
   } else {
     const userId = resolveUserId({ envUserId: process.env.USER_ID, argv: process.argv });
-    runJobScraper(jobUrl, { forceScrape: getForceScrape() })
+    runJobScraper(jobUrl, { forceScrape: getForceScrape(), userId })
       .then(async ({ job, jobsFilePath, fromStore, htmlPath }) => {
         if (fromStore) console.log('(from store, skip re-scrape; use --force or FORCE_SCRAPE=1 to re-scrape)');
         console.log('Job:', job?.title || job?.company || jobUrl);

@@ -94,3 +94,15 @@ export async function getHandshakeSessionPath(userId: string): Promise<string | 
   if (existsSync(filePath)) return filePath;
   return null;
 }
+
+/**
+ * Playwright `browser.newContext` options: DB session (temp file) or `.auth/<userId>/` file fallback.
+ */
+export async function resolvePlaywrightStorageStateForUser(
+  userId: string | undefined,
+  useAuth: boolean,
+): Promise<{ storageState: string } | Record<string, never>> {
+  if (!useAuth) return {};
+  const path = await getHandshakeSessionPath(userId ?? 'default');
+  return path ? { storageState: path } : {};
+}
