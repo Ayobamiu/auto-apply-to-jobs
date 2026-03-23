@@ -1,6 +1,8 @@
-Profile set as part of Onboarding
+fix resume dowload feature: resume PDF doesnt have all the details in preview
+Monetize
 auto-fix and populate user's profile when they correct forms
 Bug: edit hostories not saved
+x Profile set as part of Onboarding
 x publish extension
 x connect frontend url to Extension
 x deploy frontend

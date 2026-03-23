@@ -12,10 +12,12 @@ import {
 import { useAiEditor } from "../hooks/useAiEditor";
 import { ReviewBar } from "../components/ReviewBar";
 import {
+  downloadPipelineArtifactPdf,
   getPipelineJobStatus,
   postResumeUpdate,
   putPipelineArtifactResume,
 } from "../api";
+import { Spin } from "antd";
 
 const STANDALONE_KEY = "auto-apply-resume-editor-draft";
 
@@ -208,6 +210,19 @@ export function ResumeEditorApp({
     }
   }, [isSubmitted, hasUnsavedChanges, persistResume, resume]);
 
+  const [downloadingResume, setDownloadingResume] = useState(false);
+  const handleDownloadResume = useCallback(async () => {
+    if (!jobId) return void window.print();
+    setDownloadingResume(true);
+    try {
+      await downloadPipelineArtifactPdf(jobId, "resume");
+    } catch (err) {
+      console.error("Failed to download resume", err);
+    } finally {
+      setDownloadingResume(false);
+    }
+  }, [jobId]);
+
   return (
     <div className="flex flex-col h-full bg-white text-gray-900">
       {/* Top bar */}
@@ -245,10 +260,12 @@ export function ResumeEditorApp({
             </button>
             {mode === "preview" && (
               <button
-                onClick={() => window.print()}
+                onClick={handleDownloadResume}
+                disabled={downloadingResume}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50"
               >
-                <Download size={14} /> PDF
+                <Download size={14} /> PDF{" "}
+                <Spin size="small" spinning={downloadingResume} />
               </button>
             )}
             {hasUnsavedChanges && (
@@ -294,7 +311,8 @@ export function ResumeEditorApp({
           {mode === "preview" && (
             <button
               type="button"
-              onClick={() => window.print()}
+              onClick={handleDownloadResume}
+              disabled={downloadingResume}
               className="h-14 px-6 flex items-center gap-2 rounded-full bg-white text-slate-700 border border-slate-200/80 shadow-[0_4px_12px_rgba(0,0,0,0.05)] transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95 group"
             >
               <Download
@@ -304,6 +322,7 @@ export function ResumeEditorApp({
               <span className="hidden lg:block font-semibold text-sm text-slate-600 group-hover:text-slate-900">
                 Download PDF
               </span>
+              <Spin size="small" spinning={downloadingResume} />
             </button>
           )}
           {hasUnsavedChanges && (
