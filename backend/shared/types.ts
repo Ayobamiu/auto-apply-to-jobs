@@ -566,3 +566,10 @@ export interface SiteFormExtractor {
   /** Fill non-file form fields using classified fields and answers. */
   fillForm(page: unknown, modalLocator: unknown, fields: ClassifiedField[], answers: GeneratedAnswer[]): Promise<Array<{ fieldId: string; success: boolean; error?: string }>>;
 }
+
+export interface OnboardingStatusResponse {
+  resume_uploaded: boolean;
+  profile_complete: boolean;
+  handshake_connected: boolean;
+  transcript_uploaded: boolean;
+}

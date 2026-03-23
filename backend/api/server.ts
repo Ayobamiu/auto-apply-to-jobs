@@ -20,6 +20,7 @@ import {
   putProfile,
   postProfileFromResume,
   profileFromResumeUpload,
+  getOnboardingStatusHandler,
 } from './routes/profile.js';
 import { postHandshakeSessionUpload, getHandshakeSessionStatusHandler } from './routes/handshake-session.js';
 import {
@@ -114,6 +115,7 @@ app.get('/settings', authMiddleware, getSettings);
 app.put('/settings', authMiddleware, putSettings);
 app.post('/handshake/session/upload', authMiddleware, postHandshakeSessionUpload);
 app.get('/handshake/session/status', authMiddleware, getHandshakeSessionStatusHandler);
+app.get('/user/onboarding-status', authMiddleware, getOnboardingStatusHandler);
 app.get('/users/me/transcript', authMiddleware, getTranscriptStatus);
 app.get('/users/me/transcript/preview-url', authMiddleware, getTranscriptPreviewUrl);
 app.post('/users/me/transcript', authMiddleware, transcriptUpload, postTranscript);

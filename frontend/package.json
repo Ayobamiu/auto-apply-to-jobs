@@ -29,6 +29,7 @@
     "fast-json-patch": "^3.1.1",
     "i": "^0.3.7",
     "jsonresume-theme-even": "^0.26.1",
+    "jwt-decode": "^4.0.0",
     "lodash": "^4.17.23",
     "lucide-react": "^0.577.0",
     "npm": "^11.11.0",

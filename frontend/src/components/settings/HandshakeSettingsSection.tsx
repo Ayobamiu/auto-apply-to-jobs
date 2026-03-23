@@ -1,13 +1,26 @@
 import { useCallback, useEffect, useState } from "react";
-import { RefreshCw, CheckCircle, XCircle, AlertTriangle, Copy, Check, Loader2 } from "lucide-react";
-import { getHandshakeSessionStatus, type HandshakeSessionStatus } from "../../api";
+import {
+  RefreshCw,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  Copy,
+  Check,
+  Loader2,
+} from "lucide-react";
+import {
+  getHandshakeSessionStatus,
+  type HandshakeSessionStatus,
+} from "../../api";
 
 function copyToClipboard(text: string): Promise<void> {
   return navigator.clipboard.writeText(text);
 }
 
 function getToken(): string {
-  return typeof localStorage !== "undefined" ? (localStorage.getItem("token") ?? "") : "";
+  return typeof localStorage !== "undefined"
+    ? (localStorage.getItem("token") ?? "")
+    : "";
 }
 
 export function HandshakeSettingsSection() {
@@ -27,7 +40,9 @@ export function HandshakeSettingsSection() {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -52,7 +67,7 @@ export function HandshakeSettingsSection() {
   return (
     <div className="space-y-6">
       <p className="text-sm text-gray-500">
-        AutoApply uses your Handshake session to submit applications on your behalf.
+        Merit uses your Handshake session to submit applications on your behalf.
         Keep your session active so applications can run smoothly.
       </p>
 
@@ -68,8 +83,8 @@ export function HandshakeSettingsSection() {
             isConnected
               ? "bg-emerald-50 border-emerald-100"
               : isExpired
-              ? "bg-amber-50 border-amber-100"
-              : "bg-red-50 border-red-100"
+                ? "bg-amber-50 border-amber-100"
+                : "bg-red-50 border-red-100"
           }`}
         >
           <div className="flex-shrink-0 mt-0.5">
@@ -84,25 +99,33 @@ export function HandshakeSettingsSection() {
           <div className="flex-1 min-w-0">
             <p
               className={`text-sm font-semibold ${
-                isConnected ? "text-emerald-800" : isExpired ? "text-amber-800" : "text-red-700"
+                isConnected
+                  ? "text-emerald-800"
+                  : isExpired
+                    ? "text-amber-800"
+                    : "text-red-700"
               }`}
             >
               {isConnected
                 ? "Connected to Handshake"
                 : isExpired
-                ? "Session expired"
-                : "Not connected"}
+                  ? "Session expired"
+                  : "Not connected"}
             </p>
             <p
               className={`text-xs mt-0.5 ${
-                isConnected ? "text-emerald-600" : isExpired ? "text-amber-600" : "text-red-600"
+                isConnected
+                  ? "text-emerald-600"
+                  : isExpired
+                    ? "text-amber-600"
+                    : "text-red-600"
               }`}
             >
               {isConnected
                 ? "Your session is active and ready for applications."
                 : isExpired
-                ? "Your Handshake session has expired. Follow the steps below to reconnect."
-                : "Connect your Handshake account to enable automatic applications."}
+                  ? "Your Handshake session has expired. Follow the steps below to reconnect."
+                  : "Connect your Handshake account to enable automatic applications."}
             </p>
             {status?.updatedAt && (
               <p className="text-xs text-gray-400 mt-1">
@@ -117,7 +140,9 @@ export function HandshakeSettingsSection() {
             title="Refresh status"
             className="flex-shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/60 bg-transparent border-0 cursor-pointer transition-colors disabled:opacity-50"
           >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
+            />
           </button>
         </div>
       )}
@@ -126,37 +151,39 @@ export function HandshakeSettingsSection() {
       {!loading && !isConnected && (
         <div className="space-y-4">
           <div className="rounded-2xl bg-white border border-gray-100 p-5 space-y-4">
-            <p className="text-sm font-semibold text-gray-800">How to reconnect</p>
+            <p className="text-sm font-semibold text-gray-800">
+              Steps to connect your Handshake account (Requires Chrome browser)
+            </p>
 
             <ol className="space-y-3">
               {[
-                "Install the AutoApply browser extension (if you haven't already).",
-                "Open Handshake in your browser and make sure you're logged in.",
-                "Click the button below to copy your app token.",
-                'Open the extension, paste the token, and click "Send session to app".',
-                "Click the refresh button above to verify the connection.",
+                <span className="text-sm text-gray-600">
+                  Install the{" "}
+                  <a
+                    href="https://chromewebstore.google.com/detail/elkggcpakhdlemcodpfljekmhlfnkjbe?utm_source=item-share-cb"
+                    target="_blank"
+                    className="text-indigo-600 hover:text-indigo-700"
+                  >
+                    Handshake Sync Pro chrome extension
+                  </a>{" "}
+                  (if you haven't already).
+                </span>,
+                <span className="text-sm text-gray-600">
+                  Open Handshake in your browser and make sure you're logged in.
+                </span>,
+
+                <span className="text-sm text-gray-600">
+                  Click the refresh button above to verify the connection.
+                </span>,
               ].map((step, i) => (
                 <li key={i} className="flex items-start gap-3">
                   <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
                     {i + 1}
                   </span>
-                  <span className="text-sm text-gray-600">{step}</span>
+                  {step}
                 </li>
               ))}
             </ol>
-
-            <button
-              type="button"
-              onClick={handleCopy}
-              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 border-0 cursor-pointer transition-colors"
-            >
-              {copied ? (
-                <Check className="w-4 h-4" />
-              ) : (
-                <Copy className="w-4 h-4" />
-              )}
-              {copied ? "Copied!" : "Copy app token"}
-            </button>
           </div>
         </div>
       )}

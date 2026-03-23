@@ -160,7 +160,7 @@ function profileSummary(p: Profile): string {
   return parts.join('\n');
 }
 
-async function checkPrerequisites(userId: string): Promise<{
+export async function checkPrerequisites(userId: string): Promise<{
   hasProfile: boolean;
   hasSession: boolean;
   sessionStale: boolean;

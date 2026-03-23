@@ -1,10 +1,17 @@
-import { useState } from "react";
-import { User, FileText, GraduationCap, Link, ClipboardList } from "lucide-react";
+import { useCallback } from "react";
+import {
+  User,
+  FileText,
+  GraduationCap,
+  Link,
+  ClipboardList,
+} from "lucide-react";
 import { ProfileFormSection } from "./ProfileFormSection";
 import { ResumeSettingsSection } from "./ResumeSettingsSection";
 import { TranscriptSettingsSection } from "./TranscriptSettingsSection";
 import { HandshakeSettingsSection } from "./HandshakeSettingsSection";
 import { ApplicationSettingsSection } from "./ApplicationSettingsSection";
+import { useLocation, useNavigate } from "react-router-dom";
 
 type Tab = "profile" | "resume" | "transcript" | "application" | "handshake";
 
@@ -47,9 +54,16 @@ const TABS: {
 ];
 
 export function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("profile");
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const current = TABS.find((t) => t.key === activeTab)!;
+  const current = TABS.find((t) =>
+    location.pathname.startsWith(`/settings/${t.key}`),
+  )!;
+  const isActive = useCallback(
+    (key: Tab) => location.pathname.startsWith(`/settings/${key}`),
+    [location.pathname],
+  );
 
   return (
     <div className="max-w-4xl mx-auto px-4 md:px-6 py-8">
@@ -68,21 +82,21 @@ export function SettingsPage() {
               <li key={key} className="w-full">
                 <button
                   type="button"
-                  onClick={() => setActiveTab(key)}
+                  onClick={() => navigate(`/settings/${key}`)}
                   className={`w-full flex items-center gap-3 px-4 py-3 text-left rounded-xl transition-colors border-0 cursor-pointer ${
-                    activeTab === key
+                    isActive(key)
                       ? "bg-indigo-50 text-indigo-700"
                       : "bg-transparent text-gray-600 hover:bg-gray-100"
                   }`}
                 >
                   <Icon
                     className={`w-4 h-4 flex-shrink-0 ${
-                      activeTab === key ? "text-indigo-600" : "text-gray-400"
+                      isActive(key) ? "text-indigo-600" : "text-gray-400"
                     }`}
                   />
                   <div className="min-w-0">
                     <p
-                      className={`text-sm font-medium leading-none ${activeTab === key ? "text-indigo-700" : "text-gray-700"}`}
+                      className={`text-sm font-medium leading-none ${isActive(key) ? "text-indigo-700" : "text-gray-700"}`}
                     >
                       {label}
                     </p>
@@ -115,11 +129,11 @@ export function SettingsPage() {
               </div>
             </div>
 
-            {activeTab === "profile" && <ProfileFormSection />}
-            {activeTab === "resume" && <ResumeSettingsSection />}
-            {activeTab === "transcript" && <TranscriptSettingsSection />}
-            {activeTab === "application" && <ApplicationSettingsSection />}
-            {activeTab === "handshake" && <HandshakeSettingsSection />}
+            {isActive("profile") && <ProfileFormSection />}
+            {isActive("resume") && <ResumeSettingsSection />}
+            {isActive("transcript") && <TranscriptSettingsSection />}
+            {isActive("application") && <ApplicationSettingsSection />}
+            {isActive("handshake") && <HandshakeSettingsSection />}
           </div>
         </div>
       </div>

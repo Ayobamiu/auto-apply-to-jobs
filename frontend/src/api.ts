@@ -96,6 +96,17 @@ export interface ProfileResponse {
   automationLevel?: string;
 }
 
+export interface OnboardingStatusResponse {
+  resume_uploaded: boolean;
+  profile_complete: boolean;
+  handshake_connected: boolean;
+  transcript_uploaded: boolean;
+}
+
+export async function getOnboardingStatus(): Promise<OnboardingStatusResponse> {
+  return request<OnboardingStatusResponse>('/user/onboarding-status');
+}
+
 export async function getProfile(): Promise<ProfileResponse> {
   return request<ProfileResponse>('/profile');
 }

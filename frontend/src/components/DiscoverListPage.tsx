@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { findJobs, saveJob, type JobListing } from "../api";
 import { HandshakeLinkModal } from "./HandshakeLinkModal";
+import { useOnboarding } from "../hooks/useOnboarding";
+import { OnboardingChecklist } from "./onboarding/OnboardingChecklist";
 
 const STORAGE_KEY_SCROLL = "discover-list-scroll";
 
@@ -232,6 +234,25 @@ export function DiscoverListPage() {
     remoteWork,
     workAuthorization,
   );
+  const { isComplete, loading: onboardingLoading } = useOnboarding();
+
+  if (onboardingLoading) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-8">
+        <div className="flex items-center justify-center">
+          <Loader2 className="w-4 h-4 animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!isComplete) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 md:px-6 py-8">
+        <OnboardingChecklist />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-6 py-8">

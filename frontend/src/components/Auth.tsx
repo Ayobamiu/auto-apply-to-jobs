@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { login, register } from '../api';
+import { useState } from "react";
+import { login, register } from "../api";
 
 interface AuthProps {
   onSuccess: () => void;
@@ -14,8 +14,12 @@ export function Auth({ onSuccess }: AuthProps) {
     e.preventDefault();
     setError(null);
     const form = e.currentTarget;
-    const email = (form.elements.namedItem('auth-email') as HTMLInputElement).value.trim();
-    const password = (form.elements.namedItem('auth-password') as HTMLInputElement).value;
+    const email = (
+      form.elements.namedItem("auth-email") as HTMLInputElement
+    ).value.trim();
+    const password = (
+      form.elements.namedItem("auth-password") as HTMLInputElement
+    ).value;
     if (!email || !password) return;
 
     setLoading(true);
@@ -28,7 +32,7 @@ export function Auth({ onSuccess }: AuthProps) {
       }
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication failed');
+      setError(err instanceof Error ? err.message : "Authentication failed");
     } finally {
       setLoading(false);
     }
@@ -37,10 +41,16 @@ export function Auth({ onSuccess }: AuthProps) {
   return (
     <div className="min-h-full flex items-center justify-center p-6">
       <div className="w-full max-w-[400px] bg-card border border-border rounded-xl py-10 px-8 text-center">
-        <h1 className="text-[28px] font-semibold text-text mb-1">Auto Apply</h1>
-        <p className="text-text-muted text-sm mb-8">Your AI job application assistant</p>
+        <h1 className="text-[28px] font-semibold text-text mb-1">Merit</h1>
+        <p className="text-text-muted text-sm mb-8">
+          Your AI job application assistant
+        </p>
 
-        <form id="auth-form" className="flex flex-col gap-3" onSubmit={handleSubmit}>
+        <form
+          id="auth-form"
+          className="flex flex-col gap-3"
+          onSubmit={handleSubmit}
+        >
           <input
             type="email"
             name="auth-email"
@@ -63,12 +73,20 @@ export function Auth({ onSuccess }: AuthProps) {
             className="py-3 px-6 rounded-lg text-[15px] font-medium bg-accent text-on-primary disabled:opacity-60 disabled:cursor-not-allowed transition-[background,opacity] hover:bg-accent-hover"
             disabled={loading}
           >
-            {loading ? (isSignUp ? 'Signing up...' : 'Signing in...') : isSignUp ? 'Sign Up' : 'Sign In'}
+            {loading
+              ? isSignUp
+                ? "Signing up..."
+                : "Signing in..."
+              : isSignUp
+                ? "Sign Up"
+                : "Sign In"}
           </button>
         </form>
 
         <p className="mt-5 text-sm text-text-muted">
-          <span>{isSignUp ? 'Already have an account?' : "Don't have an account?"}</span>
+          <span>
+            {isSignUp ? "Already have an account?" : "Don't have an account?"}
+          </span>
           <button
             type="button"
             className="ml-1 bg-transparent border-0 text-accent cursor-pointer text-sm font-sans p-0 hover:underline"
@@ -77,7 +95,7 @@ export function Auth({ onSuccess }: AuthProps) {
               setError(null);
             }}
           >
-            {isSignUp ? 'Sign In' : 'Sign Up'}
+            {isSignUp ? "Sign In" : "Sign Up"}
           </button>
         </p>
 

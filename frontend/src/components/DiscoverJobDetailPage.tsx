@@ -661,7 +661,7 @@ export function DiscoverJobDetailPage() {
                             ? "Applying…"
                             : pipeline?.status === "failed"
                               ? "Re-apply"
-                              : "Apply with AutoApply"}
+                              : "Apply with Merit"}
                       </button>
                       <p className="text-xs text-gray-400 text-center">
                         Generates docs and submits on Handshake

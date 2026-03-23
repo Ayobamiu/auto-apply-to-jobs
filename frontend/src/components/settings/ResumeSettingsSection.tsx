@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Upload, Loader2, CheckCircle, AlertCircle, Eye, Save } from "lucide-react";
+import {
+  Upload,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
+  Eye,
+  Save,
+} from "lucide-react";
 import { getBaseResume, postBaseResumeFile, putBaseResume } from "../../api";
 import { ResumeEditorApp } from "../../resume-editor/ResumeEditorApp";
 

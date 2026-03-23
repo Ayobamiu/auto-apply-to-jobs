@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   sendChat,
   getChatMessages,
@@ -19,13 +19,13 @@ import {
   type AutomationLevel,
   type PipelineArtifacts,
   type AppliedArtifacts,
-} from '../api';
-import { MessageList, type TypingState } from './MessageList';
-import { ReviewCard } from './ReviewCard';
-import { AppliedCard } from './AppliedCard';
-import { ReviewView } from './ReviewView';
-import { BaseResumeModal } from './BaseResumeModal';
-import { PreviewModal } from './PreviewModal';
+} from "../api";
+import { MessageList, type TypingState } from "./MessageList";
+import { ReviewCard } from "./ReviewCard";
+import { AppliedCard } from "./AppliedCard";
+import { ReviewView } from "./ReviewView";
+import { BaseResumeModal } from "./BaseResumeModal";
+import { PreviewModal } from "./PreviewModal";
 
 const MAX_MESSAGES_TO_BACKEND = 50;
 const POLL_INTERVAL_MS = 3_000;
@@ -51,11 +51,16 @@ interface ChatProps {
 export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(true);
-  const [automationLevel, setAutomationLevel] = useState<AutomationLevel>('review');
+  const [automationLevel, setAutomationLevel] =
+    useState<AutomationLevel>("review");
   const [menuOpen, setMenuOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [typing, setTyping] = useState<TypingState | null>(null);
-  const [reviewCard, setReviewCard] = useState<{ jobId: string; artifacts: PipelineArtifacts; jobUrl?: string } | null>(null);
+  const [reviewCard, setReviewCard] = useState<{
+    jobId: string;
+    artifacts: PipelineArtifacts;
+    jobUrl?: string;
+  } | null>(null);
   const [reviewCardError, setReviewCardError] = useState<string | null>(null);
   const [appliedCard, setAppliedCard] = useState<{
     jobId: string;
@@ -74,19 +79,22 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
     title: string;
     resume?: Record<string, unknown> | null;
     bodyText?: string;
-  }>({ open: false, title: '', bodyText: '' });
+  }>({ open: false, title: "", bodyText: "" });
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const uploadResumePdfInputRef = useRef<HTMLInputElement>(null);
   const uploadTranscriptInputRef = useRef<HTMLInputElement>(null);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollAttemptsRef = useRef(0);
 
-  const addMessage = useCallback((role: 'user' | 'assistant', content: string) => {
-    setMessages((prev) => [
-      ...prev,
-      { role, content, timestamp: new Date().toISOString() },
-    ]);
-  }, []);
+  const addMessage = useCallback(
+    (role: "user" | "assistant", content: string) => {
+      setMessages((prev) => [
+        ...prev,
+        { role, content, timestamp: new Date().toISOString() },
+      ]);
+    },
+    [],
+  );
 
   useEffect(() => {
     setLoadingMessages(true);
@@ -99,21 +107,25 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
   // Handle ?session=uploaded from extension redirect
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('session') === 'uploaded') {
-      window.history.replaceState({}, '', window.location.pathname + (window.location.hash || ''));
+    if (params.get("session") === "uploaded") {
+      window.history.replaceState(
+        {},
+        "",
+        window.location.pathname + (window.location.hash || ""),
+      );
       getHandshakeSessionStatus()
         .then((status) => {
           addMessage(
-            'assistant',
+            "assistant",
             status.connected
-              ? 'Handshake connected successfully.'
-              : 'Could not verify connection. Try the "Check connection" button.'
+              ? "Handshake connected successfully."
+              : 'Could not verify connection. Try the "Check connection" button.',
           );
         })
         .catch(() => {
           addMessage(
-            'assistant',
-            'Could not verify connection. Try the "Check connection" button.'
+            "assistant",
+            'Could not verify connection. Try the "Check connection" button.',
           );
         });
     }
@@ -126,9 +138,14 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
     function poll() {
       getHandshakeSessionStatus()
         .then((status) => {
-          if (status.connected && status.updatedAt != null && lastSessionUpdatedAt !== null && status.updatedAt !== lastSessionUpdatedAt) {
+          if (
+            status.connected &&
+            status.updatedAt != null &&
+            lastSessionUpdatedAt !== null &&
+            status.updatedAt !== lastSessionUpdatedAt
+          ) {
             lastSessionUpdatedAt = status.updatedAt;
-            addMessage('assistant', 'Handshake connected successfully.');
+            addMessage("assistant", "Handshake connected successfully.");
           } else if (status.connected && status.updatedAt) {
             lastSessionUpdatedAt = status.updatedAt;
           }
@@ -145,15 +162,15 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
         sessionPollTimer = null;
       }
     }
-    if (document.visibilityState === 'visible') start();
+    if (document.visibilityState === "visible") start();
     const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') start();
+      if (document.visibilityState === "visible") start();
       else stop();
     };
-    document.addEventListener('visibilitychange', onVisibilityChange);
+    document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       stop();
-      document.removeEventListener('visibilitychange', onVisibilityChange);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [addMessage]);
 
@@ -165,8 +182,8 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
 
   useEffect(() => {
     const handleClick = () => setMenuOpen(false);
-    document.addEventListener('click', handleClick);
-    return () => document.removeEventListener('click', handleClick);
+    document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
   }, []);
 
   const stopPolling = useCallback(() => {
@@ -184,7 +201,7 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
       setPollingJobId(jobId);
       pollAttemptsRef.current = 0;
       setTyping({
-        phase: 'Starting...',
+        phase: "Starting...",
         cancelOpts: {
           jobId,
           onCancel: () => {
@@ -192,18 +209,21 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
               .then((r) => {
                 if (r.cancelled) {
                   setTyping(null);
-                  addMessage('assistant', 'Application cancelled.');
+                  addMessage("assistant", "Application cancelled.");
                   stopPolling();
                 }
               })
               .catch(() => {
-                addMessage('assistant', 'Could not cancel. You can try again or ask "check status".');
+                addMessage(
+                  "assistant",
+                  'Could not cancel. You can try again or ask "check status".',
+                );
               });
           },
         },
       });
     },
-    [addMessage, stopPolling]
+    [addMessage, stopPolling],
   );
 
   useEffect(() => {
@@ -214,8 +234,8 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
       if (!jobId || pollAttemptsRef.current >= MAX_POLL_ATTEMPTS) {
         if (pollAttemptsRef.current >= MAX_POLL_ATTEMPTS) {
           addMessage(
-            'assistant',
-            "I've been checking for a while. You can ask \"check status\" anytime to get an update."
+            "assistant",
+            'I\'ve been checking for a while. You can ask "check status" anytime to get an update.',
           );
         }
         setTyping(null);
@@ -226,58 +246,66 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
 
       getPipelineJobStatus(jobId)
         .then((job) => {
-          if (job.status === 'awaiting_approval') {
+          if (job.status === "awaiting_approval") {
             setTyping(null);
             getPipelineArtifacts(jobId)
-              .then((artifacts) => setReviewCard({ jobId, artifacts, jobUrl: job.jobUrl }))
-              .catch(() => addMessage('assistant', 'Could not load artifacts for review.'));
+              .then((artifacts) =>
+                setReviewCard({ jobId, artifacts, jobUrl: job.jobUrl }),
+              )
+              .catch(() =>
+                addMessage("assistant", "Could not load artifacts for review."),
+              );
             pollTimerRef.current = setTimeout(poll, POLL_INTERVAL_MS);
             return;
           }
-          if (job.status === 'done') {
+          if (job.status === "done") {
             setTyping(null);
             setReviewCard(null);
             const msg =
               job.userMessage ??
-              (job.error ? `Failed: ${job.error}` : 'Pipeline completed.');
-            addMessage('assistant', msg);
+              (job.error ? `Failed: ${job.error}` : "Pipeline completed.");
+            addMessage("assistant", msg);
             const applied = job.result?.appliedArtifacts;
             const jobTitle =
               job.result &&
-              typeof job.result === 'object' &&
+              typeof job.result === "object" &&
               (job.result as Record<string, unknown>).job &&
-              typeof (job.result as Record<string, unknown>).job === 'object'
+              typeof (job.result as Record<string, unknown>).job === "object"
                 ? String(
-                    ((job.result as Record<string, unknown>).job as Record<string, unknown>).title ??
-                      ''
+                    (
+                      (job.result as Record<string, unknown>).job as Record<
+                        string,
+                        unknown
+                      >
+                    ).title ?? "",
                   )
-                : '';
+                : "";
             if (applied && (applied.resume || applied.coverLetter?.text)) {
               setAppliedCard({
                 jobId,
-                jobTitle: jobTitle || 'Job',
+                jobTitle: jobTitle || "Job",
                 applied,
               });
             }
             stopPolling();
             return;
           }
-          if (job.status === 'failed') {
+          if (job.status === "failed") {
             setTyping(null);
             setReviewCard(null);
-            addMessage('assistant', `Failed: ${job.error ?? 'Unknown error'}`);
+            addMessage("assistant", `Failed: ${job.error ?? "Unknown error"}`);
             stopPolling();
             return;
           }
-          if (job.status === 'cancelled') {
+          if (job.status === "cancelled") {
             setTyping(null);
             setReviewCard(null);
-            addMessage('assistant', 'That application was cancelled.');
+            addMessage("assistant", "That application was cancelled.");
             stopPolling();
             return;
           }
           setTyping({
-            phase: job.phase ?? 'Processing...',
+            phase: job.phase ?? "Processing...",
             cancelOpts: {
               jobId,
               onCancel: () => {
@@ -285,14 +313,14 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
                   .then((r) => {
                     if (r.cancelled) {
                       setTyping(null);
-                      addMessage('assistant', 'Application cancelled.');
+                      addMessage("assistant", "Application cancelled.");
                       stopPolling();
                     }
                   })
                   .catch(() => {
                     addMessage(
-                      'assistant',
-                      'Could not cancel. You can try again or ask "check status".'
+                      "assistant",
+                      'Could not cancel. You can try again or ask "check status".',
                     );
                   });
               },
@@ -320,10 +348,10 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
       const value = e.target.value as AutomationLevel;
       setAutomationLevel(value);
       putSettings({ automationLevel: value }).catch(() => {
-        setAutomationLevel(value === 'full' ? 'review' : 'full');
+        setAutomationLevel(value === "full" ? "review" : "full");
       });
     },
-    []
+    [],
   );
 
   const handleSend = useCallback(async () => {
@@ -332,9 +360,9 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
     const text = input.value.trim();
     if (!text || sending) return;
 
-    addMessage('user', text);
-    input.value = '';
-    if (input.style) input.style.height = 'auto';
+    addMessage("user", text);
+    input.value = "";
+    if (input.style) input.style.height = "auto";
     setSending(true);
     setTyping({ phase: null, cancelOpts: null });
 
@@ -342,14 +370,14 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
       const historySlice = messages.slice(-MAX_MESSAGES_TO_BACKEND);
       const res = await sendChat(text, historySlice);
       setTyping(null);
-      addMessage('assistant', res.reply);
+      addMessage("assistant", res.reply);
       if (res.meta?.pollStatus && res.meta.jobId) {
         startPolling(res.meta.jobId);
       }
     } catch (err) {
       setTyping(null);
-      const msg = err instanceof Error ? err.message : 'Something went wrong.';
-      addMessage('assistant', `Error: ${msg}`);
+      const msg = err instanceof Error ? err.message : "Something went wrong.";
+      addMessage("assistant", `Error: ${msg}`);
     } finally {
       setSending(false);
       input.focus();
@@ -361,163 +389,200 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
       e.preventDefault();
       void handleSend();
     },
-    [handleSend]
+    [handleSend],
   );
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         void handleSend();
       }
     },
-    [handleSend]
+    [handleSend],
   );
 
   function isResumeShaped(obj: Record<string, unknown> | null): boolean {
-    if (!obj || typeof obj !== 'object') return false;
-    return 'basics' in obj || 'work' in obj || 'education' in obj;
+    if (!obj || typeof obj !== "object") return false;
+    return "basics" in obj || "work" in obj || "education" in obj;
   }
 
   const handleMenuAction = useCallback(
     async (action: string) => {
       setMenuOpen(false);
-      if (action === 'preview-profile') {
+      if (action === "preview-profile") {
         try {
           const { profile } = await getProfile();
           if (profile && isResumeShaped(profile)) {
-            setPreviewModal({ open: true, title: 'Profile', resume: profile });
+            setPreviewModal({ open: true, title: "Profile", resume: profile });
           } else {
             setPreviewModal({
               open: true,
-              title: 'Profile',
-              bodyText: profile ? JSON.stringify(profile, null, 2) : 'No profile set.',
+              title: "Profile",
+              bodyText: profile
+                ? JSON.stringify(profile, null, 2)
+                : "No profile set.",
             });
           }
         } catch (err) {
           setPreviewModal({
             open: true,
-            title: 'Profile',
-            bodyText: err instanceof Error ? err.message : 'Failed to load profile.',
+            title: "Profile",
+            bodyText:
+              err instanceof Error ? err.message : "Failed to load profile.",
           });
         }
         return;
       }
-      if (action === 'preview-resume') {
+      if (action === "preview-resume") {
         try {
           const { resume } = await getBaseResume();
-          setPreviewModal({ open: true, title: 'Base resume', resume: resume ?? null });
+          setPreviewModal({
+            open: true,
+            title: "Base resume",
+            resume: resume ?? null,
+          });
         } catch (err) {
           setPreviewModal({
             open: true,
-            title: 'Base resume',
-            bodyText: err instanceof Error ? err.message : 'No base resume or failed to load.',
+            title: "Base resume",
+            bodyText:
+              err instanceof Error
+                ? err.message
+                : "No base resume or failed to load.",
           });
         }
         return;
       }
-      if (action === 'preview-transcript') {
+      if (action === "preview-transcript") {
         try {
           const { hasTranscript } = await getTranscriptStatus();
           setPreviewModal({
             open: true,
-            title: 'Transcript',
-            bodyText: hasTranscript ? 'Transcript uploaded and saved.' : 'No transcript uploaded.',
+            title: "Transcript",
+            bodyText: hasTranscript
+              ? "Transcript uploaded and saved."
+              : "No transcript uploaded.",
           });
         } catch (err) {
           setPreviewModal({
             open: true,
-            title: 'Transcript',
-            bodyText: err instanceof Error ? err.message : 'Failed to check transcript.',
+            title: "Transcript",
+            bodyText:
+              err instanceof Error
+                ? err.message
+                : "Failed to check transcript.",
           });
         }
         return;
       }
-      if (action === 'upload-resume-pdf') {
+      if (action === "upload-resume-pdf") {
         uploadResumePdfInputRef.current?.click();
         return;
       }
-      if (action === 'upload-transcript') {
+      if (action === "upload-transcript") {
         uploadTranscriptInputRef.current?.click();
         return;
       }
-      if (action === 'base-resume') {
+      if (action === "base-resume") {
         setBaseResumeModalOpen(true);
         return;
       }
-      if (action === 'check-connection') {
+      if (action === "check-connection") {
         try {
           const status = await getHandshakeSessionStatus();
           addMessage(
-            'assistant',
+            "assistant",
             status.connected
-              ? 'Handshake connected successfully.'
-              : 'Handshake is not connected. Use the browser extension to upload your session.'
+              ? "Handshake connected successfully."
+              : "Handshake is not connected. Use the browser extension to upload your session.",
           );
         } catch {
-          addMessage('assistant', 'Could not verify connection. Please try again.');
+          addMessage(
+            "assistant",
+            "Could not verify connection. Please try again.",
+          );
         }
         return;
       }
-      if (action === 'copy-token') {
-        const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') ?? '' : '';
-        navigator.clipboard
-          .writeText(token)
-          .then(
-            () => addMessage('assistant', 'Token copied to clipboard.'),
-            () => addMessage('assistant', 'Failed to copy token.')
-          );
+      if (action === "copy-token") {
+        const token =
+          typeof localStorage !== "undefined"
+            ? (localStorage.getItem("token") ?? "")
+            : "";
+        navigator.clipboard.writeText(token).then(
+          () => addMessage("assistant", "Token copied to clipboard."),
+          () => addMessage("assistant", "Failed to copy token."),
+        );
         return;
       }
     },
-    [addMessage]
+    [addMessage],
   );
 
   const handleUploadResumePdf = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      e.target.value = '';
+      e.target.value = "";
       if (!file) return;
-      if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
-        addMessage('assistant', 'Please choose a PDF file.');
+      if (
+        !file.name.toLowerCase().endsWith(".pdf") &&
+        file.type !== "application/pdf"
+      ) {
+        addMessage("assistant", "Please choose a PDF file.");
         return;
       }
       try {
         await uploadResumePdf(file);
-        addMessage('assistant', 'Profile updated from your resume PDF. You can send a job URL to apply.');
+        addMessage(
+          "assistant",
+          "Profile updated from your resume PDF. You can send a job URL to apply.",
+        );
       } catch (err) {
-        addMessage('assistant', err instanceof Error ? err.message : 'Upload failed.');
+        addMessage(
+          "assistant",
+          err instanceof Error ? err.message : "Upload failed.",
+        );
       }
     },
-    [addMessage]
+    [addMessage],
   );
 
   const handleUploadTranscript = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      e.target.value = '';
+      e.target.value = "";
       if (!file) return;
-      if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
-        addMessage('assistant', 'Please choose a PDF file.');
+      if (
+        !file.name.toLowerCase().endsWith(".pdf") &&
+        file.type !== "application/pdf"
+      ) {
+        addMessage("assistant", "Please choose a PDF file.");
         return;
       }
       try {
         await uploadTranscript(file);
-        addMessage('assistant', "Transcript saved. I'll use it when a job requires one.");
+        addMessage(
+          "assistant",
+          "Transcript saved. I'll use it when a job requires one.",
+        );
       } catch (err) {
-        addMessage('assistant', err instanceof Error ? err.message : 'Upload failed.');
+        addMessage(
+          "assistant",
+          err instanceof Error ? err.message : "Upload failed.",
+        );
       }
     },
-    [addMessage]
+    [addMessage],
   );
 
   return (
     <div className="flex flex-col h-full max-w-[800px] max-md:max-w-full mx-auto">
       <header className="flex items-center justify-between py-3 px-5 border-b border-border bg-card flex-shrink-0">
-        <h1 className="text-lg font-semibold text-text">Auto Apply</h1>
+        <h1 className="text-lg font-semibold text-text">Merit</h1>
         <div className="flex gap-2">
           <label className="flex items-center gap-1.5 text-[13px] text-text-muted">
-            Automation:{' '}
+            Automation:{" "}
             <select
               className="px-2 py-1 bg-input border border-border rounded-lg text-text text-[13px] cursor-pointer"
               title="Review: pause to edit before apply. Full: apply automatically."
@@ -546,13 +611,15 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
               hidden={!menuOpen}
               onClick={(e) => {
                 e.stopPropagation();
-                const action = (e.target as HTMLElement).closest('[data-action]')?.getAttribute('data-action');
-                if (action === 'logout') {
+                const action = (e.target as HTMLElement)
+                  .closest("[data-action]")
+                  ?.getAttribute("data-action");
+                if (action === "logout") {
                   stopPolling();
                   onLogout();
                   return;
                 }
-                if (action === 'discover-jobs' && onNavigateToDiscover) {
+                if (action === "discover-jobs" && onNavigateToDiscover) {
                   onNavigateToDiscover();
                   setMenuOpen(false);
                   return;
@@ -560,17 +627,33 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
                 if (action) void handleMenuAction(action);
               }}
             >
-              <button type="button" className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]" data-action="preview-profile">
+              <button
+                type="button"
+                className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]"
+                data-action="preview-profile"
+              >
                 Preview profile
               </button>
-              <button type="button" className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]" data-action="preview-resume">
+              <button
+                type="button"
+                className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]"
+                data-action="preview-resume"
+              >
                 Preview resume
               </button>
-              <button type="button" className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]" data-action="preview-transcript">
+              <button
+                type="button"
+                className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]"
+                data-action="preview-transcript"
+              >
                 Preview transcript
               </button>
               <div className="h-px bg-border my-1.5" />
-              <button type="button" className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]" data-action="upload-resume-pdf">
+              <button
+                type="button"
+                className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]"
+                data-action="upload-resume-pdf"
+              >
                 Upload resume PDF
               </button>
               <input
@@ -580,7 +663,11 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
                 hidden
                 onChange={handleUploadResumePdf}
               />
-              <button type="button" className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]" data-action="upload-transcript">
+              <button
+                type="button"
+                className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]"
+                data-action="upload-transcript"
+              >
                 Upload transcript
               </button>
               <input
@@ -590,25 +677,45 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
                 hidden
                 onChange={handleUploadTranscript}
               />
-              <button type="button" className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]" data-action="base-resume">
+              <button
+                type="button"
+                className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]"
+                data-action="base-resume"
+              >
                 Base resume
               </button>
-              <button type="button" className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]" data-action="check-connection">
+              <button
+                type="button"
+                className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]"
+                data-action="check-connection"
+              >
                 Check connection
               </button>
-              <button type="button" className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]" data-action="copy-token">
+              <button
+                type="button"
+                className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]"
+                data-action="copy-token"
+              >
                 Copy Token
               </button>
               {onNavigateToDiscover && (
                 <>
                   <div className="h-px bg-border my-1.5" />
-                  <button type="button" className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]" data-action="discover-jobs">
+                  <button
+                    type="button"
+                    className="block w-full py-2 px-3.5 border-0 bg-transparent text-text text-left cursor-pointer hover:bg-input transition-colors text-[13px]"
+                    data-action="discover-jobs"
+                  >
                     Discover jobs
                   </button>
                 </>
               )}
               <div className="h-px bg-border my-1.5" />
-              <button type="button" className="block w-full py-2 px-3.5 border-0 bg-transparent text-text-muted text-left cursor-pointer hover:bg-input transition-colors text-[13px]" data-action="logout">
+              <button
+                type="button"
+                className="block w-full py-2 px-3.5 border-0 bg-transparent text-text-muted text-left cursor-pointer hover:bg-input transition-colors text-[13px]"
+                data-action="logout"
+              >
                 Sign Out
               </button>
             </div>
@@ -618,13 +725,18 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
 
       {loadingMessages ? (
         <main className="chat-messages flex-1 overflow-y-auto py-5 px-5 flex flex-col gap-3">
-          <div className="flex items-center justify-center gap-2.5 py-6 text-text-muted text-sm chat-messages-loading" aria-live="polite">
+          <div
+            className="flex items-center justify-center gap-2.5 py-6 text-text-muted text-sm chat-messages-loading"
+            aria-live="polite"
+          >
             <span className="inline-flex gap-1 chat-messages-loading-dots">
               <span className="dot" />
               <span className="dot" />
               <span className="dot" />
             </span>
-            <span className="chat-messages-loading-text">Loading messages…</span>
+            <span className="chat-messages-loading-text">
+              Loading messages…
+            </span>
           </div>
         </main>
       ) : (
@@ -633,27 +745,37 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
             <ReviewCard
               jobId={reviewCard.jobId}
               artifacts={reviewCard.artifacts}
-              onOpenDetailed={() => setReviewViewOpen({ jobId: reviewCard.jobId, artifacts: reviewCard.artifacts, jobRef: jobRefFromUrl(reviewCard.jobUrl) })}
+              onOpenDetailed={() =>
+                setReviewViewOpen({
+                  jobId: reviewCard.jobId,
+                  artifacts: reviewCard.artifacts,
+                  jobRef: jobRefFromUrl(reviewCard.jobUrl),
+                })
+              }
               onDownloadResume={async () => {
                 try {
-                  await downloadPipelineArtifactPdf(reviewCard.jobId, 'resume');
+                  await downloadPipelineArtifactPdf(reviewCard.jobId, "resume");
                 } catch (err) {
-                  setReviewCardError(err instanceof Error ? err.message : 'Download failed.');
+                  setReviewCardError(
+                    err instanceof Error ? err.message : "Download failed.",
+                  );
                 }
               }}
               onDownloadCover={async () => {
                 try {
-                  await downloadPipelineArtifactPdf(reviewCard.jobId, 'cover');
+                  await downloadPipelineArtifactPdf(reviewCard.jobId, "cover");
                 } catch (err) {
-                  setReviewCardError(err instanceof Error ? err.message : 'Download failed.');
+                  setReviewCardError(
+                    err instanceof Error ? err.message : "Download failed.",
+                  );
                 }
               }}
               onCancel={() => {
                 setReviewCard(null);
                 setReviewCardError(null);
                 addMessage(
-                  'assistant',
-                  'No problem. You can download the resume and cover letter to apply manually.'
+                  "assistant",
+                  "No problem. You can download the resume and cover letter to apply manually.",
                 );
               }}
               error={reviewCardError}
@@ -665,13 +787,21 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
               jobTitle={appliedCard.jobTitle}
               applied={appliedCard.applied}
               onDownloadResume={() =>
-                downloadAppliedArtifactPdf(appliedCard.jobId, 'resume').catch((err) =>
-                  addMessage('assistant', err instanceof Error ? err.message : 'Download failed.')
+                downloadAppliedArtifactPdf(appliedCard.jobId, "resume").catch(
+                  (err) =>
+                    addMessage(
+                      "assistant",
+                      err instanceof Error ? err.message : "Download failed.",
+                    ),
                 )
               }
               onDownloadCover={() =>
-                downloadAppliedArtifactPdf(appliedCard.jobId, 'cover').catch((err) =>
-                  addMessage('assistant', err instanceof Error ? err.message : 'Download failed.')
+                downloadAppliedArtifactPdf(appliedCard.jobId, "cover").catch(
+                  (err) =>
+                    addMessage(
+                      "assistant",
+                      err instanceof Error ? err.message : "Download failed.",
+                    ),
                 )
               }
             />
@@ -715,7 +845,11 @@ export function Chat({ onLogout, onNavigateToDiscover }: ChatProps) {
             onKeyDown={handleKeyDown}
             disabled={sending}
           />
-          <button type="submit" className="py-3 px-5 bg-accent border-0 rounded-lg text-on-primary text-[15px] font-medium cursor-pointer transition-[background,opacity] whitespace-nowrap hover:bg-accent-hover disabled:opacity-60 disabled:cursor-not-allowed" disabled={sending}>
+          <button
+            type="submit"
+            className="py-3 px-5 bg-accent border-0 rounded-lg text-on-primary text-[15px] font-medium cursor-pointer transition-[background,opacity] whitespace-nowrap hover:bg-accent-hover disabled:opacity-60 disabled:cursor-not-allowed"
+            disabled={sending}
+          >
             Send
           </button>
         </form>

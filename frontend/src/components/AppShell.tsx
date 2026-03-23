@@ -1,6 +1,9 @@
 import { type ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Sparkles, Compass, Briefcase, Settings, LogOut } from "lucide-react";
+import { Button, Dropdown, MenuProps, Space } from "antd";
+import { UserOutlined } from "@ant-design/icons";
+import { getUserEmail } from "../utils/token";
 
 interface AppShellProps {
   children: ReactNode;
@@ -14,7 +17,24 @@ const NAV_ITEMS = [
 ];
 
 export function AppShell({ children, onLogout }: AppShellProps) {
+  const navigate = useNavigate();
   const { pathname } = useLocation();
+  const userEmail = getUserEmail(localStorage.getItem("token") ?? "");
+  const items: MenuProps["items"] = [
+    {
+      label: userEmail,
+      key: "profile",
+      icon: <UserOutlined />,
+      onClick: () => navigate("/settings/profile"),
+    },
+    {
+      label: "Sign out",
+      key: "sign-out",
+      icon: <LogOut className="w-4 h-4" />,
+      danger: true,
+      onClick: () => onLogout(),
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-[#f8f9fb] flex flex-col">
@@ -28,9 +48,8 @@ export function AppShell({ children, onLogout }: AppShellProps) {
           <span className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center flex-shrink-0">
             <Sparkles className="w-4 h-4 text-white" />
           </span>
-          AutoApply
+          Merit
         </Link>
-
         {/* Nav links */}
         <nav className="hidden md:flex items-center gap-1 flex-1">
           {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
@@ -55,15 +74,12 @@ export function AppShell({ children, onLogout }: AppShellProps) {
           })}
         </nav>
 
-        {/* Sign out */}
-        <button
-          type="button"
-          onClick={onLogout}
-          className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors bg-transparent border-0 cursor-pointer"
-        >
-          <LogOut className="w-4 h-4" />
-          <span className="hidden sm:inline">Sign out</span>
-        </button>
+        {/* User dropdown */}
+        <Space.Compact className="ml-auto">
+          <Dropdown menu={{ items }} placement="bottomRight">
+            <Button icon={<UserOutlined />} />
+          </Dropdown>
+        </Space.Compact>
       </header>
 
       {/* Mobile bottom nav */}

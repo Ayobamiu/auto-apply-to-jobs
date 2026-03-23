@@ -83,7 +83,7 @@ export function login(req: Request, res: Response): void {
           res.status(500).json({ error: 'Server misconfiguration: JWT_SECRET not set' });
           return;
         }
-        const token = jwt.sign({ sub: user.id }, secret, { expiresIn: JWT_EXPIRY });
+        const token = jwt.sign({ sub: user.id, email: user.email }, secret, { expiresIn: JWT_EXPIRY });
         res.status(200).json({ token });
       });
     })

@@ -14,6 +14,7 @@ import { DiscoverListPage } from "./components/DiscoverListPage";
 import { DiscoverJobDetailPage } from "./components/DiscoverJobDetailPage";
 import { MyJobsPage } from "./components/MyJobsPage";
 import { SettingsPage } from "./components/settings/SettingsPage";
+import { FloatingProgress } from "./components/onboarding/FloatingProgress";
 
 function AppRoutes({ onLogout }: { onLogout: () => void }) {
   const navigate = useNavigate();
@@ -48,12 +49,16 @@ function AppRoutes({ onLogout }: { onLogout: () => void }) {
         }
       />
       <Route
-        path="/settings"
+        path="/settings/*"
         element={
           <AppShell onLogout={onLogout}>
             <SettingsPage />
           </AppShell>
         }
+      />
+      <Route
+        path="/settings"
+        element={<Navigate to="/settings/profile" replace />}
       />
 
       {/* Chat (standalone layout, no shell) */}
@@ -88,7 +93,13 @@ export function App() {
 
   return (
     <BrowserRouter>
-      <AppRoutes onLogout={() => { clearToken(); setShowChat(false); }} />
+      <AppRoutes
+        onLogout={() => {
+          clearToken();
+          setShowChat(false);
+        }}
+      />
+      <FloatingProgress />
     </BrowserRouter>
   );
 }

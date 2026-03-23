@@ -5,7 +5,8 @@
 import type { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { getProfile, updateProfile } from '../../data/profile.js';
-import { getAutomationLevel } from '../../data/user-preferences.js';
+import { getAutomationLevel, } from '../../data/user-preferences.js';
+import { checkPrerequisites } from '../../orchestration/chat-orchestrator.js';
 import { extractProfileFromResumeText } from '../../shared/profile-from-resume.js';
 import { pdfBufferToText } from '../../shared/pdf-to-text.js';
 import type { Profile } from '../../shared/types.js';
@@ -109,4 +110,14 @@ export async function postProfileFromResume(req: Request, res: Response): Promis
       message.includes('OPENAI_API_KEY') || message.includes('apiKey') ? 503 : 500;
     res.status(status).json({ error: message });
   }
+}
+
+
+export async function getOnboardingStatusHandler(req: Request, res: Response): Promise<void> {
+  if (!req.userId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+  const { hasProfile, hasSession, hasTranscript: userHasTranscript } = await checkPrerequisites(req.userId);
+  res.status(200).json({ resume_uploaded: hasProfile, profile_complete: hasProfile, handshake_connected: hasSession, transcript_uploaded: userHasTranscript });
 }
