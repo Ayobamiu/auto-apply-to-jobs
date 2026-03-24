@@ -735,3 +735,28 @@ export async function downloadWrittenDocumentPdf(jobId: string, artifactId: stri
   a.click();
   URL.revokeObjectURL(a.href);
 }
+
+// ── Subscription / Stripe ──────────────────────────────────────────────────
+
+export type SubscriptionStatus = 'free' | 'pro' | 'cancelled';
+
+export interface SubscriptionStatusResponse {
+  subscription_status: SubscriptionStatus;
+  current_period_end: string | null;
+}
+
+export async function getSubscriptionStatus(): Promise<SubscriptionStatusResponse> {
+  return request<SubscriptionStatusResponse>('/user/subscription-status');
+}
+
+export async function createSubscriptionCheckout(): Promise<{ url: string }> {
+  return request<{ url: string }>('/subscription/create-checkout', {
+    method: 'POST',
+  });
+}
+
+export async function postSubscriptionPortal(): Promise<{ url: string }> {
+  return request<{ url: string }>('/subscription/portal', {
+    method: 'POST',
+  });
+}

@@ -15,6 +15,7 @@ import { DiscoverJobDetailPage } from "./components/DiscoverJobDetailPage";
 import { MyJobsPage } from "./components/MyJobsPage";
 import { SettingsPage } from "./components/settings/SettingsPage";
 import { FloatingProgress } from "./components/onboarding/FloatingProgress";
+import { SubscriptionProvider } from "./subscription/useSubscription";
 
 function AppRoutes({ onLogout }: { onLogout: () => void }) {
   const navigate = useNavigate();
@@ -93,13 +94,15 @@ export function App() {
 
   return (
     <BrowserRouter>
-      <AppRoutes
-        onLogout={() => {
-          clearToken();
-          setShowChat(false);
-        }}
-      />
-      <FloatingProgress />
+      <SubscriptionProvider>
+        <AppRoutes
+          onLogout={() => {
+            clearToken();
+            setShowChat(false);
+          }}
+        />
+        <FloatingProgress />
+      </SubscriptionProvider>
     </BrowserRouter>
   );
 }

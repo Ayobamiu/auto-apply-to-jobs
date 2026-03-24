@@ -23,6 +23,7 @@ import { findJobs } from '../job-finders/registry.js';
 import { isAppError, CODES, messageForCode, type AppErrorCode } from '../shared/errors.js';
 import { SESSION_STALE_THRESHOLD_MS } from '../shared/constants.js';
 import { normalizePipelineOutcome, getPipelineOutcomeMessage } from '../shared/pipeline-outcome.js';
+import { getUserSubscriptionStatus } from '../api/db.js';
 import type {
   Profile,
   ChatMessage,
@@ -402,6 +403,16 @@ async function handleApply(
   }
 
   try {
+    if (automationLevel === 'full') {
+      const sub = await getUserSubscriptionStatus(userId);
+      if (sub.subscription_status !== 'pro') {
+        return {
+          reply:
+            'Upgrade to Pro to enable auto-submission. Pro submits the completed form for you automatically.',
+        };
+      }
+    }
+
     const { id: jobId } = await createPipelineJob(userId, url, {
       submit: true,
       automationLevel,

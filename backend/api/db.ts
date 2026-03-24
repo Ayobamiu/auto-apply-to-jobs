@@ -14,7 +14,11 @@ const USERS_TABLE_SQL = `
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     email text UNIQUE NOT NULL,
     password_hash text NOT NULL,
-    created_at timestamptz DEFAULT now()
+    created_at timestamptz DEFAULT now(),
+    subscription_status text NOT NULL DEFAULT 'free',
+    stripe_customer_id text NULL,
+    stripe_subscription_id text NULL,
+    current_period_end timestamptz NULL
   )
 `;
 
@@ -197,6 +201,11 @@ export async function ensureDataTables(): Promise<void> {
   await pool.query("ALTER TABLE user_job_state ADD COLUMN IF NOT EXISTS lifecycle_status text");
   await pool.query("ALTER TABLE user_job_state ADD COLUMN IF NOT EXISTS saved_at timestamptz");
 
+  await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status text NOT NULL DEFAULT 'free'");
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id text');
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id text');
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS current_period_end timestamptz');
+
   // ── Dynamic application forms ──
   await pool.query(`
     CREATE TABLE IF NOT EXISTS application_forms (
@@ -250,4 +259,75 @@ export async function getUserByEmail(email: string): Promise<User | null> {
     email,
   ]);
   return res.rows[0] ?? null;
+}
+
+export type SubscriptionStatus = 'free' | 'pro' | 'cancelled';
+
+export async function getUserById(userId: string): Promise<User | null> {
+  await ensureUsersTable();
+  const res = await pool.query<User>(
+    'SELECT id, email, password_hash, created_at, subscription_status, stripe_customer_id, stripe_subscription_id, current_period_end FROM users WHERE id = $1',
+    [userId],
+  );
+  return res.rows[0] ?? null;
+}
+
+export async function getUserEmailById(userId: string): Promise<string | null> {
+  await ensureUsersTable();
+  const res = await pool.query<{ email: string }>('SELECT email FROM users WHERE id = $1', [userId]);
+  return res.rows[0]?.email ?? null;
+}
+
+export async function getUserSubscriptionStatus(userId: string): Promise<{
+  subscription_status: SubscriptionStatus;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  current_period_end: Date | null;
+}> {
+  await ensureUsersTable();
+  const res = await pool.query<{
+    subscription_status: SubscriptionStatus;
+    stripe_customer_id: string | null;
+    stripe_subscription_id: string | null;
+    current_period_end: Date | null;
+  }>(
+    'SELECT subscription_status, stripe_customer_id, stripe_subscription_id, current_period_end FROM users WHERE id = $1',
+    [userId],
+  );
+  const row = res.rows[0];
+  return (
+    row ?? {
+      subscription_status: 'free',
+      stripe_customer_id: null,
+      stripe_subscription_id: null,
+      current_period_end: null,
+    }
+  );
+}
+
+export async function setUserSubscriptionFromStripe(
+  userId: string,
+  updates: {
+    subscription_status: SubscriptionStatus;
+    stripe_customer_id: string | null;
+    stripe_subscription_id: string | null;
+    current_period_end: Date | null;
+  },
+): Promise<void> {
+  await ensureUsersTable();
+  await pool.query(
+    `UPDATE users
+     SET subscription_status = $1,
+         stripe_customer_id = $2,
+         stripe_subscription_id = $3,
+         current_period_end = $4
+     WHERE id = $5`,
+    [
+      updates.subscription_status,
+      updates.stripe_customer_id,
+      updates.stripe_subscription_id,
+      updates.current_period_end,
+      userId,
+    ],
+  );
 }

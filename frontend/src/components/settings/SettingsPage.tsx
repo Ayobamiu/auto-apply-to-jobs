@@ -5,6 +5,7 @@ import {
   GraduationCap,
   Link,
   ClipboardList,
+  CreditCard,
 } from "lucide-react";
 import { ProfileFormSection } from "./ProfileFormSection";
 import { ResumeSettingsSection } from "./ResumeSettingsSection";
@@ -12,8 +13,15 @@ import { TranscriptSettingsSection } from "./TranscriptSettingsSection";
 import { HandshakeSettingsSection } from "./HandshakeSettingsSection";
 import { ApplicationSettingsSection } from "./ApplicationSettingsSection";
 import { useLocation, useNavigate } from "react-router-dom";
+import { SubscriptionSettingsPage } from "./SubscriptionSettingsPage";
 
-type Tab = "profile" | "resume" | "transcript" | "application" | "handshake";
+type Tab =
+  | "profile"
+  | "resume"
+  | "transcript"
+  | "application"
+  | "handshake"
+  | "subscription";
 
 const TABS: {
   key: Tab;
@@ -50,6 +58,12 @@ const TABS: {
     label: "Handshake",
     description: "Connection status",
     icon: Link,
+  },
+  {
+    key: "subscription",
+    label: "Subscription",
+    description: "Plan and billing",
+    icon: CreditCard,
   },
 ];
 
@@ -134,6 +148,7 @@ export function SettingsPage() {
             {isActive("transcript") && <TranscriptSettingsSection />}
             {isActive("application") && <ApplicationSettingsSection />}
             {isActive("handshake") && <HandshakeSettingsSection />}
+            {isActive("subscription") && <SubscriptionSettingsPage />}
           </div>
         </div>
       </div>

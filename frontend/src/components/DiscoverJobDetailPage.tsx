@@ -35,6 +35,7 @@ import { CoverLetterEditorApp } from "../resume-editor/CoverLetterEditorApp";
 import { FormReviewPanel } from "./FormReviewPanel";
 import { WrittenDocsReviewPanel } from "./WrittenDocsReviewPanel";
 import dayjs from "dayjs";
+import { useSubscription } from "../subscription/useSubscription";
 
 type DocTab = "resume" | "cover" | "form" | "written-doc" | null;
 
@@ -59,6 +60,12 @@ export function DiscoverJobDetailPage() {
   const [formSaving, setFormSaving] = useState(false);
   const [formSaved, setFormSaved] = useState(false);
   const [formAnswers, setFormAnswers] = useState<GeneratedAnswer[]>([]);
+
+  const {
+    isPro,
+    loading: subscriptionLoading,
+    openUpgradeModal,
+  } = useSubscription();
 
   /** Prevents overlapping silent pipeline polls (interval tick while prior GET still in flight). */
   const silentPollInFlightRef = useRef(false);
@@ -237,6 +244,11 @@ export function DiscoverJobDetailPage() {
   );
 
   const handleApprove = useCallback(async () => {
+    if (!isPro) {
+      openUpgradeModal("submit");
+      return;
+    }
+
     const pid = detail?.pipelineJob?.id;
     if (!pid) return;
     try {
@@ -638,11 +650,19 @@ export function DiscoverJobDetailPage() {
                       <button
                         type="button"
                         disabled={
-                          !!applyingUrl || !!generatingUrl || isPipelineActive
+                          !!applyingUrl ||
+                          !!generatingUrl ||
+                          isPipelineActive ||
+                          subscriptionLoading
                         }
                         onClick={() => {
-                          if (!cannotApply && detail.job.url)
+                          if (!cannotApply && detail.job.url) {
+                            if (!isPro) {
+                              openUpgradeModal("submit");
+                              return;
+                            }
                             handleApply(detail.job.url);
+                          }
                         }}
                         className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl disabled:opacity-60 disabled:cursor-not-allowed border-0 cursor-pointer transition-colors ${
                           showGenerate
@@ -746,6 +766,7 @@ export function DiscoverJobDetailPage() {
                         type="button"
                         onClick={handleApprove}
                         className="px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 border-0 cursor-pointer"
+                        disabled={subscriptionLoading}
                       >
                         Approve & Submit
                       </button>

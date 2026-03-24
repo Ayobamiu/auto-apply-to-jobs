@@ -190,3 +190,32 @@ Deliverables:
 5. phased implementation plan
 
 Do not start coding until the architecture is presented first.
+
+
+I need to integrate Stripe freemium monetization into the app.
+Context:
+Payment: Stripe
+Add these fields to user model: subscription_status: "free" | "pro" | "cancelled", stripe_customer_id: string | null, stripe_subscription_id: string | null, current_period_end: Date | null
+
+Build the following:
+Backend:
+1. POST /api/subscription/create-checkout — authenticated route, creates a Stripe Checkout Session for a $9/mo recurring subscription, attaches the logged-in user's email, returns { url } to redirect to Stripe hosted checkout
+2. POST /api/webhooks/stripe — raw body parser (required by Stripe), verifies webhook signature using STRIPE_WEBHOOK_SECRET, handles these events:
+    - checkout.session.completed → set user subscription_status to "pro", save stripe_customer_id, stripe_subscription_id, current_period_end
+    - customer.subscription.deleted → set subscription_status to "cancelled"
+    - invoice.payment_failed → set subscription_status to "free"
+3. requirePro Express middleware that checks subscription_status === "pro" on the authenticated user and returns 403 if not
+
+Frontend:
+4. useSubscription.ts hook that fetches /api/user/subscription-status and exposes isPro: boolean, loading: boolean, and openUpgradeModal: () => void — the modal state should live in a SubscriptionProvider context so it can be triggered from anywhere in the app
+
+5. UpgradeModal.tsx React component with Tailwind CSS — shows when a free user triggers a pro feature. Should display: what they're missing (auto-submit + tailored resume), price ($9/mo), and a single "Upgrade to Pro" button that calls POST /api/subscription/create-checkout and redirects to the returned Stripe URL. Include a loading state on the button.
+
+Environment variables needed:
+STRIPE_SECRET_KEY
+STRIPE_WEBHOOK_SECRET
+STRIPE_PRICE_ID (the $9/mo price ID from Stripe dashboard)
+CLIENT_URL (for Stripe success/cancel redirect URLs)
+
+Use the existing auth middleware pattern already in the codebase for protecting routes. Do not invent a new auth pattern.
+Do not start coding until the architecture is presented first.

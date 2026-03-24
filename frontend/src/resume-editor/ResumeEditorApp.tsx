@@ -18,6 +18,7 @@ import {
   putPipelineArtifactResume,
 } from "../api";
 import { Spin } from "antd";
+import { useSubscription } from "../subscription/useSubscription";
 
 const STANDALONE_KEY = "auto-apply-resume-editor-draft";
 
@@ -98,6 +99,12 @@ export function ResumeEditorApp({
     discardAll,
     isSuccess,
   } = useAiEditor({ initialResume: initial, onSave: persistResume });
+
+  const {
+    isPro,
+    loading: subscriptionLoading,
+    openUpgradeModal,
+  } = useSubscription();
 
   useEffect(() => {
     if (externalResume && externalResume !== initial) {
@@ -211,7 +218,12 @@ export function ResumeEditorApp({
   }, [isSubmitted, hasUnsavedChanges, persistResume, resume]);
 
   const [downloadingResume, setDownloadingResume] = useState(false);
+
   const handleDownloadResume = useCallback(async () => {
+    if (!isPro) {
+      openUpgradeModal("documents");
+      return;
+    }
     if (!jobId) return void window.print();
     setDownloadingResume(true);
     try {
@@ -221,7 +233,7 @@ export function ResumeEditorApp({
     } finally {
       setDownloadingResume(false);
     }
-  }, [jobId]);
+  }, [jobId, isPro, openUpgradeModal]);
 
   return (
     <div className="flex flex-col h-full bg-white text-gray-900">
@@ -261,7 +273,7 @@ export function ResumeEditorApp({
             {mode === "preview" && (
               <button
                 onClick={handleDownloadResume}
-                disabled={downloadingResume}
+                disabled={downloadingResume || subscriptionLoading}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50"
               >
                 <Download size={14} /> PDF{" "}

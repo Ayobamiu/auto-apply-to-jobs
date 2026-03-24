@@ -1,6 +1,7 @@
 Plan to launch
-[ ] profile for onboarding
 [ ] sign in only with .edu email 
+[x] profile for onboarding
+[x] monetization
 [x] Search with mini feature
 [x] fix written Document bug [make sure apply-review-submit flow works]
 [x] remove 'wmich.handshake' as base url

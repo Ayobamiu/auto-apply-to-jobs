@@ -88,6 +88,11 @@ export interface User {
   email: string;
   password_hash: string;
   created_at: Date;
+  /** Freemium monetization status. */
+  subscription_status?: 'free' | 'pro' | 'cancelled';
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  current_period_end?: Date | null;
 }
 
 // ── Pipeline & orchestration ──────────────────────────────────────────────

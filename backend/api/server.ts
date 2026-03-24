@@ -15,6 +15,9 @@ import { register, login } from './routes/auth.js';
 import { postPipeline } from './routes/pipeline.js';
 import { getJobs, getJobsStatus, getJobsDetail, postScrapeJobDetail, getSubmittedJobList, postSaveJob, getJobLifecycleList } from './routes/jobs.js';
 import { getJobsFind } from './routes/jobs-find.js';
+import { postCreateCheckout, getSubscriptionStatus, postSubscriptionPortal } from './routes/subscription.js';
+import { postStripeWebhook } from './routes/stripe-webhook.js';
+import { requireProForAutoSubmit } from './middleware/requirePro.js';
 import {
   getProfileHandler,
   putProfile,
@@ -68,6 +71,9 @@ if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
 }
 
 const app = express();
+// Stripe webhooks must receive the raw request body to verify the signature.
+app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), postStripeWebhook);
+
 app.use(express.json());
 
 app.use((req, res, next) => {
@@ -86,7 +92,7 @@ app.post('/auth/register', register);
 app.post('/auth/login', login);
 
 // Protected routes
-app.post('/pipeline', authMiddleware, postPipeline);
+app.post('/pipeline', authMiddleware, requireProForAutoSubmit, postPipeline);
 app.post('/jobs/scrape', authMiddleware, postScrapeJobDetail);
 app.get('/jobs/detail', authMiddleware, getJobsDetail);
 app.get('/jobs', authMiddleware, getJobs);
@@ -139,6 +145,11 @@ app.get('/saved-answers', authMiddleware, getSavedAnswersHandler);
 app.put('/saved-answers', authMiddleware, putSavedAnswerHandler);
 app.get('/profile/extended', authMiddleware, getExtendedProfileHandler);
 app.put('/profile/extended', authMiddleware, putExtendedProfileHandler);
+
+// Subscription billing (Stripe)
+app.post('/subscription/create-checkout', authMiddleware, postCreateCheckout);
+app.get('/user/subscription-status', authMiddleware, getSubscriptionStatus);
+app.post('/subscription/portal', authMiddleware, postSubscriptionPortal);
 
 // Serve frontend SPA (after API routes so API paths take priority)
 if (existsSync(FRONTEND_DIST)) {
