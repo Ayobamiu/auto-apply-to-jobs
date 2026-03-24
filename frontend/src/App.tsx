@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -16,92 +16,105 @@ import { MyJobsPage } from "./components/MyJobsPage";
 import { SettingsPage } from "./components/settings/SettingsPage";
 import { FloatingProgress } from "./components/onboarding/FloatingProgress";
 import { SubscriptionProvider } from "./subscription/useSubscription";
+import { HomePage } from "./components/HomePage";
 
+function RequireAuth({ children }: { children: ReactNode }) {
+  if (!isLoggedIn()) {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+}
 function AppRoutes({ onLogout }: { onLogout: () => void }) {
   const navigate = useNavigate();
 
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/discover" replace />} />
-
+      <Route path="/" element={<HomePage />} />
+      <Route
+        path="/auth"
+        element={<Auth onSuccess={() => navigate("/discover")} />}
+      />
       {/* Shell-wrapped pages */}
       <Route
         path="/discover"
         element={
-          <AppShell onLogout={onLogout}>
-            <DiscoverListPage />
-          </AppShell>
+          <RequireAuth>
+            <AppShell onLogout={onLogout}>
+              <DiscoverListPage />
+            </AppShell>
+          </RequireAuth>
         }
       />
       <Route
         path="/discover/job/:jobRef"
         element={
-          <AppShell onLogout={onLogout}>
-            <DiscoverJobDetailPage />
-          </AppShell>
+          <RequireAuth>
+            <AppShell onLogout={onLogout}>
+              <DiscoverJobDetailPage />
+            </AppShell>
+          </RequireAuth>
         }
       />
       <Route
         path="/jobs"
         element={
-          <AppShell onLogout={onLogout}>
-            <MyJobsPage />
-          </AppShell>
+          <RequireAuth>
+            <AppShell onLogout={onLogout}>
+              <MyJobsPage />
+            </AppShell>
+          </RequireAuth>
         }
       />
       <Route
         path="/settings/*"
         element={
-          <AppShell onLogout={onLogout}>
-            <SettingsPage />
-          </AppShell>
+          <RequireAuth>
+            <AppShell onLogout={onLogout}>
+              <SettingsPage />
+            </AppShell>
+          </RequireAuth>
         }
       />
       <Route
         path="/settings"
         element={<Navigate to="/settings/profile" replace />}
       />
-
       {/* Chat (standalone layout, no shell) */}
       <Route
         path="/chat"
         element={
-          <Chat
-            onLogout={onLogout}
-            onNavigateToDiscover={() => navigate("/discover")}
-          />
+          <RequireAuth>
+            <Chat
+              onLogout={onLogout}
+              onNavigateToDiscover={() => navigate("/discover")}
+            />
+          </RequireAuth>
         }
       />
-
-      <Route path="*" element={<Navigate to="/discover" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
 
 export function App() {
-  const [showChat, setShowChat] = useState(isLoggedIn());
-
+  const [isLoggedIn_, setIsLoggedIn] = useState(isLoggedIn());
   useEffect(() => {
     setOnUnauthorized(() => {
       clearToken();
-      setShowChat(false);
+      setIsLoggedIn(false);
     });
   }, []);
-
-  if (!showChat) {
-    return <Auth onSuccess={() => setShowChat(true)} />;
-  }
-
   return (
     <BrowserRouter>
       <SubscriptionProvider>
         <AppRoutes
           onLogout={() => {
             clearToken();
-            setShowChat(false);
+            setIsLoggedIn(false);
+            window.location.href = "/";
           }}
         />
-        <FloatingProgress />
+        {isLoggedIn_ && <FloatingProgress />}
       </SubscriptionProvider>
     </BrowserRouter>
   );

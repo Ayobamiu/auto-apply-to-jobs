@@ -94,7 +94,7 @@ export function SubscriptionSettingsPage() {
         {subscriptionStatus === "free" && (
           <>
             <p className="text-sm text-gray-500">
-              You're on the free plan. Upgrade to unlock the full AutoApply
+              You're on the free plan. Upgrade to unlock the full Merit
               experience.
             </p>
             <ul className="space-y-2">
