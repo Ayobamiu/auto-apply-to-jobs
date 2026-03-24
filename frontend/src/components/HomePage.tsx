@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { isLoggedIn } from "../api";
+import animation from "../assets/animation.gif";
 
 function CheckIcon({ gray = false }: { gray?: boolean }) {
   return (
@@ -128,7 +129,7 @@ export function HomePage() {
           {/* GIF */}
           <div className="bg-gray-50">
             <img
-              src="/demo.gif"
+              src={animation}
               alt="Merit in action — resume tailoring and auto-submit"
               className="w-full h-auto block"
             />
