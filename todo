@@ -1,8 +1,8 @@
-fix animation in prod
-remove pro Restrictions from resume download
 fix resume dowload feature: resume PDF doesnt have all the details in preview
 auto-fix and populate user's profile when they correct forms
 Bug: edit hostories not saved
+x fix animation in prod
+x remove pro Restrictions from resume download
 x Monetize Very Important!
 x Profile set as part of Onboarding
 x publish extension
