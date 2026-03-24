@@ -105,8 +105,8 @@ function PillGroup({
             onClick={() => onToggle(o.value)}
             className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
               selected.has(o.value)
-                ? "bg-indigo-600 text-white border-indigo-600"
-                : "bg-white text-gray-600 border-gray-200 hover:border-indigo-400 hover:text-indigo-600"
+                ? "bg-blue-600 text-white border-blue-600"
+                : "bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600"
             }`}
           >
             {o.label}
@@ -257,8 +257,8 @@ export function DiscoverListPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-6 py-8">
       {/* Hero: paste Handshake link */}
-      <div className="mb-8 rounded-2xl bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center flex-shrink-0">
+      <div className="mb-8 rounded-2xl bg-gradient-to-br from-blue-50 to-white border border-blue-100 p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0">
           <Link2 className="w-5 h-5 text-white" />
         </div>
         <div className="flex-1 min-w-0">
@@ -273,7 +273,7 @@ export function DiscoverListPage() {
         <button
           type="button"
           onClick={() => setHandshakeModalOpen(true)}
-          className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition-colors border-0 cursor-pointer"
+          className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors border-0 cursor-pointer"
         >
           <Link2 className="w-4 h-4" />
           Paste link
@@ -289,7 +289,7 @@ export function DiscoverListPage() {
             value={filterQuery}
             onChange={(e) => setFilterQuery(e.target.value)}
             // onKeyDown={(e) => e.key === "Enter" && handleApplyFilters()}
-            className="flex-1 min-w-[140px] max-w-xs px-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+            className="flex-1 min-w-[140px] max-w-xs px-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
           />
           <input
             type="text"
@@ -297,21 +297,21 @@ export function DiscoverListPage() {
             value={filterLocation}
             onChange={(e) => setFilterLocation(e.target.value)}
             // onKeyDown={(e) => e.key === "Enter" && handleApplyFilters()}
-            className="flex-1 min-w-[120px] max-w-[200px] px-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+            className="flex-1 min-w-[120px] max-w-[200px] px-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
           />
           <button
             type="button"
             onClick={() => setFiltersOpen((v) => !v)}
             className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium border rounded-xl transition-colors cursor-pointer ${
               filtersOpen || activeCount > 0
-                ? "bg-indigo-50 text-indigo-700 border-indigo-300"
+                ? "bg-blue-50 text-blue-700 border-blue-300"
                 : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
             }`}
           >
             <SlidersHorizontal className="w-4 h-4" />
             Filters
             {activeCount > 0 && (
-              <span className="w-5 h-5 flex items-center justify-center text-[10px] font-bold text-white bg-indigo-600 rounded-full">
+              <span className="w-5 h-5 flex items-center justify-center text-[10px] font-bold text-white bg-blue-600 rounded-full">
                 {activeCount}
               </span>
             )}
@@ -324,7 +324,7 @@ export function DiscoverListPage() {
             disabled={loading}
             title="Fetch new listings from Handshake"
             onClick={handleRefresh}
-            className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-white bg-indigo-600 border-0 rounded-xl hover:bg-indigo-700 cursor-pointer transition-colors"
+            className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-white bg-blue-600 border-0 rounded-xl hover:bg-blue-700 cursor-pointer transition-colors"
           >
             Search {loading && <RefreshCw className="w-4 h-4 animate-spin" />}
           </button>
@@ -364,7 +364,7 @@ export function DiscoverListPage() {
               <select
                 value={perPage}
                 onChange={(e) => setPerPage(Number(e.target.value))}
-                className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
               >
                 <option value={25}>25</option>
                 <option value={50}>50</option>
@@ -422,7 +422,7 @@ export function DiscoverListPage() {
           <button
             type="button"
             onClick={() => loadList(false)}
-            className="px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 border-0 cursor-pointer"
+            className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 border-0 cursor-pointer"
           >
             Try again
           </button>
@@ -435,7 +435,7 @@ export function DiscoverListPage() {
           <button
             type="button"
             onClick={handleRefresh}
-            className="px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 border-0 cursor-pointer"
+            className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 border-0 cursor-pointer"
           >
             Refresh listings
           </button>
@@ -451,11 +451,11 @@ export function DiscoverListPage() {
 
             return (
               <li key={ref}>
-                <div className="group rounded-2xl border border-gray-100 bg-white hover:border-indigo-200 hover:shadow-md transition-all duration-150">
+                <div className="group rounded-2xl border border-gray-100 bg-white hover:border-blue-200 hover:shadow-md transition-all duration-150">
                   <Link
                     to={`/discover/job/${encodedRef}`}
                     onClick={handleCardClick}
-                    className="block p-5 no-underline text-inherit focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-t-2xl"
+                    className="block p-5 no-underline text-inherit focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-t-2xl"
                   >
                     <div className="flex items-start gap-3">
                       {listing.companyLogoUrl ? (
@@ -505,7 +505,7 @@ export function DiscoverListPage() {
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-indigo-600 no-underline transition-colors"
+                        className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 no-underline transition-colors"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                         Handshake
@@ -527,8 +527,8 @@ export function DiscoverListPage() {
                         title={isSaved ? "Saved" : "Save job"}
                         className={`ml-auto inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg border transition-colors cursor-pointer ${
                           isSaved
-                            ? "border-indigo-200 text-indigo-600 bg-indigo-50"
-                            : "border-gray-200 text-gray-500 bg-white hover:border-indigo-300 hover:text-indigo-600"
+                            ? "border-blue-200 text-blue-600 bg-blue-50"
+                            : "border-gray-200 text-gray-500 bg-white hover:border-blue-300 hover:text-blue-600"
                         } disabled:opacity-60`}
                       >
                         {isSaving ? (

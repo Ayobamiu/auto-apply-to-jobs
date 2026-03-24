@@ -80,7 +80,7 @@ export function UpgradeModal({
             type="button"
             onClick={onUpgrade}
             disabled={creating}
-            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed border-0 cursor-pointer transition-colors"
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed border-0 cursor-pointer transition-colors"
           >
             {creating ? "Redirecting…" : "Upgrade to Pro"}
           </button>

@@ -360,7 +360,7 @@ export function DiscoverJobDetailPage() {
                 <button
                   type="button"
                   onClick={handleReviewAll}
-                  className="px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 cursor-pointer transition-colors"
+                  className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 cursor-pointer transition-colors"
                 >
                   Review all
                 </button>
@@ -370,7 +370,7 @@ export function DiscoverJobDetailPage() {
                   type="button"
                   onClick={handleFormSave}
                   disabled={formSaving || formAnswers.length === 0}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {formSaving && (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -531,7 +531,7 @@ export function DiscoverJobDetailPage() {
                     href={detail.job.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                    className="flex-shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                     title="View on Handshake"
                   >
                     <ExternalLink className="w-4 h-4" />
@@ -562,8 +562,8 @@ export function DiscoverJobDetailPage() {
                     disabled={saving || saved}
                     className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border transition-colors cursor-pointer ${
                       saved
-                        ? "bg-indigo-50 border-indigo-200 text-indigo-600"
-                        : "bg-white border-gray-200 text-gray-700 hover:border-indigo-300 hover:text-indigo-600"
+                        ? "bg-blue-50 border-blue-200 text-blue-600"
+                        : "bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600"
                     } disabled:opacity-60 disabled:cursor-not-allowed`}
                   >
                     {saving ? (
@@ -598,7 +598,7 @@ export function DiscoverJobDetailPage() {
                             !!generatingUrl || !!applyingUrl || isPipelineActive
                           }
                           onClick={() => handleGenerate(detail.job.url!)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed border-0 cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed border-0 cursor-pointer"
                         >
                           {generatingUrl === detail.job.url ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -625,7 +625,7 @@ export function DiscoverJobDetailPage() {
                           if (!cannotApply && detail.job.url)
                             handleGenerate(detail.job.url);
                         }}
-                        className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed border-0 cursor-pointer transition-colors"
+                        className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed border-0 cursor-pointer transition-colors"
                       >
                         {generatingUrl === detail.job.url ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -666,8 +666,8 @@ export function DiscoverJobDetailPage() {
                         }}
                         className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl disabled:opacity-60 disabled:cursor-not-allowed border-0 cursor-pointer transition-colors ${
                           showGenerate
-                            ? "text-indigo-600 bg-indigo-50 hover:bg-indigo-100"
-                            : "text-white bg-indigo-600 hover:bg-indigo-700"
+                            ? "text-blue-600 bg-blue-50 hover:bg-blue-100"
+                            : "text-white bg-blue-600 hover:bg-blue-700"
                         }`}
                       >
                         {applyingUrl === detail.job.url ? (
@@ -701,7 +701,7 @@ export function DiscoverJobDetailPage() {
                             !!generatingUrl || !!applyingUrl || isPipelineActive
                           }
                           onClick={() => handleGenerate(detail.job.url!)}
-                          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:border-indigo-300 hover:text-indigo-600 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:border-blue-300 hover:text-blue-600 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors"
                         >
                           {generatingUrl === detail.job.url ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -723,7 +723,7 @@ export function DiscoverJobDetailPage() {
                 <div className="rounded-2xl border border-gray-100 bg-white p-4 space-y-2">
                   <div className="flex items-center gap-2">
                     {isPipelineActive ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-indigo-500 flex-shrink-0" />
+                      <Loader2 className="w-4 h-4 animate-spin text-blue-500 flex-shrink-0" />
                     ) : pipeline.status === "awaiting_approval" ? (
                       <Clock className="w-4 h-4 text-amber-500 flex-shrink-0" />
                     ) : pipeline.status === "done" ? (
@@ -765,7 +765,7 @@ export function DiscoverJobDetailPage() {
                       <button
                         type="button"
                         onClick={handleApprove}
-                        className="px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 border-0 cursor-pointer"
+                        className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 border-0 cursor-pointer"
                         disabled={subscriptionLoading}
                       >
                         Approve & Submit
@@ -798,8 +798,8 @@ export function DiscoverJobDetailPage() {
                         }}
                         className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-xl border transition-colors cursor-pointer ${
                           activeDoc === "written-doc"
-                            ? "bg-indigo-600 text-white border-indigo-600"
-                            : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600"
                         }`}
                       >
                         <FileText className="w-3.5 h-3.5" />
@@ -815,8 +815,8 @@ export function DiscoverJobDetailPage() {
                         }}
                         className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-xl border transition-colors cursor-pointer ${
                           activeDoc === "form"
-                            ? "bg-indigo-600 text-white border-indigo-600"
-                            : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600"
                         }`}
                       >
                         <FileText className="w-3.5 h-3.5" />
@@ -842,8 +842,8 @@ export function DiscoverJobDetailPage() {
                         }}
                         className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-xl border transition-colors cursor-pointer ${
                           activeDoc === "resume"
-                            ? "bg-indigo-600 text-white border-indigo-600"
-                            : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600"
                         }`}
                       >
                         <FileText className="w-3.5 h-3.5" />
@@ -859,8 +859,8 @@ export function DiscoverJobDetailPage() {
                         }}
                         className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-xl border transition-colors cursor-pointer ${
                           activeDoc === "cover"
-                            ? "bg-indigo-600 text-white border-indigo-600"
-                            : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600"
                         }`}
                       >
                         <FileText className="w-3.5 h-3.5" />
@@ -899,7 +899,7 @@ export function DiscoverJobDetailPage() {
                     <button
                       type="button"
                       onClick={() => setDescriptionExpanded((v) => !v)}
-                      className="inline-flex items-center gap-1 mt-1.5 text-xs text-indigo-600 hover:text-indigo-700 bg-transparent border-0 cursor-pointer"
+                      className="inline-flex items-center gap-1 mt-1.5 text-xs text-blue-600 hover:text-blue-700 bg-transparent border-0 cursor-pointer"
                     >
                       <ChevronDown
                         className={`w-3.5 h-3.5 transition-transform ${descriptionExpanded ? "rotate-180" : ""}`}
@@ -936,7 +936,7 @@ export function DiscoverJobDetailPage() {
           </div>
         ) : artifactsLoading ? (
           <div className="flex items-center justify-center h-full">
-            <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+            <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-400">

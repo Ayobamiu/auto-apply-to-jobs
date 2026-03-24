@@ -165,10 +165,10 @@ export function TranscriptSettingsSection() {
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
         onClick={() => fileRef.current?.click()}
-        className="flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50/40 cursor-pointer transition-colors"
+        className="flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 hover:border-blue-300 hover:bg-blue-50/40 cursor-pointer transition-colors"
       >
         {status === "loading" || status === "uploading" ? (
-          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+          <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
         ) : (
           <Upload className="w-8 h-8 text-gray-400" />
         )}

@@ -203,7 +203,7 @@ export function FormReviewPanel({
             </span>
           )}
           {editedCount > 0 && (
-            <span className="text-indigo-700">
+            <span className="text-blue-700">
               · <strong>{editedCount}</strong> edited
             </span>
           )}
@@ -213,7 +213,7 @@ export function FormReviewPanel({
           <button
             type="button"
             onClick={reviewAll}
-            className="px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 cursor-pointer transition-colors"
+            className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 cursor-pointer transition-colors"
           >
             Review all
           </button>
@@ -315,7 +315,7 @@ function FieldRow({
         status === "needs_review"
           ? "border-amber-200 bg-amber-50"
           : status === "edited"
-            ? "border-indigo-200 bg-indigo-50/40"
+            ? "border-blue-200 bg-blue-50/40"
             : "border-gray-200 bg-white"
       }`}
     >
@@ -346,7 +346,7 @@ function FieldRow({
             </span>
           )}
           {status === "edited" && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full border border-indigo-200 bg-indigo-100 text-indigo-800">
+            <span className="text-[10px] px-2 py-0.5 rounded-full border border-blue-200 bg-blue-100 text-blue-800">
               Edited
             </span>
           )}
@@ -421,7 +421,7 @@ function FieldInput({
       return (
         <input
           type="text"
-          className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-900 bg-white focus:ring-2 focus:ring-indigo-200 outline-none"
+          className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-200 outline-none"
           value={
             typeof localValue === "string" ? localValue : (localValue[0] ?? "")
           }
@@ -433,7 +433,7 @@ function FieldInput({
     case "textarea":
       return (
         <textarea
-          className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-900 bg-white focus:ring-2 focus:ring-indigo-200 outline-none resize-y min-h-[90px]"
+          className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-200 outline-none resize-y min-h-[90px]"
           value={
             typeof localValue === "string" ? localValue : (localValue[0] ?? "")
           }
@@ -452,8 +452,8 @@ function FieldInput({
               className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl border cursor-pointer transition-colors
                 ${
                   localValue === opt.value
-                    ? "border-indigo-300 bg-indigo-50 text-indigo-800"
-                    : "border-gray-200 bg-white text-gray-700 hover:border-indigo-200"
+                    ? "border-blue-300 bg-blue-50 text-blue-800"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-blue-200"
                 }`}
             >
               <input
@@ -473,7 +473,7 @@ function FieldInput({
     case "select":
       return (
         <select
-          className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-900 bg-white focus:ring-2 focus:ring-indigo-200 outline-none"
+          className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-200 outline-none"
           value={
             typeof localValue === "string" ? localValue : (localValue[0] ?? "")
           }
@@ -551,12 +551,12 @@ function MultiSelectField({
             return (
               <span
                 key={v}
-                className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs border border-indigo-200 bg-indigo-50 text-indigo-800"
+                className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs border border-blue-200 bg-blue-50 text-blue-800"
               >
                 {label}
                 <button
                   type="button"
-                  className="text-indigo-700 hover:text-indigo-900"
+                  className="text-blue-700 hover:text-blue-900"
                   onClick={() => toggle(v)}
                   aria-label={`Remove ${label}`}
                 >
@@ -578,15 +578,15 @@ function MultiSelectField({
               key={opt.value}
               className={`flex items-start gap-2 px-3 py-2 rounded-xl border text-sm cursor-pointer transition-colors ${
                 checked
-                  ? "border-indigo-200 bg-indigo-50"
-                  : "border-gray-200 bg-white hover:border-indigo-200"
+                  ? "border-blue-200 bg-blue-50"
+                  : "border-gray-200 bg-white hover:border-blue-200"
               }`}
             >
               <input
                 type="checkbox"
                 checked={checked}
                 onChange={() => toggle(opt.value)}
-                className="mt-0.5 accent-indigo-600"
+                className="mt-0.5 accent-blue-600"
               />
               <span className="text-gray-800">{opt.label}</span>
             </label>

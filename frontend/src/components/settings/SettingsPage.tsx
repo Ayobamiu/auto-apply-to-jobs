@@ -99,18 +99,18 @@ export function SettingsPage() {
                   onClick={() => navigate(`/settings/${key}`)}
                   className={`w-full flex items-center gap-3 px-4 py-3 text-left rounded-xl transition-colors border-0 cursor-pointer ${
                     isActive(key)
-                      ? "bg-indigo-50 text-indigo-700"
+                      ? "bg-blue-50 text-blue-700"
                       : "bg-transparent text-gray-600 hover:bg-gray-100"
                   }`}
                 >
                   <Icon
                     className={`w-4 h-4 flex-shrink-0 ${
-                      isActive(key) ? "text-indigo-600" : "text-gray-400"
+                      isActive(key) ? "text-blue-600" : "text-gray-400"
                     }`}
                   />
                   <div className="min-w-0">
                     <p
-                      className={`text-sm font-medium leading-none ${isActive(key) ? "text-indigo-700" : "text-gray-700"}`}
+                      className={`text-sm font-medium leading-none ${isActive(key) ? "text-blue-700" : "text-gray-700"}`}
                     >
                       {label}
                     </p>
@@ -129,8 +129,8 @@ export function SettingsPage() {
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
             <div className="mb-6 pb-4 border-b border-gray-100">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                  <current.icon className="w-4.5 h-4.5 text-indigo-600" />
+                <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <current.icon className="w-4.5 h-4.5 text-blue-600" />
                 </div>
                 <div>
                   <h2 className="text-[15px] font-semibold text-gray-900">

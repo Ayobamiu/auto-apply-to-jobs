@@ -102,7 +102,7 @@ export function ResumeSettingsSection() {
           <button
             type="button"
             onClick={() => setShowPreview(false)}
-            className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 bg-transparent border-0 cursor-pointer"
+            className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 bg-transparent border-0 cursor-pointer"
           >
             ← Back to upload
           </button>
@@ -111,7 +111,7 @@ export function ResumeSettingsSection() {
               type="button"
               onClick={handleSaveBaseResume}
               disabled={savingResume}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 disabled:opacity-60 border-0 cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-60 border-0 cursor-pointer"
             >
               {savingResume ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -151,10 +151,10 @@ export function ResumeSettingsSection() {
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
         onClick={() => fileRef.current?.click()}
-        className="flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50/40 cursor-pointer transition-colors"
+        className="flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 hover:border-blue-300 hover:bg-blue-50/40 cursor-pointer transition-colors"
       >
         {status === "uploading" ? (
-          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+          <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
         ) : status === "idle" && resume ? (
           <CheckCircle className="w-8 h-8 text-emerald-500" />
         ) : (
@@ -183,7 +183,7 @@ export function ResumeSettingsSection() {
         <button
           type="button"
           onClick={() => setShowPreview(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 border-0 cursor-pointer transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 border-0 cursor-pointer transition-colors"
         >
           <Eye className="w-4 h-4" />
           Preview & edit resume

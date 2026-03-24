@@ -223,7 +223,7 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
                     }}
                     placeholder="https://app.joinhandshake.com/jobs/…"
                     autoFocus
-                    className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 text-gray-900 placeholder:text-gray-400"
+                    className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-gray-900 placeholder:text-gray-400"
                   />
                 </div>
                 {errorMsg && (
@@ -244,7 +244,7 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
               <button
                 type="submit"
                 disabled={!url.trim()}
-                className="w-full py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors border-0 cursor-pointer"
+                className="w-full py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors border-0 cursor-pointer"
               >
                 Start Application
               </button>
@@ -266,7 +266,7 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
                             isPast || (s === "done" && step === "done")
                               ? "bg-green-500"
                               : isCurrent
-                                ? "bg-indigo-600"
+                                ? "bg-blue-600"
                                 : "bg-gray-200"
                           }`}
                         >
@@ -313,7 +313,7 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
               <button
                 type="button"
                 onClick={resetState}
-                className="w-full py-2.5 text-sm font-semibold text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 border-0 cursor-pointer transition-colors"
+                className="w-full py-2.5 text-sm font-semibold text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 border-0 cursor-pointer transition-colors"
               >
                 Try again
               </button>

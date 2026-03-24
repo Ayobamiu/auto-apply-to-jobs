@@ -4,13 +4,31 @@ import { getProfile, putProfile } from "../../api";
 
 type Status = "idle" | "loading" | "saving" | "saved" | "error";
 
-const SIMPLE_FIELDS: { key: string; label: string; placeholder: string; type?: string }[] = [
+const SIMPLE_FIELDS: {
+  key: string;
+  label: string;
+  placeholder: string;
+  type?: string;
+}[] = [
   { key: "name", label: "Full name", placeholder: "Jane Smith" },
-  { key: "email", label: "Email", placeholder: "jane@example.com", type: "email" },
+  {
+    key: "email",
+    label: "Email",
+    placeholder: "jane@example.com",
+    type: "email",
+  },
   { key: "phone", label: "Phone", placeholder: "+1 (555) 000-0000" },
   { key: "location", label: "Location", placeholder: "New York, NY" },
-  { key: "title", label: "Job title / headline", placeholder: "Software Engineer" },
-  { key: "linkedin", label: "LinkedIn URL", placeholder: "https://linkedin.com/in/…" },
+  {
+    key: "title",
+    label: "Job title / headline",
+    placeholder: "Software Engineer",
+  },
+  {
+    key: "linkedin",
+    label: "LinkedIn URL",
+    placeholder: "https://linkedin.com/in/…",
+  },
   { key: "github", label: "GitHub URL", placeholder: "https://github.com/…" },
 ];
 
@@ -35,12 +53,16 @@ export function ProfileFormSection() {
       setStatus("idle");
       setDirty(false);
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Failed to load profile");
+      setErrorMsg(
+        err instanceof Error ? err.message : "Failed to load profile",
+      );
       setStatus("error");
     }
   }, []);
 
-  useEffect(() => { void loadProfile(); }, [loadProfile]);
+  useEffect(() => {
+    void loadProfile();
+  }, [loadProfile]);
 
   const handleChange = (key: string, value: string) => {
     setFields((prev) => ({ ...prev, [key]: value }));
@@ -96,7 +118,7 @@ export function ProfileFormSection() {
               value={fields[key] ?? ""}
               onChange={(e) => handleChange(key, e.target.value)}
               placeholder={placeholder}
-              className="px-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+              className="px-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
             />
           </div>
         ))}
@@ -112,7 +134,7 @@ export function ProfileFormSection() {
           onChange={(e) => handleSummaryChange(e.target.value)}
           rows={4}
           placeholder="A brief description of your experience and goals…"
-          className="px-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 resize-none"
+          className="px-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 resize-none"
         />
       </div>
 
@@ -120,7 +142,7 @@ export function ProfileFormSection() {
         type="button"
         onClick={handleSave}
         disabled={!dirty || status === "saving"}
-        className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed border-0 cursor-pointer transition-colors"
+        className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed border-0 cursor-pointer transition-colors"
       >
         {status === "saving" ? (
           <Loader2 className="w-4 h-4 animate-spin" />
@@ -129,7 +151,11 @@ export function ProfileFormSection() {
         ) : (
           <Save className="w-4 h-4" />
         )}
-        {status === "saving" ? "Saving…" : status === "saved" ? "Saved!" : "Save changes"}
+        {status === "saving"
+          ? "Saving…"
+          : status === "saved"
+            ? "Saved!"
+            : "Save changes"}
       </button>
     </div>
   );

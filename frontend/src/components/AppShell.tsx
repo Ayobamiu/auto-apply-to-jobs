@@ -45,7 +45,7 @@ export function AppShell({ children, onLogout }: AppShellProps) {
           to="/discover"
           className="inline-flex items-center gap-2 no-underline text-gray-900 font-semibold text-[15px] tracking-tight flex-shrink-0"
         >
-          <span className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center flex-shrink-0">
+          <span className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
             <Sparkles className="w-4 h-4 text-white" />
           </span>
           Merit
@@ -63,7 +63,7 @@ export function AppShell({ children, onLogout }: AppShellProps) {
                 to={to}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium no-underline transition-colors ${
                   active
-                    ? "bg-indigo-50 text-indigo-700"
+                    ? "bg-blue-50 text-blue-700"
                     : "text-gray-500 hover:text-gray-800 hover:bg-gray-100"
                 }`}
               >
@@ -94,7 +94,7 @@ export function AppShell({ children, onLogout }: AppShellProps) {
               key={to}
               to={to}
               className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg text-xs font-medium no-underline transition-colors ${
-                active ? "text-indigo-600" : "text-gray-500"
+                active ? "text-blue-600" : "text-gray-500"
               }`}
             >
               <Icon className="w-5 h-5" />

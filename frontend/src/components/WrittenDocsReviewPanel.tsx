@@ -87,7 +87,7 @@ export function WrittenDocsReviewPanel({
               </div>
             )}
             <textarea
-              className="w-full min-h-[400px] px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 leading-relaxed resize-y outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-colors"
+              className="w-full min-h-[400px] px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 leading-relaxed resize-y outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-colors"
               defaultValue={writtenDoc.text}
               placeholder="Your response..."
               name="writtenDocText"
@@ -105,7 +105,7 @@ export function WrittenDocsReviewPanel({
               <button
                 type="submit"
                 disabled={saving || pipelineJobStatus !== "awaiting_approval"}
-                className="disabled:cursor-not-allowed disabled:opacity-50 px-3 py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 cursor-pointer transition-colors"
+                className="disabled:cursor-not-allowed disabled:opacity-50 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 cursor-pointer transition-colors"
               >
                 {saving ? "Saving..." : "Save"}
               </button>

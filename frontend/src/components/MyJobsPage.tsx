@@ -26,7 +26,11 @@ function jobPath(listing: JobListing): string {
 function formatDate(iso: string | undefined): string {
   if (!iso) return "";
   try {
-    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    return new Date(iso).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   } catch {
     return "";
   }
@@ -58,7 +62,7 @@ function EmptyState({ tab }: { tab: LifecycleTab }) {
       {tab !== "submitted" && (
         <Link
           to="/discover"
-          className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 no-underline transition-colors"
+          className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 no-underline transition-colors"
         >
           Discover jobs
           <ArrowRight className="w-4 h-4" />
@@ -74,7 +78,7 @@ function JobCard({ listing }: { listing: JobListing }) {
   return (
     <Link
       to={jobPath(listing)}
-      className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 hover:border-indigo-200 hover:shadow-sm no-underline text-inherit transition-all group"
+      className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 hover:border-blue-200 hover:shadow-sm no-underline text-inherit transition-all group"
     >
       {/* Logo */}
       {listing.companyLogoUrl ? (
@@ -94,11 +98,14 @@ function JobCard({ listing }: { listing: JobListing }) {
         <p className="font-semibold text-[14px] text-gray-900 truncate leading-snug">
           {listing.title || "Untitled"}
         </p>
-        <p className="text-xs text-gray-500 truncate mt-0.5">{listing.company}</p>
+        <p className="text-xs text-gray-500 truncate mt-0.5">
+          {listing.company}
+        </p>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-gray-400">
           {listing.location && (
             <span className="inline-flex items-center gap-0.5">
-              <MapPin className="w-3 h-3" />{listing.location}
+              <MapPin className="w-3 h-3" />
+              {listing.location}
             </span>
           )}
           {status === "submitted" && listing.appliedAt && (
@@ -111,7 +118,7 @@ function JobCard({ listing }: { listing: JobListing }) {
             <span>Saved {formatDate(listing.savedAt)}</span>
           )}
           {status === "in_progress" && (
-            <span className="inline-flex items-center gap-1 text-indigo-500">
+            <span className="inline-flex items-center gap-1 text-blue-500">
               <Loader2 className="w-3 h-3 animate-spin" />
               In progress
             </span>
@@ -120,12 +127,18 @@ function JobCard({ listing }: { listing: JobListing }) {
       </div>
 
       {/* Arrow */}
-      <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-indigo-500 transition-colors flex-shrink-0" />
+      <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500 transition-colors flex-shrink-0" />
     </Link>
   );
 }
 
-function TabContent({ status, active }: { status: LifecycleTab; active: boolean }) {
+function TabContent({
+  status,
+  active,
+}: {
+  status: LifecycleTab;
+  active: boolean;
+}) {
   const [listings, setListings] = useState<JobListing[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
@@ -166,8 +179,11 @@ function TabContent({ status, active }: { status: LifecycleTab; active: boolean 
         <p className="text-sm text-red-600">{error}</p>
         <button
           type="button"
-          onClick={() => { setFetched(false); void load(); }}
-          className="text-xs font-medium text-indigo-600 hover:text-indigo-700 bg-transparent border-0 cursor-pointer"
+          onClick={() => {
+            setFetched(false);
+            void load();
+          }}
+          className="text-xs font-medium text-blue-600 hover:text-blue-700 bg-transparent border-0 cursor-pointer"
         >
           Try again
         </button>

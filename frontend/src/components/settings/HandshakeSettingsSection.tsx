@@ -162,7 +162,7 @@ export function HandshakeSettingsSection() {
                   <a
                     href="https://chromewebstore.google.com/detail/elkggcpakhdlemcodpfljekmhlfnkjbe?utm_source=item-share-cb"
                     target="_blank"
-                    className="text-indigo-600 hover:text-indigo-700"
+                    className="text-blue-600 hover:text-blue-700"
                   >
                     Handshake Sync Pro chrome extension
                   </a>{" "}
@@ -177,7 +177,7 @@ export function HandshakeSettingsSection() {
                 </span>,
               ].map((step, i) => (
                 <li key={i} className="flex items-start gap-3">
-                  <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
                     {i + 1}
                   </span>
                   {step}
