@@ -282,6 +282,14 @@ export function DiscoverJobDetailPage() {
   if (!jobRef) return null;
 
   const pipeline = detail?.pipelineJob;
+
+  // Used to disable the apply button for handshake:apply_externally jobs after resume generation
+  const jobHasExternalApplicationOnHandshake =
+    detail?.job?.site === "handshake" &&
+    detail?.job?.applyType === "apply_externally" &&
+    pipeline?.result?.outcome === "handshake_apply_externally_not_supported" &&
+    pipeline?.status === "done";
+
   const appliedAt = !!detail?.userState?.appliedAt;
   const hasResume = !!detail?.hasResume;
   const showGenerate =
@@ -653,7 +661,8 @@ export function DiscoverJobDetailPage() {
                           !!applyingUrl ||
                           !!generatingUrl ||
                           isPipelineActive ||
-                          subscriptionLoading
+                          subscriptionLoading ||
+                          jobHasExternalApplicationOnHandshake
                         }
                         onClick={() => {
                           if (!cannotApply && detail.job.url) {

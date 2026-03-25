@@ -412,7 +412,7 @@ export interface JobDetailPipeline {
   id: string;
   status: string;
   phase: string | null;
-  result: unknown;
+  result: Record<string, unknown> | null;
   error: string | null;
   error_code?: string | null;
   retryAllowed?: boolean;

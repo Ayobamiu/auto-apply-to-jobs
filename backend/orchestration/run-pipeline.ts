@@ -106,17 +106,15 @@ export async function runPipelineForJob(
     return { job, resumePath: undefined, outcome: 'already_applied' };
   }
 
-  // check if the job if job site is handshake and the job has apply type apply_externally
-  if (getJobSiteFromUrl(jobUrl) === 'handshake' && job.applyType === 'apply_externally') {
-    endTotal();
-    return { job, resumePath: undefined, outcome: 'handshake_apply_externally_not_supported' };
-  }
+  const jobHasExternalApplicationOnHandshake = getJobSiteFromUrl(jobUrl) === 'handshake' && job.applyType === 'apply_externally';
+
 
   const siteFromUrl = getJobSiteFromUrl(jobUrl);
   const jobIdFromUrl = getJobIdFromUrl(jobUrl);
 
   // Artifact reuse: if we already have resume (and cover when required), skip generation and go straight to awaiting_approval
-  if (siteFromUrl && jobIdFromUrl && options.jobId) {
+  // skipp this for handshake:apply_externally
+  if (siteFromUrl && jobIdFromUrl && options.jobId && !jobHasExternalApplicationOnHandshake) {
     onPhase?.('Checking required documents...');
     try {
       const probeResult = await probeRequiredSections(jobUrl, userId);
@@ -165,84 +163,86 @@ export async function runPipelineForJob(
   onPhase?.('Checking required documents...');
   let coverPath = options.coverPath;
   let requiredSections: string[] = ['resume', 'coverLetter'];
-  console.log('Step 2: Probe required attachment sections...');
-  const endProbe = startPhase('Step 2: Probe apply modal');
-  try {
-    const probeResult = await probeRequiredSections(jobUrl, userId);
-    requiredSections = probeResult.requiredSections;
-    const unsupported = requiredSections.filter((k) => !SUPPORTED_SECTION_KEYS.includes(k as SectionKey));
-    if (unsupported.length > 0) {
-      throw new Error(
-        "This job requires document types we don't support. We only support resume, transcript, and cover letter."
-      );
-    }
-    await throwIfCancelled(options.checkCancelled);
-    if (requiredSections.includes('coverLetter') && !coverPath) {
-      console.log('Cover letter required — generating...');
-      const endCover = startPhase('Step 2b: Generate cover letter');
-      const { coverPath: generated } = await generateCoverLetter({ job, userId });
-      coverPath = generated;
-      endCover();
+  //skip this for handshake:apply_externally
+  if (!jobHasExternalApplicationOnHandshake) {
+    console.log('Step 2: Probe required attachment sections...');
+    const endProbe = startPhase('Step 2: Probe apply modal');
+    try {
+      const probeResult = await probeRequiredSections(jobUrl, userId);
+      requiredSections = probeResult.requiredSections;
+      const unsupported = requiredSections.filter((k) => !SUPPORTED_SECTION_KEYS.includes(k as SectionKey));
+      if (unsupported.length > 0) {
+        throw new Error(
+          "This job requires document types we don't support. We only support resume, transcript, and cover letter."
+        );
+      }
       await throwIfCancelled(options.checkCancelled);
-      console.log('Cover letter:', coverPath);
-    }
+      if (requiredSections.includes('coverLetter') && !coverPath) {
+        console.log('Cover letter required — generating...');
+        const endCover = startPhase('Step 2b: Generate cover letter');
+        const { coverPath: generated } = await generateCoverLetter({ job, userId });
+        coverPath = generated;
+        endCover();
+        await throwIfCancelled(options.checkCancelled);
+        console.log('Cover letter:', coverPath);
+      }
 
-    // Generate written document(s) if the form has upload_other_document fields with instructions
-    if (siteFromUrl && jobIdFromUrl) {
-      const { toJobRef: buildJobRef } = await import('../data/user-job-state.js');
-      const jRef = buildJobRef(siteFromUrl, jobIdFromUrl);
-      if (jRef) {
-        const formData = await getApplicationForm(userId, jRef);
-        if (formData) {
-          const writtenDocFields = formData.classifiedFields.filter(
-            (f) => f.intent === 'upload_other_document' && f.rawInstructions,
-          );
-          if (writtenDocFields.length > 0) {
-            console.log(
-              `[pipeline] Found ${writtenDocFields.length} written-document field(s); generating per field...`,
+      // Generate written document(s) if the form has upload_other_document fields with instructions
+      if (siteFromUrl && jobIdFromUrl) {
+        const { toJobRef: buildJobRef } = await import('../data/user-job-state.js');
+        const jRef = buildJobRef(siteFromUrl, jobIdFromUrl);
+        if (jRef) {
+          const formData = await getApplicationForm(userId, jRef);
+          if (formData) {
+            const writtenDocFields = formData.classifiedFields.filter(
+              (f) => f.intent === 'upload_other_document' && f.rawInstructions,
             );
-            for (const f of writtenDocFields) {
-              if (!f.rawInstructions) continue;
-              const existingForField = await getWrittenDocumentForJobArtifact(
-                userId,
-                siteFromUrl,
-                jobIdFromUrl,
-                f.id,
+            if (writtenDocFields.length > 0) {
+              console.log(
+                `[pipeline] Found ${writtenDocFields.length} written-document field(s); generating per field...`,
               );
-              console.log({ existingForField });
-              if (existingForField && !options.forceRegenerate) {
-                continue;
-              }
-              const endWrittenDoc = startPhase(`Step 2c: Generate written document (${f.id})`);
-              try {
-                await generateWrittenDocument({
-                  job,
+              for (const f of writtenDocFields) {
+                if (!f.rawInstructions) continue;
+                const existingForField = await getWrittenDocumentForJobArtifact(
                   userId,
-                  instructions: f.rawInstructions,
-                  artifactId: f.id,
-                });
-              } catch (err) {
-                console.warn(
-                  'Written document generation failed for field',
+                  siteFromUrl,
+                  jobIdFromUrl,
                   f.id,
-                  '(non-fatal):',
-                  (err as Error).message,
                 );
+                console.log({ existingForField });
+                if (existingForField && !options.forceRegenerate) {
+                  continue;
+                }
+                const endWrittenDoc = startPhase(`Step 2c: Generate written document (${f.id})`);
+                try {
+                  await generateWrittenDocument({
+                    job,
+                    userId,
+                    instructions: f.rawInstructions,
+                    artifactId: f.id,
+                  });
+                } catch (err) {
+                  console.warn(
+                    'Written document generation failed for field',
+                    f.id,
+                    '(non-fatal):',
+                    (err as Error).message,
+                  );
+                }
+                endWrittenDoc();
+                await throwIfCancelled(options.checkCancelled);
               }
-              endWrittenDoc();
-              await throwIfCancelled(options.checkCancelled);
             }
           }
         }
       }
+    } catch (err) {
+      const msg = (err as Error).message;
+      if (msg === UNSUPPORTED_SECTIONS_MESSAGE) throw err;
+      console.warn('Probe failed, proceeding without pre-check:', msg);
     }
-  } catch (err) {
-    const msg = (err as Error).message;
-    if (msg === UNSUPPORTED_SECTIONS_MESSAGE) throw err;
-    console.warn('Probe failed, proceeding without pre-check:', msg);
+    endProbe();
   }
-  endProbe();
-
   const automationLevel = options.automationLevel ?? 'review';
   if (automationLevel === 'review' && options.jobId) {
     let hasDynamicForm = false;
@@ -273,9 +273,15 @@ export async function runPipelineForJob(
     return {
       job,
       resumePath: resumePath ?? undefined,
-      outcome: 'no_apply',
-      paused: true,
+      outcome: jobHasExternalApplicationOnHandshake ? 'handshake_apply_externally_not_supported' : 'no_apply',
+      // dont pause for handshake:apply_externally
+      paused: !jobHasExternalApplicationOnHandshake,
     };
+  }
+
+  if (jobHasExternalApplicationOnHandshake) {
+    endTotal();
+    return { job, resumePath: resumePath || undefined, outcome: 'handshake_apply_externally_not_supported' };
   }
 
   onPhase?.('Applying to job...');
