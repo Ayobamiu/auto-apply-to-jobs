@@ -210,7 +210,7 @@ export function HomePage() {
             <ul className="space-y-2.5 mb-6">
               {[
                 "Unlimited job search",
-                "Auto-fill forms",
+                "Automatically fill out job applications for you",
                 "Tailored resume per job",
               ].map((f) => (
                 <li
