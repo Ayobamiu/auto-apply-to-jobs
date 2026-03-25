@@ -211,7 +211,7 @@ export function HomePage() {
               {[
                 "Unlimited job search",
                 "Auto-fill forms",
-                "Generic resume",
+                "Tailored resume per job",
               ].map((f) => (
                 <li
                   key={f}
