@@ -205,7 +205,7 @@ function buildResumeHtml(resumeJson: Record<string, unknown>): string {
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Arial, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, sans-serif; max-width: 720px; margin: 0 auto; padding: 20px 30px; line-height: 1.4; color: #1f2937; font-size: 12px; }
+    body { font-family: Arial, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, sans-serif; max-width: 720px; margin: 0 auto; margin-bottom:8px; padding: 12px; line-height: 1.3; color: #1f2937; font-size: 12px; }
     h1 { font-size: 20px; } h2 { font-size: 13px; }
     ${css ? '/* built CSS available but using inline styles for reliability */' : ''}
   </style></head><body>${html}</body></html>`;
