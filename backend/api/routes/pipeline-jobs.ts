@@ -197,11 +197,7 @@ export async function getPipelineJobArtifacts(req: Request, res: Response): Prom
 export async function getPipelineJobArtifactsResume(req: Request, res: Response): Promise<void> {
   const ctx = await getPipelineJobAndSiteJobId(req, res);
   if (!ctx) return;
-  const { job, site, jobIdFromUrl } = ctx;
-  if (job.status !== 'awaiting_approval') {
-    res.status(400).json({ error: 'Job is not awaiting approval' });
-    return;
-  }
+  const { site, jobIdFromUrl } = ctx;
   const userId = req.userId!;
   const format = req.query.format === 'pdf';
   if (format) {
@@ -227,11 +223,7 @@ export async function getPipelineJobArtifactsResume(req: Request, res: Response)
 export async function getPipelineJobArtifactsCover(req: Request, res: Response): Promise<void> {
   const ctx = await getPipelineJobAndSiteJobId(req, res);
   if (!ctx) return;
-  const { job, site, jobIdFromUrl } = ctx;
-  if (job.status !== 'awaiting_approval') {
-    res.status(400).json({ error: 'Job is not awaiting approval' });
-    return;
-  }
+  const { site, jobIdFromUrl } = ctx;
   const userId = req.userId!;
   const format = req.query.format === 'pdf';
   if (format) {

@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { EditableText } from "./EditableText";
-import { setResumePath, getProposedValueForPath, isPathUnderPatch, getAddPatchesForArray, type ProposedPatch } from "./utils";
+import {
+  setResumePath,
+  getProposedValueForPath,
+  isPathUnderPatch,
+  getAddPatchesForArray,
+  type ProposedPatch,
+} from "./utils";
 import { Sparkles } from "lucide-react";
 import { DiffView } from "../components/DiffView";
 
@@ -522,21 +528,18 @@ export function ResumeDocument({
     }
     if (phone) {
       contactSegments.push(
-        <span key="phone">
-          {renderField("basics.phone", phone)}
-        </span>,
+        <span key="phone">{renderField("basics.phone", phone)}</span>,
       );
     }
     if (email) {
       contactSegments.push(
-        <span key="email">
-          {renderField("basics.email", email)}
-        </span>,
+        <span key="email">{renderField("basics.email", email)}</span>,
       );
     }
     if (profiles.length > 0) {
       profiles.forEach((pro, index) => {
         const profileUrl = getStr(pro, "url");
+        const network = getStr(pro, "network");
         if (profileUrl)
           contactSegments.push(
             <a
@@ -546,19 +549,23 @@ export function ResumeDocument({
               rel="noopener noreferrer"
               className="text-blue-600 hover:underline"
             >
-              {renderField(`basics.profiles[${index}].url`, profileUrl)}
+              {renderField(
+                `basics.profiles[${index}].url`,
+                network
+                  ? `${network}: ${profileUrl.replace(/^https?:\/\//, "")}`
+                  : profileUrl.replace(/^https?:\/\//, ""),
+              )}
             </a>,
           );
       });
-    } else {
-      const url = getStr(basics, "url");
-      if (url) {
-        contactSegments.push(
-          <span key="url">
-            {renderField("basics.url", url)}
-          </span>,
-        );
-      }
+    }
+    const url = getStr(basics, "url");
+    if (url) {
+      contactSegments.push(
+        <span key="url">
+          Website: {renderField("basics.url", url.replace(/^https?:\/\//, ""))}
+        </span>,
+      );
     }
     const contactLine =
       contactSegments.length > 0
@@ -583,6 +590,11 @@ export function ResumeDocument({
                 <h1 className="text-lg md:text-xl font-semibold text-gray-900">
                   {getStr(basics, "name") || "\u00A0"}
                 </h1>
+                {getStr(basics, "label") && !summary ? (
+                  <p className="text-sm font-semibold text-gray-900">
+                    {getStr(basics, "label")}
+                  </p>
+                ) : null}
               </SectionWrapper>
 
               <SectionWrapper
@@ -611,7 +623,7 @@ export function ResumeDocument({
                   label="Title / Label"
                   data={getStr(basics, "label")}
                 >
-                  {getStr(basics, "label") ? (
+                  {getStr(basics, "label") && summary ? (
                     <p className="text-sm font-semibold text-gray-900">
                       {getStr(basics, "label")}
                     </p>
@@ -630,7 +642,8 @@ export function ResumeDocument({
                 </SectionWrapper>
               </div>
             </header>
-            {(work.length > 0 || getAddPatchesForArray("work", proposedPatches).length > 0) && (
+            {(work.length > 0 ||
+              getAddPatchesForArray("work", proposedPatches).length > 0) && (
               <section className="resume-section">
                 <h2 className={sectionHeading}>Experience</h2>
                 {work.map((entry, i) => {
@@ -672,10 +685,22 @@ export function ResumeDocument({
                           {loc && (start || end) ? sepP() : null}
                           <span className="text-gray-500">
                             {renderField(`work[${i}].startDate`, start)}
-                            {start && end ? " – " : ""}
-                            {renderField(`work[${i}].endDate`, end)}
+                            {start && end ? " – " : start ? " – " : ""}
+                            {end
+                              ? renderField(`work[${i}].endDate`, end)
+                              : start
+                                ? "Present"
+                                : ""}
                           </span>
                         </p>
+                        {getStr(entry, "summary") && (
+                          <p className="text-sm text-gray-700 mt-0.5">
+                            {renderField(
+                              `work[${i}].summary`,
+                              getStr(entry, "summary"),
+                            )}
+                          </p>
+                        )}
                         {(() => {
                           const blockMatch = getProposedValueForPath(
                             `work[${i}]`,
@@ -747,30 +772,55 @@ export function ResumeDocument({
                     </SectionWrapper>
                   );
                 })}
-                {getAddPatchesForArray("work", proposedPatches).map((patch, k) => {
-                  const v = patch.value as Record<string, unknown>;
-                  const hl = Array.isArray(v?.highlights) ? (v.highlights as string[]) : [];
-                  return (
-                    <div key={`add-work-${k}`} className="mb-3 relative ring-2 ring-emerald-400/80 bg-emerald-50/30 rounded-xl p-2">
-                      <span className="absolute -top-2.5 left-3 text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">New</span>
-                      <p className="text-sm mt-1">
-                        <span className="text-gray-700">{(v?.position as string) ?? ""}</span>
-                        {v?.position && v?.name ? <span className="text-gray-400 mx-1">|</span> : null}
-                        <span className="font-semibold">{(v?.name as string) ?? ""}</span>
-                        {v?.startDate ? <span className="text-gray-400 mx-1">|</span> : null}
-                        <span className="text-gray-500">{(v?.startDate as string) ?? ""}{v?.startDate && v?.endDate ? " – " : ""}{(v?.endDate as string) ?? ""}</span>
-                      </p>
-                      {hl.length > 0 && (
-                        <ul className="list-disc list-inside text-sm text-emerald-900 mt-0.5 ml-2 space-y-0.5">
-                          {hl.map((h, j) => <li key={j}>{h}</li>)}
-                        </ul>
-                      )}
-                    </div>
-                  );
-                })}
+                {getAddPatchesForArray("work", proposedPatches).map(
+                  (patch, k) => {
+                    const v = patch.value as Record<string, unknown>;
+                    const hl = Array.isArray(v?.highlights)
+                      ? (v.highlights as string[])
+                      : [];
+                    return (
+                      <div
+                        key={`add-work-${k}`}
+                        className="mb-3 relative ring-2 ring-emerald-400/80 bg-emerald-50/30 rounded-xl p-2"
+                      >
+                        <span className="absolute -top-2.5 left-3 text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                          New
+                        </span>
+                        <p className="text-sm mt-1">
+                          <span className="text-gray-700">
+                            {(v?.position as string) ?? ""}
+                          </span>
+                          {v?.position && v?.name ? (
+                            <span className="text-gray-400 mx-1">|</span>
+                          ) : null}
+                          <span className="font-semibold">
+                            {(v?.name as string) ?? ""}
+                          </span>
+                          {v?.startDate ? (
+                            <span className="text-gray-400 mx-1">|</span>
+                          ) : null}
+                          <span className="text-gray-500">
+                            {(v?.startDate as string) ?? ""}
+                            {v?.startDate && v?.endDate ? " – " : ""}
+                            {(v?.endDate as string) ?? ""}
+                          </span>
+                        </p>
+                        {hl.length > 0 && (
+                          <ul className="list-disc list-inside text-sm text-emerald-900 mt-0.5 ml-2 space-y-0.5">
+                            {hl.map((h, j) => (
+                              <li key={j}>{h}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    );
+                  },
+                )}
               </section>
             )}
-            {(volunteer.length > 0 || getAddPatchesForArray("volunteer", proposedPatches).length > 0) && (
+            {(volunteer.length > 0 ||
+              getAddPatchesForArray("volunteer", proposedPatches).length >
+                0) && (
               <section className="resume-section">
                 <h2 className={sectionHeading}>Volunteer</h2>
                 {volunteer.map((entry, i) => (
@@ -797,10 +847,9 @@ export function ResumeDocument({
                       </p>
                       <p className="text-gray-500 text-sm mt-0.5">
                         {getStr(entry, "startDate")}
-                        {getStr(entry, "startDate") && getStr(entry, "endDate")
-                          ? " – "
-                          : ""}
-                        {getStr(entry, "endDate")}
+                        {getStr(entry, "startDate") ? " – " : ""}
+                        {getStr(entry, "endDate") ||
+                          (getStr(entry, "startDate") ? "Present" : "")}
                       </p>
                       {getArr<string>(entry, "highlights").filter(Boolean)
                         .length > 0 && (
@@ -825,7 +874,9 @@ export function ResumeDocument({
                 ))}
               </section>
             )}
-            {(education.length > 0 || getAddPatchesForArray("education", proposedPatches).length > 0) && (
+            {(education.length > 0 ||
+              getAddPatchesForArray("education", proposedPatches).length >
+                0) && (
               <section className="resume-section">
                 <h2 className={sectionHeading}>Education</h2>
                 {education.map((entry, i) => (
@@ -844,32 +895,61 @@ export function ResumeDocument({
                           ? ", "
                           : null}
                         <DisplayText value={getStr(entry, "area")} />
-                        {getStr(entry, "area") &&
+                        {(getStr(entry, "area") ||
+                          getStr(entry, "studyType")) &&
                         (getStr(entry, "startDate") || getStr(entry, "endDate"))
                           ? " · "
                           : null}
                         {getStr(entry, "startDate")}
-                        {getStr(entry, "startDate") && getStr(entry, "endDate")
-                          ? " – "
-                          : ""}
-                        {getStr(entry, "endDate")}
+                        {getStr(entry, "startDate") ? " – " : ""}
+                        {getStr(entry, "endDate") ||
+                          (getStr(entry, "startDate") ? "Present" : "")}
+                        {getStr(entry, "score")
+                          ? ` · GPA: ${getStr(entry, "score")}`
+                          : null}
                       </p>
+                      {getArr<string>(entry, "courses").filter(Boolean).length >
+                        0 && (
+                        <p className="text-gray-500 text-sm mt-0.5">
+                          Courses:{" "}
+                          {getArr<string>(entry, "courses")
+                            .filter(Boolean)
+                            .join(", ")}
+                        </p>
+                      )}
                     </div>
                   </SectionWrapper>
                 ))}
-                {getAddPatchesForArray("education", proposedPatches).map((patch, k) => {
-                  const v = patch.value as Record<string, unknown>;
-                  return (
-                    <div key={`add-edu-${k}`} className="mb-3 relative ring-2 ring-emerald-400/80 bg-emerald-50/30 rounded-xl p-2">
-                      <span className="absolute -top-2.5 left-3 text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">New</span>
-                      <p className="font-semibold text-sm mt-1"><DisplayText value={(v?.institution as string) ?? ""} /></p>
-                      <p className="text-gray-600 text-sm">{(v?.studyType as string) ?? ""}{v?.studyType && v?.area ? ", " : ""}{(v?.area as string) ?? ""}</p>
-                    </div>
-                  );
-                })}
+                {getAddPatchesForArray("education", proposedPatches).map(
+                  (patch, k) => {
+                    const v = patch.value as Record<string, unknown>;
+                    return (
+                      <div
+                        key={`add-edu-${k}`}
+                        className="mb-3 relative ring-2 ring-emerald-400/80 bg-emerald-50/30 rounded-xl p-2"
+                      >
+                        <span className="absolute -top-2.5 left-3 text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                          New
+                        </span>
+                        <p className="font-semibold text-sm mt-1">
+                          <DisplayText
+                            value={(v?.institution as string) ?? ""}
+                          />
+                        </p>
+                        <p className="text-gray-600 text-sm">
+                          {(v?.studyType as string) ?? ""}
+                          {v?.studyType && v?.area ? ", " : ""}
+                          {(v?.area as string) ?? ""}
+                        </p>
+                      </div>
+                    );
+                  },
+                )}
               </section>
             )}
-            {(projects.length > 0 || getAddPatchesForArray("projects", proposedPatches).length > 0) && (
+            {(projects.length > 0 ||
+              getAddPatchesForArray("projects", proposedPatches).length >
+                0) && (
               <section className="resume-section">
                 <h2 className={sectionHeading}>Projects</h2>
                 {projects.map((entry, i) => (
@@ -882,7 +962,18 @@ export function ResumeDocument({
                     <div key={i} className={compact ? "mb-2" : "mb-3"}>
                       <p className="font-semibold text-sm">
                         <DisplayText value={getStr(entry, "name")} />
+                        {getStr(entry, "url") && (
+                          <span className="font-normal text-gray-500">
+                            {" — "}
+                            {getStr(entry, "url").replace(/^https?:\/\//, "")}
+                          </span>
+                        )}
                       </p>
+                      {getStr(entry, "description") && (
+                        <p className="text-gray-600 text-sm mt-0.5">
+                          {getStr(entry, "description")}
+                        </p>
+                      )}
                       {getArr<string>(entry, "highlights").filter(Boolean)
                         .length > 0 && (
                         <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2">
@@ -904,20 +995,38 @@ export function ResumeDocument({
                     </div>
                   </SectionWrapper>
                 ))}
-                {getAddPatchesForArray("projects", proposedPatches).map((patch, k) => {
-                  const v = patch.value as Record<string, unknown>;
-                  const hl = Array.isArray(v?.highlights) ? (v.highlights as string[]) : [];
-                  return (
-                    <div key={`add-proj-${k}`} className="mb-3 relative ring-2 ring-emerald-400/80 bg-emerald-50/30 rounded-xl p-2">
-                      <span className="absolute -top-2.5 left-3 text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">New</span>
-                      <p className="font-semibold text-sm mt-1"><DisplayText value={(v?.name as string) ?? ""} /></p>
-                      {hl.length > 0 && <ul className="list-disc list-inside text-sm text-emerald-900 mt-0.5 ml-2">{hl.map((h, j) => <li key={j}>{h}</li>)}</ul>}
-                    </div>
-                  );
-                })}
+                {getAddPatchesForArray("projects", proposedPatches).map(
+                  (patch, k) => {
+                    const v = patch.value as Record<string, unknown>;
+                    const hl = Array.isArray(v?.highlights)
+                      ? (v.highlights as string[])
+                      : [];
+                    return (
+                      <div
+                        key={`add-proj-${k}`}
+                        className="mb-3 relative ring-2 ring-emerald-400/80 bg-emerald-50/30 rounded-xl p-2"
+                      >
+                        <span className="absolute -top-2.5 left-3 text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                          New
+                        </span>
+                        <p className="font-semibold text-sm mt-1">
+                          <DisplayText value={(v?.name as string) ?? ""} />
+                        </p>
+                        {hl.length > 0 && (
+                          <ul className="list-disc list-inside text-sm text-emerald-900 mt-0.5 ml-2">
+                            {hl.map((h, j) => (
+                              <li key={j}>{h}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    );
+                  },
+                )}
               </section>
             )}
-            {(skills.length > 0 || getAddPatchesForArray("skills", proposedPatches).length > 0) && (
+            {(skills.length > 0 ||
+              getAddPatchesForArray("skills", proposedPatches).length > 0) && (
               <section className="resume-section">
                 <h2 className={sectionHeading}>Skills</h2>
                 {skills.map((entry, i) => {
@@ -946,7 +1055,7 @@ export function ResumeDocument({
                             value={getStr(entry, "name")}
                             className="font-semibold"
                           />
-                          {/* {getStr(entry, "name") && kwStr ? ": " : null} */}
+                          {getStr(entry, "name") && kwStr ? ": " : null}
                           {proposedKeywords != null ? (
                             <DiffView
                               original={kwStr}
