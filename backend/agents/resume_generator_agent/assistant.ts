@@ -6,21 +6,7 @@ import OpenAI from 'openai';
 import { AppError, CODES } from '../../shared/errors.js';
 import type { Profile, Job } from '../../shared/types.js';
 
-const SCHEMA_URL = 'https://raw.githubusercontent.com/jsonresume/resume-schema/master/schema.json';
-
 const DEFAULT_MODEL = 'gpt-4o-mini';
-
-const SYSTEM_PROMPT = `You are a resume writer. Your task is to produce a single JSON object that conforms to the JSON Resume schema (https://jsonresume.org/schema/).
-
-Output only valid JSON with no markdown or explanation. The JSON must include:
-- $schema: "${SCHEMA_URL}"
-- basics: { name, label, email?, phone?, url?, summary, location?: { region? }, profiles?: [{ network, url }] }
-- work: array of { name (company), position, location?, startDate?, endDate?, summary?, highlights: string[] }
-- education: array of { institution, area, studyType?, startDate?, endDate? }
-- skills: array of { name (category), keywords: string[] }
-- projects?: array of { name, description?, highlights?: string[] }
-
-Use ISO8601-ish dates where possible (e.g. "2025-05", "2025"). Keep the candidate's facts accurate; tailor emphasis, summary, and ordering to the job.`;
 
 function buildUserMessage(
   profile: Profile,
@@ -47,6 +33,7 @@ function buildUserMessage(
 
 export type { GenerateResumeWithAssistantParams, UpdateResumeFromChatOptions } from '../../shared/types.js';
 import type { GenerateResumeWithAssistantParams, UpdateResumeFromChatOptions } from '../../shared/types.js';
+import { resume_from_text_or_pdf_response_format, resume_from_text_or_pdf_system_prompt } from '../../shared/prompts/resume.js';
 
 export async function generateResumeWithAssistant({
   profile,
@@ -69,7 +56,7 @@ export async function generateResumeWithAssistant({
 
   const userMessage = buildUserMessage(profile, job as Job, baseResumeJson);
   const chatMessages: Array<{ role: 'system' | 'user'; content: string }> = [
-    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: resume_from_text_or_pdf_system_prompt },
     ...messages.map((m) => ({ role: m.role as 'user', content: m.content })),
     userMessage,
   ];
@@ -77,30 +64,16 @@ export async function generateResumeWithAssistant({
   const completion = await client.chat.completions.create({
     model,
     messages: chatMessages,
-    response_format: { type: 'json_object' },
+    response_format: resume_from_text_or_pdf_response_format,
     temperature: 0.3,
   });
 
-  const raw = completion.choices?.[0]?.message?.content;
+  const raw = completion.choices[0].message.content;
   if (!raw) {
     throw new Error('Resume assistant received empty response from LLM.');
   }
 
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(raw) as Record<string, unknown>;
-  } catch (e) {
-    throw new Error(`Resume assistant: LLM response was not valid JSON. ${(e as Error).message}`);
-  }
-
-  if (!parsed.basics) {
-    parsed.basics = { ...(parsed.basics as object), name: profile.name, email: profile.email };
-  }
-  if (!parsed.$schema) {
-    parsed.$schema = SCHEMA_URL;
-  }
-
-  return parsed;
+  return JSON.parse(raw) as Record<string, unknown>;
 }
 
 const EDIT_SYSTEM_PROMPT = `You are a resume editor. You will receive the current resume as JSON (JSON Resume schema) and a user request. Apply the requested changes and return the complete updated resume as a single JSON object only. No markdown, no explanation. Preserve all fields not affected by the request. The JSON must remain valid JSON Resume format.`;

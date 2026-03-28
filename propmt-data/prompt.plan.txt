@@ -219,3 +219,11 @@ CLIENT_URL (for Stripe success/cancel redirect URLs)
 
 Use the existing auth middleware pattern already in the codebase for protecting routes. Do not invent a new auth pattern.
 Do not start coding until the architecture is presented first.
+
+Resume generated has bad format - fix: use the resume-schema.json Strictly 
+Fix In:
+    - backend/agents/resume_generator_agent/assistant.ts#L13
+    - backend/shared/resume-json-from-text.ts#L11
+Get Inspiration from:
+    - backend/api/routes/resume.ts#L6
+    - backend/shared/profile-from-resume.ts#L132
