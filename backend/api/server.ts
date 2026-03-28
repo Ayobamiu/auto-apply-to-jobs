@@ -3,6 +3,7 @@
  * Also serves the frontend SPA from frontend/dist when built.
  */
 import './bootstrap.js';
+import '../jobs/syncGreenhouseJobs.js';
 import { existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
