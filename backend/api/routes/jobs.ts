@@ -10,6 +10,7 @@ import { getResumeForJob } from '../../data/job-artifacts.js';
 import { getLatestPipelineJobByJobUrl } from '../../data/pipeline-jobs.js';
 import { normalizePipelineOutcome, getPipelineOutcomeMessage } from '../../shared/pipeline-outcome.js';
 import { isAppError, isNonRetryableFailureCode, CODES } from '../../shared/errors.js';
+import { hydrateGreenhouseJob } from '../../greenhouse/hydrate.js';
 
 export async function getJobs(req: Request, res: Response): Promise<void> {
   const userId = req.userId;
@@ -72,7 +73,9 @@ export async function getJobsDetail(req: Request, res: Response): Promise<void> 
     }
     const HANDSHAKE_JOBS_BASE = process.env.HANDSHAKE_JOBS_BASE_URL || 'https://wmich.joinhandshake.com';
 
-    const jobUrl = job.url || (site === 'handshake' ? `${HANDSHAKE_JOBS_BASE}/jobs/${jobId}` : null);
+    let jobUrl = job.url || null;
+    if (!jobUrl && site === 'handshake') jobUrl = `${HANDSHAKE_JOBS_BASE}/jobs/${jobId}`;
+    if (!jobUrl && site === 'greenhouse') jobUrl = `https://boards.greenhouse.io/careers/jobs/${jobId}`;
     const [userState, resume, pipelineJob] = await Promise.all([
       getUserJobState(userId, jobRef),
       getResumeForJob(userId, site, jobId),
@@ -135,6 +138,23 @@ export async function postScrapeJobDetail(req: Request, res: Response): Promise<
     res.status(400).json({ error: 'Invalid jobRef' });
     return;
   }
+
+  if (site === 'greenhouse') {
+    try {
+      await hydrateGreenhouseJob(jobId);
+      const job = await getJob('greenhouse', jobId);
+      if (job) {
+        res.status(200).json({ job: { ...job, jobId, site } });
+      } else {
+        res.status(404).json({ error: 'Job not found after hydration' });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to hydrate job';
+      res.status(500).json({ error: message });
+    }
+    return;
+  }
+
   const HANDSHAKE_JOBS_BASE = process.env.HANDSHAKE_JOBS_BASE_URL || 'https://wmich.joinhandshake.com';
   const jobUrl = site === 'handshake' ? `${HANDSHAKE_JOBS_BASE}/jobs/${jobId}` : null;
   if (jobUrl) {

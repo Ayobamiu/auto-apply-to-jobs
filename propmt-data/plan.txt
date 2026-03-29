@@ -39,3 +39,66 @@ create table public.application_forms (
   constraint application_forms_pkey primary key (id),
   constraint application_forms_user_id_job_ref_key unique (user_id, job_ref)
 ) TABLESPACE pg_default;
+
+
+We have Functions to sync jobs every Night 
+we have Functions to extract jobs and fill forms
+1.  Now, we will update our Pipeline and UX to use greenhouse jobs.
+    Search: when user search for jobs from the frontend (query and filters), we want to show them matching jobs [Only greenhouse jobs for now]
+      - build the perfect job search endpoint for user to consume
+      - You may need to fix the current UX for filter on the DiscoverListPage to fit the job schema [See job schema in the job table in db]
+      - search used to scrape Handshake jobs [cache or live from the site]. we are changing to just greenhouse jobs from our db
+    Job page: when user click on a job to view, we want load the job, update it's content from greenhouse, then scrape its forms using our extractor
+      - first, load the job from the db [basic details]
+      - load the content [if not exist] from https://boards-api.greenhouse.io/v1/boards/{slug}/jobs/{id}. [We didnt load the content when syncing the jobs]
+      - then scrape its required forms from the job page. 
+      - we want this three operations to happen Smoothly so that user dont notice lag and by the time they click apply, the forms are Already Available [unlike the way we Currently do for handshake jobs]
+    Apply and Generate artifacts and answers: applying needs to change a lot because some of the steps in the Pipeline involves scraping jobs from handshake.
+      - Because we already scraped the forms before user clicks, that will not be in the Pipeline again
+      - Use your discretion, should we create a new pipeline for getting fomrs, Generating answers, fiiling forms and submiting[for greenhouse and scalable to other ats in the future], or update Existing one? 
+      - Answer Generation and review process by user Shouldn’t change much [or not at all] because they depends on jobs from the db, not ats specific.
+    We still support jobs from Handshake, we wont display them in search result now. But users can still paste thier link like they Currently do on the DiscoverListPage
+    I am trusting your Judgement on the user Experience, what user see when Certain operations are happening. For the best Experience
+2. save and get apply-form in db /backend/data/apply-forms.ts#L15 instead of locally
+
+
+Role: Senior Full-Stack Engineer
+
+Task: Refactor Job Pipeline and UX to prioritize Greenhouse over Handshake.
+
+Context Mapping
+Search Source: Switch from Live/Cached Handshake scraping → PostgreSQL (Greenhouse jobs).
+
+Schema Reference: See @job_table_schema for Greenhouse-specific fields.
+
+Content Source: https://boards-api.greenhouse.io/v1/boards/{slug}/jobs/{id}.
+
+Phase 1: Search & Discovery (@DiscoverListPage)
+Backend: Create a search endpoint filtering for source: 'greenhouse'.
+
+UI: Adjust filters to match the DB job schema (e.g., location, department, job type).
+
+Legacy Support: Keep the "Paste Handshake Link" input, but remove Handshake jobs from the default search results.
+
+Phase 2: High-Performance Job Loading (@JobPage)
+Implement a Background Hydration Strategy to eliminate "Apply" lag:
+
+Instant Load: Pull base job data from DB immediately.
+
+Parallel Fetch: While the user reads, fetch full job content from Greenhouse API.
+
+Predictive Scraping: Immediately trigger the form extractor on the fetched content.
+
+Goal: Ensure all form fields/questions are in @apply-forms.ts before the user clicks "Apply."
+
+Phase 3: Pipeline Refactor
+Decision: Create a Unified ATS Pipeline (scalable for Greenhouse/Lever/etc.).
+
+Change: Decouple "Form Scraping" from "Application Submission."
+
+Consistency: Keep the "Answer Generation" and "User Review" modules identical; they should consume the standardized form data regardless of source.
+
+Phase 4: Persistence (@backend/data/apply-forms.ts)
+Migration: Move apply-form storage from local JSON/memory to the DB via the logic in @apply-forms.ts#L15.
+
+Constraint: Focus on "Perceived Performance." Use optimistic UI or subtle background loading indicators so the transition feels instant.

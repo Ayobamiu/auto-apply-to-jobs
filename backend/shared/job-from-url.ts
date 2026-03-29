@@ -67,9 +67,21 @@ export function getJobSiteFromUrl(url: string): string {
   try {
     const host = new URL(normalizeUrl(url)).hostname.toLowerCase();
     if (host.includes('handshake')) return 'handshake';
+    if (host.includes('greenhouse.io') || host.includes('boards.greenhouse.io')) return 'greenhouse';
     return host;
   } catch {
     return 'unknown';
+  }
+}
+
+export function getGreenhouseSlugFromUrl(url: string): string | null {
+  try {
+    const normalized = normalizeUrl(url);
+    const m = normalized.match(/boards(?:-api)?\.greenhouse\.io\/v\d+\/boards\/([^/]+)/) ||
+              normalized.match(/job-boards\.greenhouse\.io\/([^/]+)/);
+    return m ? m[1] : null;
+  } catch {
+    return null;
   }
 }
 

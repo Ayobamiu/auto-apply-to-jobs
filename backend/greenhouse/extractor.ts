@@ -109,8 +109,9 @@ export async function extractGreenhouseForm(
         () => (window as any).__extractGreenhouseFields()
     );
 
+
     const fields: NormalizedFormField[] = rawFields.map((raw, i) => ({
-        id: slugify(raw.rawLabel, i),
+        id: raw.inputId,
         rawLabel: raw.rawLabel,
         rawInstructions: raw.rawInstructions || undefined,
         fieldType: raw.fieldType as NormalizedFormField['fieldType'],
@@ -216,12 +217,14 @@ export const GreenhouseSiteFormExtractor = {
 
             const selector = field.selectors.inputSelector;
             const value = Array.isArray(answer.value) ? answer.value[0] : answer.value;
+            const inputId = field.id;
 
             try {
                 switch (field.fieldType) {
                     case 'text':
                     case 'textarea':
-                        await frame.locator(selector).fill(value);
+                        // await frame.locator(selector).fill(value);
+                        await frame.locator(`#${inputId}`).fill(value);
                         break;
 
                     case 'radio': {
@@ -236,7 +239,8 @@ export const GreenhouseSiteFormExtractor = {
                     }
 
                     case 'select': {
-                        const loc = frame.locator(selector);
+                        // const loc = frame.locator(selector);
+                        const loc = frame.locator(`#${inputId}`);
                         const strVal = String(value);
                         const tag = await loc.evaluate((el) => el.tagName.toLowerCase()).catch(() => '');
                         if (tag === 'select') {
@@ -302,11 +306,11 @@ export const GreenhouseSiteFormExtractor = {
             else if (label.includes('cover')) filePath = filePaths.coverLetter;
             else if (label.includes('transcript')) filePath = filePaths.transcript;
             if (!filePath) continue;
-
             try {
                 // The Attach button is a sibling of the hidden file input.
                 // Use filechooser event to handle the native file dialog.
-                const fileInput = frame.locator(f.selectors.inputSelector);
+                // const fileInput = frame.locator(f.selectors.inputSelector);
+                const fileInput = frame.locator(`#${f.id}`);
                 const attachBtn = fileInput.locator('xpath=ancestor::div[1]//button[contains(text(),"Attach")]');
                 const hasDedicatedBtn = await attachBtn.count() > 0;
 

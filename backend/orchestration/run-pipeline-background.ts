@@ -137,16 +137,28 @@ export async function resumePipelineAfterApproval(jobId: string): Promise<void> 
       coverPath = out.coverPath;
     }
     const transcriptPath = needTranscript ? await getTranscriptPath(userId) : undefined;
-    // update the pipeline job submit to true
     await updatePipelineJobSubmit(jobId, true);
-    const applyResult = await runHandshakeApply(jobUrl, {
-      resumePath: resumePath ?? undefined,
-      coverPath,
-      transcriptPath,
-      submit: true,
-      userId,
-    });
-    const outcome = applyResult.skipped ? 'already_applied' : applyResult.applied ? 'submitted' : 'skipped';
+
+    let outcome: string;
+    if (site === 'greenhouse') {
+      const { runGreenhouseApply } = await import('../greenhouse/apply.js');
+      const ghResult = await runGreenhouseApply(jobUrl, {
+        submit: true,
+        resumePath: resumePath ?? undefined,
+        coverPath,
+        userId,
+      });
+      outcome = ghResult.applied ? 'submitted' : 'skipped';
+    } else {
+      const applyResult = await runHandshakeApply(jobUrl, {
+        resumePath: resumePath ?? undefined,
+        coverPath,
+        transcriptPath,
+        submit: true,
+        userId,
+      });
+      outcome = applyResult.skipped ? 'already_applied' : applyResult.applied ? 'submitted' : 'skipped';
+    }
     const result = {
       job: jobRecord ?? { title: (job.artifacts as Record<string, unknown>)?.jobTitle },
       outcome,

@@ -355,7 +355,7 @@ async function handleApply(
   const normalizedUrl = toHandshakeJobDetailsUrl(url);
   const jobIdFromUrl = getJobIdFromUrl(normalizedUrl);
   if (jobIdFromUrl) {
-    const cached = getApplyFormSchema(jobIdFromUrl);
+    const cached = await getApplyFormSchema(jobIdFromUrl);
     const presentSections = cached?.presentSections as Array<{ key: string }> | undefined;
     const requiredKeys = Array.isArray(presentSections) ? presentSections.map((s) => s.key) : [];
     if (requiredKeys.includes('transcript')) {

@@ -24,6 +24,7 @@ import {
   approvePipelineJob,
   cancelPipelineJob,
   saveJob,
+  hydrateJob,
   putApplicationFormAnswers,
   postApplicationFormReview,
   type JobDetailResponse,
@@ -111,13 +112,25 @@ export function DiscoverJobDetailPage() {
     loadOrReloadArtifacts();
   }, [detail?.pipelineJob?.id, loadOrReloadArtifacts]);
 
-  const scrapeJobDetail = useCallback(async (ref: string) => {
+  const hydrateOrScrape = useCallback(async (ref: string, site: string) => {
     setScrapingDetail(true);
     try {
-      const data = await postScrapeJobDetail(ref);
-      setDetail((prev) => (prev ? { ...prev, job: data.job } : null));
+      if (site === "greenhouse") {
+        const result = await hydrateJob(ref);
+
+        if (result.job) {
+          setDetail((prev) =>
+            prev ? { ...prev, job: { ...prev.job, ...result.job } } : null,
+          );
+        }
+      } else {
+        const data = await postScrapeJobDetail(ref);
+        setDetail((prev) => (prev ? { ...prev, job: data.job } : null));
+      }
     } catch (err) {
-      setDetailError(err instanceof Error ? err.message : "Failed to scrape");
+      setDetailError(
+        err instanceof Error ? err.message : "Failed to load details",
+      );
     } finally {
       setScrapingDetail(false);
     }
@@ -133,13 +146,16 @@ export function DiscoverJobDetailPage() {
 
   useEffect(() => {
     if (!jobRef || !detail?.job) return;
-    if (!detail.job.description || !detail.job.applyType)
-      scrapeJobDetail(jobRef);
+    if (!detail.job.description || !detail.job.applyType) {
+      const site = detail.job.site ?? jobRef.split(":")[0];
+      hydrateOrScrape(jobRef, site);
+    }
   }, [
     jobRef,
     detail?.job?.description,
     detail?.job?.applyType,
-    scrapeJobDetail,
+    detail?.job?.site,
+    hydrateOrScrape,
   ]);
 
   const pipelineStatus = detail?.pipelineJob?.status;
@@ -540,7 +556,7 @@ export function DiscoverJobDetailPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex-shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                    title="View on Handshake"
+                    title="View original listing"
                   >
                     <ExternalLink className="w-4 h-4" />
                   </a>
@@ -693,7 +709,7 @@ export function DiscoverJobDetailPage() {
                               : "Apply with Merit"}
                       </button>
                       <p className="text-xs text-gray-400 text-center">
-                        Generates docs and submits on Handshake
+                        Generates docs and auto-submits your application
                       </p>
                     </div>
                   )}

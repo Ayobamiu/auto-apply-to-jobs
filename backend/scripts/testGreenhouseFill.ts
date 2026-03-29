@@ -15,9 +15,9 @@ mkdirSync(FIELDS_DIR, { recursive: true });
 mkdirSync(SCREENSHOT_DIR, { recursive: true });
 
 const TEST_URLS = [
-    { label: 'Type 1', url: 'https://job-boards.greenhouse.io/thesciongroupllc/jobs/8469910002', jobRef: 'scion-8469910002' },
-    { label: 'Type 2a', url: 'https://careers.airbnb.com/positions/7738432/?gh_jid=7738432', jobRef: 'airbnb-7738432' },
-    { label: 'Type 2b', url: 'https://stripe.com/jobs/listing/account-executive-ai-sales/7546284', jobRef: 'stripe-7546284' },
+    { label: 'Yugabyte', url: 'https://job-boards.greenhouse.io/yugabyte/jobs/4656120006', jobRef: 'yugabyte-4656120006' },
+    // { label: 'Type 2a', url: 'https://careers.airbnb.com/positions/7738432/?gh_jid=7738432', jobRef: 'airbnb-7738432' },
+    // { label: 'Type 2b', url: 'https://stripe.com/jobs/listing/account-executive-ai-sales/7546284', jobRef: 'stripe-7546284' },
 ];
 
 // Map labels to realistic short values that React Select can filter.
@@ -147,6 +147,8 @@ async function run() {
 
             // ── Extract ──
             const result = await extractGreenhouseForm(page, jobRef);
+            // console.log({ result: result.schema.fields });
+
             const jsonPath = join(FIELDS_DIR, `${jobRef}.json`);
             writeFileSync(jsonPath, JSON.stringify(result, null, 2));
             console.log(`Saved extraction → ${jsonPath}`);
@@ -220,11 +222,11 @@ async function run() {
         } catch (err) {
             console.error(`Failed for ${label}:`, err);
         } finally {
-            await page.close();
+            // await page.close();
         }
     }
 
-    await browser.close();
+    // await browser.close();
 }
 
 run().catch(console.error);

@@ -3,181 +3,63 @@ import { Link } from "react-router-dom";
 import {
   MapPin,
   Briefcase,
-  RefreshCw,
-  SlidersHorizontal,
+  Search,
   ExternalLink,
   CheckCircle,
   Bookmark,
   BookmarkCheck,
   Link2,
   Loader2,
-  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Building2,
 } from "lucide-react";
-import { findJobs, saveJob, type JobListing } from "../api";
+import {
+  searchJobs,
+  saveJob,
+  type JobListing,
+  type SearchJobsResult,
+} from "../api";
 import { HandshakeLinkModal } from "./HandshakeLinkModal";
 import { useOnboarding } from "../hooks/useOnboarding";
 import { OnboardingChecklist } from "./onboarding/OnboardingChecklist";
 
 const STORAGE_KEY_SCROLL = "discover-list-scroll";
 
-const EMPLOYMENT_OPTIONS = [
-  { value: "1", label: "Full-Time" },
-  { value: "2", label: "Part-Time" },
-];
-const JOB_TYPE_OPTIONS = [
-  { value: "9", label: "Job" },
-  { value: "3", label: "Internship" },
-  { value: "6", label: "On Campus" },
-  { value: "4", label: "Co-op" },
-  { value: "5", label: "Experiential" },
-  { value: "10", label: "Volunteer" },
-  { value: "7", label: "Fellowship" },
-  { value: "8", label: "Graduate School" },
-];
-const REMOTE_OPTIONS = [
-  { value: "onsite", label: "Onsite" },
-  { value: "remote", label: "Remote" },
-  { value: "hybrid", label: "Hybrid" },
-];
-const WORK_AUTH_OPTIONS = [
-  { value: "openToUSVisaSponsorship", label: "Visa sponsorship" },
-  { value: "openToOptionalPracticalTraining", label: "OPT" },
-  { value: "openToCurricularPracticalTraining", label: "CPT" },
-  { value: "noUSWork", label: "No US work required" },
-  { value: "unknown", label: "Unknown" },
-];
-
-function formatListAge(iso: string): string {
-  try {
-    const d = new Date(iso);
-    const sec = Math.floor((Date.now() - d.getTime()) / 1000);
-    if (sec < 60) return "just now";
-    if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
-    if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
-    return `${Math.floor(sec / 86400)}d ago`;
-  } catch {
-    return "";
-  }
-}
-
-function toggleSet(set: Set<string>, value: string): Set<string> {
-  const next = new Set(set);
-  if (next.has(value)) next.delete(value);
-  else next.add(value);
-  return next;
-}
-
 function jobRef(listing: JobListing): string {
   return `${listing.site}:${listing.jobId}`;
 }
 
-function countActiveFilters(
-  employment: Set<string>,
-  jobTypes: Set<string>,
-  remote: Set<string>,
-  workAuth: Set<string>,
-): number {
-  return employment.size + jobTypes.size + remote.size + workAuth.size;
-}
-
-/** A single pill checkbox group */
-function PillGroup({
-  label,
-  options,
-  selected,
-  onToggle,
-}: {
-  label: string;
-  options: { value: string; label: string }[];
-  selected: Set<string>;
-  onToggle: (v: string) => void;
-}) {
-  return (
-    <div>
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-        {label}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {options.map((o) => (
-          <button
-            key={o.value}
-            type="button"
-            onClick={() => onToggle(o.value)}
-            className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
-              selected.has(o.value)
-                ? "bg-blue-600 text-white border-blue-600"
-                : "bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600"
-            }`}
-          >
-            {o.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
+// save search query, location, page, perPage to url search params
+// when user navigates to the page, load the search query, location, page, perPage from url search params
+// when user changes the search query, location, page, perPage, update the url search params
+// when user navigates to the page, load the search query, location, page, perPage from url search params
+const PER_PAGE = 30;
 export function DiscoverListPage() {
-  const [listings, setListings] = useState<JobListing[]>([]);
-  const [lastRefreshAt, setLastRefreshAt] = useState<string | null>(null);
+  const [listings, setListings] = useState<SearchJobsResult["listings"]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filterQuery, setFilterQuery] = useState("");
-  const [filterLocation, setFilterLocation] = useState("");
-  const [employmentTypes, setEmploymentTypes] = useState<Set<string>>(
-    new Set(),
-  );
-  const [jobTypes, setJobTypes] = useState<Set<string>>(new Set());
-  const [remoteWork, setRemoteWork] = useState<Set<string>>(new Set());
-  const [workAuthorization, setWorkAuthorization] = useState<Set<string>>(
-    new Set(),
-  );
-  const [perPage, setPerPage] = useState(25);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-
-  // Handshake modal
   const [handshakeModalOpen, setHandshakeModalOpen] = useState(false);
-
-  // Optimistic saved-job tracking
   const [savedRefs, setSavedRefs] = useState<Set<string>>(new Set());
   const [savingRefs, setSavingRefs] = useState<Set<string>>(new Set());
-
   const scrollTimerRef = useRef<number | null>(null);
 
-  const loadList = useCallback(async (refresh = false) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await findJobs({
-        site: "handshake",
-        maxResults: Math.max(perPage * 2, 50),
-        refresh,
-        query: filterQuery || undefined,
-        location: filterLocation || undefined,
-        employmentTypes: employmentTypes.size
-          ? Array.from(employmentTypes)
-          : undefined,
-        jobTypes: jobTypes.size ? Array.from(jobTypes) : undefined,
-        remoteWork: remoteWork.size ? Array.from(remoteWork) : undefined,
-        workAuthorization: workAuthorization.size
-          ? Array.from(workAuthorization)
-          : undefined,
-        page: 1,
-        perPage,
-      });
-      setListings(res.listings);
-      if (res.lastRefreshAt != null) setLastRefreshAt(res.lastRefreshAt);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load jobs");
-      setListings([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const setUrlParams = (key: string, value: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set(key, value);
+    window.history.pushState({}, "", url.toString());
+  };
+
+  const getUrlParams = (key: string) => {
+    const url = new URL(window.location.href);
+    return url.searchParams.get(key);
+  };
 
   useEffect(() => {
-    loadList(false);
-  }, [loadList]);
+    void handleSearch();
+  }, []);
 
   useEffect(() => {
     const raw = sessionStorage.getItem(STORAGE_KEY_SCROLL);
@@ -195,10 +77,32 @@ export function DiscoverListPage() {
     };
   }, []);
 
-  const handleRefresh = useCallback(() => {
-    setFiltersOpen(false);
-    loadList(true);
-  }, [loadList]);
+  const query = getUrlParams("query");
+  const location = getUrlParams("location");
+  let page = parseInt(getUrlParams("page") || "1", 10);
+
+  const handleSearch = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await searchJobs({
+        query: query != null ? query : undefined,
+        location: location != null ? location : undefined,
+        page: page,
+        perPage: PER_PAGE,
+      });
+      setListings(res.listings);
+      setTotalCount(res.totalCount);
+      setTotalPages(res.totalPages);
+      setUrlParams("page", page.toString());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load jobs");
+      setListings([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCardClick = useCallback(() => {
     try {
@@ -216,7 +120,7 @@ export function DiscoverListPage() {
         await saveJob(ref);
         setSavedRefs((s) => new Set(s).add(ref));
       } catch {
-        // silently ignore
+        /* ignore */
       } finally {
         setSavingRefs((s) => {
           const n = new Set(s);
@@ -228,12 +132,6 @@ export function DiscoverListPage() {
     [savingRefs, savedRefs],
   );
 
-  const activeCount = countActiveFilters(
-    employmentTypes,
-    jobTypes,
-    remoteWork,
-    workAuthorization,
-  );
   const { isComplete, loading: onboardingLoading } = useOnboarding();
 
   if (onboardingLoading) {
@@ -256,7 +154,7 @@ export function DiscoverListPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-6 py-8">
-      {/* Hero: paste Handshake link */}
+      {/* Hero: paste link */}
       <div className="mb-8 rounded-2xl bg-gradient-to-br from-blue-50 to-white border border-blue-100 p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0">
           <Link2 className="w-5 h-5 text-white" />
@@ -266,8 +164,8 @@ export function DiscoverListPage() {
             Have a specific job in mind?
           </h2>
           <p className="text-sm text-gray-500 mt-0.5">
-            Paste a Handshake link and we'll generate a tailored resume and
-            cover letter.
+            Paste a job link and we'll generate a tailored resume and cover
+            letter.
           </p>
         </div>
         <button
@@ -280,119 +178,47 @@ export function DiscoverListPage() {
         </button>
       </div>
 
-      {/* Search & filter bar */}
+      {/* Search bar */}
       <div className="mb-6">
         <div className="flex items-center gap-2 flex-wrap">
           <input
             type="text"
             placeholder="Search jobs…"
-            value={filterQuery}
-            onChange={(e) => setFilterQuery(e.target.value)}
-            // onKeyDown={(e) => e.key === "Enter" && handleApplyFilters()}
+            defaultValue={getUrlParams("query") || ""}
+            onChange={(e) => {
+              setUrlParams("query", e.target.value);
+            }}
+            // onKeyDown={handleInputKeyDown}
             className="flex-1 min-w-[140px] max-w-xs px-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
           />
           <input
             type="text"
             placeholder="Location"
-            value={filterLocation}
-            onChange={(e) => setFilterLocation(e.target.value)}
-            // onKeyDown={(e) => e.key === "Enter" && handleApplyFilters()}
+            defaultValue={getUrlParams("location") || ""}
+            onChange={(e) => {
+              setUrlParams("location", e.target.value);
+            }}
             className="flex-1 min-w-[120px] max-w-[200px] px-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
           />
           <button
             type="button"
-            onClick={() => setFiltersOpen((v) => !v)}
-            className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium border rounded-xl transition-colors cursor-pointer ${
-              filtersOpen || activeCount > 0
-                ? "bg-blue-50 text-blue-700 border-blue-300"
-                : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
-            }`}
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-            Filters
-            {activeCount > 0 && (
-              <span className="w-5 h-5 flex items-center justify-center text-[10px] font-bold text-white bg-blue-600 rounded-full">
-                {activeCount}
-              </span>
-            )}
-            <ChevronDown
-              className={`w-3.5 h-3.5 transition-transform ${filtersOpen ? "rotate-180" : ""}`}
-            />
-          </button>
-          <button
-            type="button"
             disabled={loading}
-            title="Fetch new listings from Handshake"
-            onClick={handleRefresh}
+            onClick={async () => await handleSearch()}
             className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-white bg-blue-600 border-0 rounded-xl hover:bg-blue-700 cursor-pointer transition-colors"
           >
-            Search {loading && <RefreshCw className="w-4 h-4 animate-spin" />}
+            <Search className="w-4 h-4" />
+            Search
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
           </button>
         </div>
 
-        {/* Filter panel */}
-        {filtersOpen && (
-          <div className="mt-3 p-5 bg-white border border-gray-200 rounded-2xl shadow-sm space-y-5">
-            <PillGroup
-              label="Employment type"
-              options={EMPLOYMENT_OPTIONS}
-              selected={employmentTypes}
-              onToggle={(v) => setEmploymentTypes((s) => toggleSet(s, v))}
-            />
-            <PillGroup
-              label="Job type"
-              options={JOB_TYPE_OPTIONS}
-              selected={jobTypes}
-              onToggle={(v) => setJobTypes((s) => toggleSet(s, v))}
-            />
-            <PillGroup
-              label="Work style"
-              options={REMOTE_OPTIONS}
-              selected={remoteWork}
-              onToggle={(v) => setRemoteWork((s) => toggleSet(s, v))}
-            />
-            <PillGroup
-              label="Work authorization"
-              options={WORK_AUTH_OPTIONS}
-              selected={workAuthorization}
-              onToggle={(v) => setWorkAuthorization((s) => toggleSet(s, v))}
-            />
-            <div className="flex items-center gap-3 pt-1 border-t border-gray-100">
-              <label className="text-xs font-medium text-gray-500">
-                Results per page
-              </label>
-              <select
-                value={perPage}
-                onChange={(e) => setPerPage(Number(e.target.value))}
-                className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-              >
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-              </select>
-              {activeCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmploymentTypes(new Set());
-                    setJobTypes(new Set());
-                    setRemoteWork(new Set());
-                    setWorkAuthorization(new Set());
-                  }}
-                  className="ml-auto text-xs text-red-500 hover:text-red-600 bg-transparent border-0 cursor-pointer"
-                >
-                  Clear all
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Meta row */}
-        {(lastRefreshAt || listings.length > 0) && !loading && (
+        {/* Results count */}
+        {!loading && totalCount > 0 && (
           <p className="mt-3 text-xs text-gray-400">
-            {lastRefreshAt
-              ? `Updated ${formatListAge(lastRefreshAt)} · ${listings.length} job${listings.length === 1 ? "" : "s"}`
-              : `${listings.length} job${listings.length === 1 ? "" : "s"}`}
+            {totalCount.toLocaleString()} job{totalCount === 1 ? "" : "s"} found
+            {getUrlParams("query") && (
+              <> for &ldquo;{getUrlParams("query")}&rdquo;</>
+            )}
           </p>
         )}
       </div>
@@ -421,7 +247,7 @@ export function DiscoverListPage() {
           <p className="text-gray-600">{error}</p>
           <button
             type="button"
-            onClick={() => loadList(false)}
+            onClick={async () => await handleSearch()}
             className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 border-0 cursor-pointer"
           >
             Try again
@@ -430,126 +256,157 @@ export function DiscoverListPage() {
       ) : listings.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
           <p className="text-gray-500 text-sm">
-            No jobs found. Try adjusting your filters or refreshing.
+            No jobs found. Try adjusting your search.
           </p>
-          <button
-            type="button"
-            onClick={handleRefresh}
-            className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 border-0 cursor-pointer"
-          >
-            Refresh listings
-          </button>
         </div>
       ) : (
-        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 list-none p-0 m-0">
-          {listings.map((listing) => {
-            const ref = jobRef(listing);
-            const encodedRef = encodeURIComponent(ref);
-            const isSaved =
-              savedRefs.has(ref) || listing.lifecycleStatus === "saved";
-            const isSaving = savingRefs.has(ref);
+        <>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 list-none p-0 m-0">
+            {listings.map((listing) => {
+              const ref = jobRef(listing);
+              const encodedRef = encodeURIComponent(ref);
+              const isSaved =
+                savedRefs.has(ref) || listing.lifecycleStatus === "saved";
+              const isSaving = savingRefs.has(ref);
+              const departments = (listing as any).departments as
+                | { name: string }[]
+                | undefined;
 
-            return (
-              <li key={ref}>
-                <div className="group rounded-2xl border border-gray-100 bg-white hover:border-blue-200 hover:shadow-md transition-all duration-150">
-                  <Link
-                    to={`/discover/job/${encodedRef}`}
-                    onClick={handleCardClick}
-                    className="block p-5 no-underline text-inherit focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-t-2xl"
-                  >
-                    <div className="flex items-start gap-3">
-                      {listing.companyLogoUrl ? (
-                        <img
-                          src={listing.companyLogoUrl}
-                          alt=""
-                          className="w-11 h-11 rounded-xl object-contain flex-shrink-0 bg-gray-50 border border-gray-100"
-                        />
-                      ) : (
-                        <div className="w-11 h-11 rounded-xl bg-gray-100 flex-shrink-0 flex items-center justify-center">
-                          <Briefcase className="w-5 h-5 text-gray-400" />
+              return (
+                <li key={ref}>
+                  <div className="group rounded-2xl border border-gray-100 bg-white hover:border-blue-200 hover:shadow-md transition-all duration-150">
+                    <Link
+                      to={`/discover/job/${encodedRef}`}
+                      onClick={handleCardClick}
+                      className="block p-5 no-underline text-inherit focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-t-2xl"
+                    >
+                      <div className="flex items-start gap-3">
+                        {listing.companyLogoUrl ? (
+                          <img
+                            src={listing.companyLogoUrl}
+                            alt=""
+                            className="w-11 h-11 rounded-xl object-contain flex-shrink-0 bg-gray-50 border border-gray-100"
+                          />
+                        ) : (
+                          <div className="w-11 h-11 rounded-xl bg-gray-100 flex-shrink-0 flex items-center justify-center">
+                            <Building2 className="w-5 h-5 text-gray-400" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <h2 className="font-semibold text-[14px] text-gray-900 truncate leading-snug">
+                            {listing.title || "Untitled"}
+                          </h2>
+                          {listing.company && (
+                            <p className="text-[13px] text-gray-500 truncate mt-0.5">
+                              {listing.company}
+                            </p>
+                          )}
                         </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <h2 className="font-semibold text-[14px] text-gray-900 truncate leading-snug">
-                          {listing.title || "Untitled"}
-                        </h2>
-                        {listing.company && (
-                          <p className="text-[13px] text-gray-500 truncate mt-0.5">
-                            {listing.company}
-                          </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3 text-xs text-gray-400">
+                        {listing.location && (
+                          <span className="inline-flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            {listing.location}
+                          </span>
+                        )}
+                        {departments && departments.length > 0 && (
+                          <span className="inline-flex items-center gap-1">
+                            <Briefcase className="w-3 h-3" />
+                            {departments[0].name}
+                          </span>
                         )}
                       </div>
-                    </div>
+                    </Link>
 
-                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3 text-xs text-gray-400">
-                      {listing.location && (
-                        <span className="inline-flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {listing.location}
-                        </span>
+                    <div className="flex items-center gap-2 px-5 pb-4 pt-1">
+                      {listing.url && (
+                        <a
+                          href={listing.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 no-underline transition-colors"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          View
+                        </a>
                       )}
-                      {listing.salaryEmploymentType && (
-                        <span className="inline-flex items-center gap-1">
-                          <Briefcase className="w-3 h-3" />
-                          {listing.salaryEmploymentType}
+                      {listing.applicationSubmitted ? (
+                        <span className="ml-auto inline-flex items-center gap-1 text-xs text-emerald-600 font-medium">
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          Applied
                         </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            void handleSaveJob(ref);
+                          }}
+                          disabled={isSaving || isSaved}
+                          title={isSaved ? "Saved" : "Save job"}
+                          className={`ml-auto inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg border transition-colors cursor-pointer ${
+                            isSaved
+                              ? "border-blue-200 text-blue-600 bg-blue-50"
+                              : "border-gray-200 text-gray-500 bg-white hover:border-blue-300 hover:text-blue-600"
+                          } disabled:opacity-60`}
+                        >
+                          {isSaving ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : isSaved ? (
+                            <BookmarkCheck className="w-3.5 h-3.5" />
+                          ) : (
+                            <Bookmark className="w-3.5 h-3.5" />
+                          )}
+                          {isSaved ? "Saved" : "Save"}
+                        </button>
                       )}
                     </div>
-                  </Link>
-
-                  {/* Footer row */}
-                  <div className="flex items-center gap-2 px-5 pb-4 pt-1">
-                    {listing.url && (
-                      <a
-                        href={listing.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 no-underline transition-colors"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        Handshake
-                      </a>
-                    )}
-                    {listing.applicationSubmitted ? (
-                      <span className="ml-auto inline-flex items-center gap-1 text-xs text-emerald-600 font-medium">
-                        <CheckCircle className="w-3.5 h-3.5" />
-                        Applied
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          void handleSaveJob(ref);
-                        }}
-                        disabled={isSaving || isSaved}
-                        title={isSaved ? "Saved" : "Save job"}
-                        className={`ml-auto inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg border transition-colors cursor-pointer ${
-                          isSaved
-                            ? "border-blue-200 text-blue-600 bg-blue-50"
-                            : "border-gray-200 text-gray-500 bg-white hover:border-blue-300 hover:text-blue-600"
-                        } disabled:opacity-60`}
-                      >
-                        {isSaving ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : isSaved ? (
-                          <BookmarkCheck className="w-3.5 h-3.5" />
-                        ) : (
-                          <Bookmark className="w-3.5 h-3.5" />
-                        )}
-                        {isSaved ? "Saved" : "Save"}
-                      </button>
-                    )}
                   </div>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 mt-8">
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={async () => {
+                  setUrlParams("page", (page - 1).toString());
+                  page -= 1;
+                  void handleSearch();
+                }}
+                className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:border-gray-300 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Prev
+              </button>
+              <span className="text-sm text-gray-500">
+                Page {getUrlParams("page") || "1"} of {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={page >= totalPages}
+                onClick={async () => {
+                  setUrlParams("page", (page + 1).toString());
+                  page = page + 1;
+                  void handleSearch();
+                }}
+                className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:border-gray-300 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </>
       )}
 
-      {/* Handshake link modal */}
       <HandshakeLinkModal
         open={handshakeModalOpen}
         onClose={() => setHandshakeModalOpen(false)}

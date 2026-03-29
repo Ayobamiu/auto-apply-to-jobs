@@ -489,6 +489,40 @@ export async function findJobs(options?: {
   return request<{ listings: JobListing[]; lastRefreshAt?: string | null }>(`/jobs/find${qs ? `?${qs}` : ''}`);
 }
 
+export interface SearchJobsResult {
+  listings: (JobListing & { ats?: string; greenhouseSlug?: string; departments?: { name: string }[] })[];
+  totalCount: number;
+  page: number;
+  perPage: number;
+  totalPages: number;
+}
+
+export async function searchJobs(options?: {
+  query?: string;
+  location?: string;
+  company?: string;
+  page?: number;
+  perPage?: number;
+}): Promise<SearchJobsResult> {
+  const params = new URLSearchParams();
+  if (options?.query) params.set('query', options.query);
+  if (options?.location) params.set('location', options.location);
+  if (options?.company) params.set('company', options.company);
+  if (options?.page != null) params.set('page', String(options.page));
+  if (options?.perPage != null) params.set('perPage', String(options.perPage));
+  const qs = params.toString();
+  console.log({ qs });
+
+  return request<SearchJobsResult>(`/jobs/search${qs ? `?${qs}` : ''}`);
+}
+
+export async function hydrateJob(jobRef: string): Promise<{ hydrated: boolean; job: JobDetailJob | null }> {
+  return request<{ hydrated: boolean; job: JobDetailJob | null }>('/jobs/hydrate', {
+    method: 'POST',
+    body: JSON.stringify({ jobRef }),
+  });
+}
+
 export async function getSubmittedJobList(): Promise<JobListing[]> {
   return request<JobListing[]>('/jobs/submitted-list');
 }

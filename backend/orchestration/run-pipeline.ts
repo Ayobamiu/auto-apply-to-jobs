@@ -25,6 +25,7 @@ import { getResumeForJob, getCoverLetterForJob, getWrittenDocumentForJob, getWri
 import { getApplicationForm } from '../data/application-forms.js';
 import type { Job, PipelineApplyOutcome, RunPipelineForJobOptions, RunPipelineForJobResult, SectionKey } from '../shared/types.js';
 import { SUPPORTED_SECTION_KEYS } from '../shared/types.js';
+import { runGreenhouseApply } from '../greenhouse/apply.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -64,8 +65,32 @@ export async function runPipelineForJob(
   await throwIfCancelled(options.checkCancelled);
 
   const onPhase = options.onPhaseChange;
+  const siteHint = jobUrl ? getJobSiteFromUrl(jobUrl) : null;
+  const isGreenhouse = siteHint === 'greenhouse';
   let job: Job;
-  if (jobUrl) {
+
+  if (jobUrl && isGreenhouse) {
+    onPhase?.('Loading job from database...');
+    console.log('Step 0: Get greenhouse job from DB + API hydration...');
+    const endStep0 = startPhase('Step 0: Get greenhouse job (DB + hydrate)');
+    const ghJobId = getJobIdFromUrl(jobUrl);
+    if (ghJobId) {
+      const { hydrateGreenhouseJob } = await import('../greenhouse/hydrate.js');
+      await hydrateGreenhouseJob(ghJobId);
+      const { getJob: getJobFromDb } = await import('../data/jobs.js');
+      const dbJob = await getJobFromDb('greenhouse', ghJobId);
+      if (dbJob) {
+        job = dbJob;
+      } else {
+        throw new Error(`Greenhouse job ${ghJobId} not found in DB after hydration`);
+      }
+    } else {
+      throw new Error(`Could not parse job ID from greenhouse URL: ${jobUrl}`);
+    }
+    endStep0();
+    await throwIfCancelled(options.checkCancelled);
+    console.log('Job:', job.title || job.company || jobUrl);
+  } else if (jobUrl) {
     onPhase?.('Scraping job...');
     console.log('Step 0: Get job from URL (scrape or cache)...');
     const endStep0 = startPhase('Step 0: Get job (scrape or cache)');
@@ -163,8 +188,42 @@ export async function runPipelineForJob(
   onPhase?.('Checking required documents...');
   let coverPath = options.coverPath;
   let requiredSections: string[] = ['resume', 'coverLetter'];
-  //skip this for handshake:apply_externally
-  if (!jobHasExternalApplicationOnHandshake) {
+
+  if (isGreenhouse) {
+    console.log('Step 2: Determine required sections from greenhouse form data...');
+    const endProbe = startPhase('Step 2: Greenhouse form sections');
+    try {
+      if (siteFromUrl && jobIdFromUrl) {
+        const { toJobRef: buildJobRef } = await import('../data/user-job-state.js');
+        const jRef = buildJobRef(siteFromUrl, jobIdFromUrl);
+        if (jRef) {
+          const formData = await getApplicationForm(userId, jRef);
+          if (formData) {
+            requiredSections = [];
+            const hasResume = formData.classifiedFields.some((f) =>
+              f.intent === 'upload_resume' || (f.fieldType === 'file_upload' && /resume|cv/i.test(f.rawLabel)),
+            );
+            const hasCover = formData.classifiedFields.some((f) =>
+              f.intent === 'upload_cover_letter' || (f.fieldType === 'file_upload' && /cover/i.test(f.rawLabel)),
+            );
+            if (hasResume) requiredSections.push('resume');
+            if (hasCover) requiredSections.push('coverLetter');
+          }
+        }
+      }
+      if (requiredSections.includes('coverLetter') && !coverPath) {
+        console.log('Cover letter required — generating...');
+        const endCover = startPhase('Step 2b: Generate cover letter');
+        const { coverPath: generated } = await generateCoverLetter({ job, userId });
+        coverPath = generated;
+        endCover();
+        await throwIfCancelled(options.checkCancelled);
+      }
+    } catch (err) {
+      console.warn('Greenhouse section detection failed, using defaults:', (err as Error).message);
+    }
+    endProbe();
+  } else if (!jobHasExternalApplicationOnHandshake) {
     console.log('Step 2: Probe required attachment sections...');
     const endProbe = startPhase('Step 2: Probe apply modal');
     try {
@@ -187,7 +246,6 @@ export async function runPipelineForJob(
         console.log('Cover letter:', coverPath);
       }
 
-      // Generate written document(s) if the form has upload_other_document fields with instructions
       if (siteFromUrl && jobIdFromUrl) {
         const { toJobRef: buildJobRef } = await import('../data/user-job-state.js');
         const jRef = buildJobRef(siteFromUrl, jobIdFromUrl);
@@ -285,6 +343,29 @@ export async function runPipelineForJob(
   }
 
   onPhase?.('Applying to job...');
+
+  if (isGreenhouse) {
+    console.log('Step 3: Run Greenhouse apply (browser form fill + submit)...');
+    const endApply = startPhase('Step 3: Greenhouse apply (browser fill + submit)');
+    try {
+
+      const ghResult = await runGreenhouseApply(jobUrl, {
+        submit: options.submit ?? false,
+        resumePath: resumePath ?? undefined,
+        coverPath,
+        userId,
+      });
+      endApply();
+      endTotal();
+      const outcome: PipelineApplyOutcome = ghResult.applied ? 'submitted' : 'skipped';
+      return { job, resumePath: resumePath ?? undefined, outcome };
+    } catch (err) {
+      endApply();
+      endTotal();
+      throw err;
+    }
+  }
+
   let transcriptPath: string | undefined;
   if (requiredSections.includes('transcript')) {
     const path = await getTranscriptPath(userId);
