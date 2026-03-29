@@ -137,6 +137,52 @@ export async function extractGreenhouseForm(
     return { schema, presentSections };
 }
 
+async function fillReactSelect(frame: Page | Frame, loc: ReturnType<Frame['locator']>, value: string): Promise<void> {
+    // Click to open the dropdown + focus the combobox
+    await loc.click();
+    await frame.waitForTimeout(300);
+
+    // Clear any existing search text, then type character-by-character
+    // so React Select's onChange fires for each keystroke and filters options.
+    await loc.fill('');
+    await loc.pressSequentially(value, { delay: 30 });
+    await frame.waitForTimeout(1000);
+
+    // Look for options inside the React Select menu (NOT global [role="option"])
+    const menuOpts = frame.locator('.select__menu .select__option, .select__menu [role="option"]');
+    let picked = false;
+
+    const count = await menuOpts.count();
+    if (count > 0) {
+        // Try exact-ish match first, then fall back to first visible option
+        for (let i = 0; i < count && !picked; i++) {
+            const text = await menuOpts.nth(i).textContent().catch(() => '');
+            if (text && text.toLowerCase().includes(value.toLowerCase().slice(0, 8))) {
+                await menuOpts.nth(i).click({ timeout: 3_000 });
+                picked = true;
+            }
+        }
+        if (!picked) {
+            await menuOpts.first().click({ timeout: 3_000 });
+            picked = true;
+        }
+    }
+
+    if (!picked) {
+        // API-loaded options (Location, School) — wait longer, then pick first
+        await frame.waitForTimeout(2000);
+        const lateOpts = frame.locator('.select__menu .select__option, .select__menu [role="option"]');
+        if (await lateOpts.count() > 0) {
+            await lateOpts.first().click({ timeout: 3_000 });
+        } else {
+            // Last resort: ArrowDown + Enter to accept whatever's highlighted
+            await loc.press('ArrowDown');
+            await frame.waitForTimeout(200);
+            await loc.press('Enter');
+        }
+    }
+}
+
 export const GreenhouseSiteFormExtractor = {
     site: SITE,
 
@@ -199,12 +245,7 @@ export const GreenhouseSiteFormExtractor = {
                             });
                             break;
                         }
-                        // React Select — type into the combobox and click the matching option
-                        const input = frame.locator(selector);
-                        await input.click();
-                        await input.fill(String(value));
-                        await frame.waitForTimeout(500);
-                        await frame.locator(`[role="option"]:has-text("${String(value)}")`).first().click();
+                        await fillReactSelect(frame, loc, strVal);
                         break;
                     }
 
@@ -212,11 +253,18 @@ export const GreenhouseSiteFormExtractor = {
                         const name = field.selectors.inputName;
                         if (name && Array.isArray(answer.value)) {
                             for (const v of answer.value) {
-                                await frame.locator(`input[type="checkbox"][name="${name}"][value="${v}"]`).check();
+                                const byVal = frame.locator(`input[type="checkbox"][name="${name}"][value="${v}"]`);
+                                if (await byVal.count() > 0) {
+                                    await byVal.check({ timeout: 5_000 });
+                                } else {
+                                    // Value doesn't match — check first unchecked box as fallback
+                                    const first = frame.locator(`input[type="checkbox"][name="${name}"]`).first();
+                                    await first.check({ timeout: 5_000 });
+                                }
                             }
                         } else {
                             const shouldCheck = value === 'true' || value === 'yes' || value === '1';
-                            if (shouldCheck) await frame.locator(selector).first().check();
+                            if (shouldCheck) await frame.locator(selector).first().check({ timeout: 5_000 });
                         }
                         break;
                     }
@@ -224,7 +272,7 @@ export const GreenhouseSiteFormExtractor = {
 
                 results.push({ fieldId: answer.fieldId, success: true });
             } catch (err) {
-                console.error(`[greenhouse/extractor] Failed to fill ${answer.fieldId}:`, err);
+                console.error(`[greenhouse/fill] Failed ${answer.fieldId}:`, err);
                 results.push({
                     fieldId: answer.fieldId,
                     success: false,
@@ -233,6 +281,52 @@ export const GreenhouseSiteFormExtractor = {
             }
         }
 
+        return results;
+    },
+
+    async fillFileUpload(
+        page: unknown,
+        fields: NormalizedFormField[],
+        filePaths: Record<string, string>,
+    ): Promise<Array<{ fieldId: string; success: boolean; error?: string }>> {
+        const p = page as Page;
+        const pageType = await detectGreenhousePageType(p);
+        const frame = await resolveFormFrame(p, pageType);
+        const results: Array<{ fieldId: string; success: boolean; error?: string }> = [];
+
+        for (const f of fields) {
+            if (f.fieldType !== 'file_upload') continue;
+            const label = f.rawLabel.toLowerCase();
+            let filePath: string | undefined;
+            if (label.includes('resume') || label.includes('cv')) filePath = filePaths.resume;
+            else if (label.includes('cover')) filePath = filePaths.coverLetter;
+            else if (label.includes('transcript')) filePath = filePaths.transcript;
+            if (!filePath) continue;
+
+            try {
+                // The Attach button is a sibling of the hidden file input.
+                // Use filechooser event to handle the native file dialog.
+                const fileInput = frame.locator(f.selectors.inputSelector);
+                const attachBtn = fileInput.locator('xpath=ancestor::div[1]//button[contains(text(),"Attach")]');
+                const hasDedicatedBtn = await attachBtn.count() > 0;
+
+                if (hasDedicatedBtn) {
+                    const [fileChooser] = await Promise.all([
+                        p.waitForEvent('filechooser', { timeout: 5_000 }),
+                        attachBtn.click(),
+                    ]);
+                    await fileChooser.setFiles(filePath);
+                } else {
+                    // Fallback: directly set files on the hidden input
+                    await fileInput.setInputFiles(filePath);
+                }
+                await frame.waitForTimeout(500);
+                results.push({ fieldId: f.id, success: true });
+            } catch (err) {
+                console.error(`[greenhouse/fill] Upload failed ${f.id}:`, err);
+                results.push({ fieldId: f.id, success: false, error: err instanceof Error ? err.message : String(err) });
+            }
+        }
         return results;
     },
 };

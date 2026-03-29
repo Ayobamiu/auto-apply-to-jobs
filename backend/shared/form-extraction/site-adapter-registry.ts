@@ -6,6 +6,7 @@ import type { Page, Locator } from 'playwright';
 import type { SiteFormExtractor, SiteFormExtractorResult, ClassifiedField, GeneratedAnswer } from '../types.js';
 import { extractHandshakeForm } from './handshake-extractor.js';
 import { fillDynamicFields } from './handshake-form-filler.js';
+import { GreenhouseSiteFormExtractor } from '../../greenhouse/extractor.js';
 
 const handshakeAdapter: SiteFormExtractor = {
   site: 'handshake',
@@ -24,6 +25,7 @@ const handshakeAdapter: SiteFormExtractor = {
 
 const registry = new Map<string, SiteFormExtractor>();
 registry.set('handshake', handshakeAdapter);
+registry.set('greenhouse', GreenhouseSiteFormExtractor);
 
 export function getSiteAdapter(site: string): SiteFormExtractor | undefined {
   return registry.get(site);
