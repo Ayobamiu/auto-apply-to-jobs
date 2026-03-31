@@ -78,7 +78,7 @@ export const resume_from_text_or_pdf_response_format: OpenAI.Chat.Completions.Ch
                     items: {
                         type: "object",
                         additionalProperties: false,
-                        required: ["institution", "url", "area", "studyType", "startDate", "endDate", "score", "courses"],
+                        required: ["institution", "url", "area", "studyType", "startDate", "endDate", "score", "courses", "startMonth", "startYear", "endMonth", "endYear"],
                         properties: {
                             institution: { type: "string", description: "e.g. Massachusetts Institute of Technology" },
                             url: { type: "string", description: "e.g. http://facebook.example.com" },
@@ -86,6 +86,10 @@ export const resume_from_text_or_pdf_response_format: OpenAI.Chat.Completions.Ch
                             studyType: { type: "string", description: "e.g. Bachelor" },
                             startDate: { type: "string", description: "Similar to the standard date type, but each section after the year is optional. e.g. 2014-06-29 or 2023-04" },
                             endDate: { type: "string", description: "Similar to the standard date type, but each section after the year is optional. e.g. 2014-06-29 or 2023-04" },
+                            startMonth: { type: "string", description: "e.g. January" },
+                            startYear: { type: "string", description: "e.g. 2020" },
+                            endMonth: { type: "string", description: "e.g. December" },
+                            endYear: { type: "string", description: "e.g. 2024" },
                             score: { type: "string", description: "grade point average, e.g. 3.67/4.0" },
                             courses: {
                                 type: "array",

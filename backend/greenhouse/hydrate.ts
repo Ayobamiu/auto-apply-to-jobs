@@ -44,6 +44,8 @@ interface GreenhouseJobFull extends GreenhouseJob {
     description: string;
     questions: GreenhouseDemographicQuestion[];
   };
+  education: string | null;
+  [key: string]: unknown;
 }
 
 export interface HydrateResult {
@@ -51,6 +53,7 @@ export interface HydrateResult {
   content: string | null;
   alreadyHydrated: boolean;
   formFields: NormalizedFormField[];
+  education: string | null;
 }
 
 function stripHtml(html: string): string {
@@ -86,26 +89,28 @@ function convertQuestionsToFields(
   let idx = startIndex;
 
   for (const q of questions) {
-    for (const f of q.fields) {
-      if (f.type === 'input_hidden') continue;
+    if (q?.fields && q?.fields?.length > 0) {
+      for (const f of q.fields) {
+        if (f.type === 'input_hidden') continue;
 
-      const fieldType = ghFieldTypeToNormalized(f.type);
-      const options = f.values?.map((v) => ({
-        value: String(v.value),
-        label: v.label,
-      })) ?? [];
+        const fieldType = ghFieldTypeToNormalized(f.type);
+        const options = f.values?.map((v) => ({
+          value: String(v.value),
+          label: v.label,
+        })) ?? [];
 
-      fields.push({
-        id: f.name || `gh_field_${idx}`,
-        rawLabel: q.label,
-        fieldType,
-        required: q.required,
-        options,
-        selectors: {
-          inputSelector: `[name="${f.name}"]`,
-        },
-      });
-      idx++;
+        fields.push({
+          id: f.name || `gh_field_${idx}`,
+          rawLabel: q.label,
+          fieldType,
+          required: q.required,
+          options,
+          selectors: {
+            inputSelector: `[name="${f.name}"]`,
+          },
+        });
+        idx++;
+      }
     }
   }
 
@@ -158,14 +163,14 @@ export async function getGreenhouseSlugForJob(jobId: string): Promise<string | n
 export async function hydrateGreenhouseJob(jobId: string, slug?: string): Promise<HydrateResult> {
   const existing = await getJob('greenhouse', jobId);
   if (existing?.description && existing.description.length > 100) {
-    return { description: existing.description, content: null, alreadyHydrated: true, formFields: [] };
+    return { description: existing.description, content: null, alreadyHydrated: true, formFields: [], education: null };
   }
 
   const resolvedSlug = slug ?? await getGreenhouseSlugForJob(jobId);
   if (!resolvedSlug) {
-    return { description: null, content: null, alreadyHydrated: false, formFields: [] };
+    return { description: null, content: null, alreadyHydrated: false, formFields: [], education: null };
   }
-
+  //https://developers.greenhouse.io/job-board.html#retrieve-a-job
   try {
     const res = await fetch(
       `https://boards-api.greenhouse.io/v1/boards/${resolvedSlug}/jobs/${jobId}?questions=true`,
@@ -173,7 +178,7 @@ export async function hydrateGreenhouseJob(jobId: string, slug?: string): Promis
     );
     if (!res.ok) {
       console.warn(`[hydrate] Greenhouse API returned ${res.status} for ${resolvedSlug}/${jobId}`);
-      return { description: null, content: null, alreadyHydrated: false, formFields: [] };
+      return { description: null, content: null, alreadyHydrated: false, formFields: [], education: null };
     }
 
     const data: GreenhouseJobFull = await res.json();
@@ -213,9 +218,9 @@ export async function hydrateGreenhouseJob(jobId: string, slug?: string): Promis
       formFields.push(...demoFields);
     }
 
-    return { description: plainDescription, content: htmlContent, alreadyHydrated: false, formFields };
+    return { description: plainDescription, content: htmlContent, alreadyHydrated: false, formFields, education: data?.education ?? null };
   } catch (err) {
     console.warn('[hydrate] Failed to fetch greenhouse job:', (err as Error).message);
-    return { description: null, content: null, alreadyHydrated: false, formFields: [] };
+    return { description: null, content: null, alreadyHydrated: false, formFields: [], education: null };
   }
 }

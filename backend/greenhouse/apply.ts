@@ -11,12 +11,12 @@ import {
   upsertApplicationForm,
   getAllSavedAnswers,
   getExtendedProfile,
+  updateApplicationFormStatus,
 } from '../data/application-forms.js';
 import { getProfile } from '../data/profile.js';
-import { getJob } from '../data/jobs.js';
+import { getJob, updateJob } from '../data/jobs.js';
 import { getJobIdFromUrl, getJobSiteFromUrl } from '../shared/job-from-url.js';
-import { toJobRef } from '../data/user-job-state.js';
-import type { ApplicationFormRecord, NormalizedFormSchema } from '../shared/types.js';
+import { setUserJobState, toJobRef } from '../data/user-job-state.js';
 
 interface GreenhouseApplyOptions {
   submit: boolean;
@@ -125,12 +125,32 @@ export async function runGreenhouseApply(
         await submitBtn.first().click();
         await page.waitForTimeout(3_000);
 
-        const confirmationVisible = await page.locator(
-          '.confirmation, .thank-you, [class*="success"], [class*="confirmation"]',
-        ).count() > 0;
+        const body = await page.content();
+        const hasConfirmation =
+          body.includes('Thank you') ||
+          body.includes('Application Received') ||
+          body.includes('application has been submitted') ||
+          body.includes('has been received') ||
+          await page.locator('.confirmation, .thank-you, [class*="success"], [class*="confirmation"]').count() > 0;
 
-        if (confirmationVisible) {
+        if (hasConfirmation) {
           console.log('[greenhouse/apply] Application submitted successfully');
+          await upsertApplicationForm({ ...formData, status: 'submitted' });
+          const submittedAt = new Date().toISOString();
+          await setUserJobState(userId, jobRef, { applicationSubmitted: true, appliedAt: submittedAt });
+          const stored = await getJob(site, jobId);
+          await updateJob(site, jobId, { ...(stored || { url: jobUrl }) });
+          // Mark dynamic form as submitted
+          if (jobRef) {
+            await updateApplicationFormStatus(userId, jobRef, 'submitted').catch(() => { });
+          }
+          return { applied: true, skipped: false };
+        }
+        //TODO: Implement email verification
+        // Some Greenhouse boards require email verification after submit
+        const hasVerification = body.includes('verification code') || body.includes('verify your email');
+        if (hasVerification) {
+          console.log('[greenhouse/apply] Submission requires email verification (form was filled and submit clicked)');
           await upsertApplicationForm({ ...formData, status: 'submitted' });
           return { applied: true, skipped: false };
         }

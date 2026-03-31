@@ -40,7 +40,12 @@ export interface UserJobState {
 export interface EducationEntry {
   school?: string;
   degree?: string;
+  discipline?: string;
   year?: string;
+  startMonth?: string | number;
+  startYear?: string | number;
+  endMonth?: string | number;
+  endYear?: string | number;
   [key: string]: unknown;
 }
 
@@ -51,6 +56,10 @@ export interface ExperienceEntry {
   location?: string;
   dates?: string;
   bullets?: string[];
+  startMonth?: string | number;
+  startYear?: string | number;
+  endMonth?: string | number;
+  endYear?: string | number;
   [key: string]: unknown;
 }
 
@@ -397,7 +406,8 @@ export type FormFieldType =
   | 'select'
   | 'multi_select'
   | 'radio'
-  | 'checkbox';
+  | 'checkbox'
+  | 'number';
 
 export interface FieldOption {
   label: string;
@@ -460,6 +470,23 @@ export type FieldIntent =
   | 'school_name'
   | 'major'
   | 'gpa'
+  //Company 
+  | 'company_name'
+  | 'company_location'
+  | 'company_industry'
+  | 'company_size'
+  | 'company_website'
+  | 'company_linkedin'
+  | 'company_twitter'
+  | 'company_facebook'
+  | 'company_instagram'
+  | 'degree_name'
+  | 'start_year'
+  | 'end_year'
+  | 'discipline_name'
+  | 'start_month'
+  | 'end_month'
+  | 'title'
   // Work authorization
   | 'work_authorization'
   | 'visa_sponsorship'

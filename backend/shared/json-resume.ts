@@ -40,6 +40,10 @@ interface EducationEntry {
   school?: string;
   degree?: string;
   year?: string | number;
+  startMonth?: string | number;
+  startYear?: string | number;
+  endMonth?: string | number;
+  endYear?: string | number;
 }
 
 interface ProjectEntry {

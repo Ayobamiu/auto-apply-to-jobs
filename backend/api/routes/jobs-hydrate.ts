@@ -16,7 +16,7 @@ import {
   getExtendedProfile,
 } from '../../data/application-forms.js';
 import { getProfile } from '../../data/profile.js';
-import type { ApplicationFormRecord, NormalizedFormSchema } from '../../shared/types.js';
+import type { ApplicationFormRecord, ClassifiedField, NormalizedFormSchema } from '../../shared/types.js';
 
 export async function postJobsHydrate(req: Request, res: Response): Promise<void> {
   const userId = req.userId;
@@ -48,8 +48,7 @@ export async function postJobsHydrate(req: Request, res: Response): Promise<void
       job: responseJob,
       formFieldCount: result.formFields.length,
     });
-
-    if (result.formFields.length > 0 && !result.alreadyHydrated) {
+    if (result.formFields.length > 0) {
       setImmediate(async () => {
         try {
           const existing = await getApplicationForm(userId, jobRef);
@@ -62,7 +61,13 @@ export async function postJobsHydrate(req: Request, res: Response): Promise<void
             fields: result.formFields,
           };
 
-          const classifiedFields = await classifyAllFields(result.formFields);
+          let classifiedFields = await classifyAllFields(result.formFields);
+          // some forms are not included in the greenhouse api, so we need to add them manually
+          // function to add manually included fields
+          // education is required if education: "education_required"
+          if (result.education && result.education === "education_required") {
+            classifiedFields = await addManuallyIncludedFields(classifiedFields);
+          }
 
           const [profile, extendedProfile, savedAnswers] = await Promise.all([
             getProfile(userId),
@@ -99,4 +104,176 @@ export async function postJobsHydrate(req: Request, res: Response): Promise<void
     const message = err instanceof Error ? err.message : 'Hydration failed';
     res.status(500).json({ error: message });
   }
+}
+
+async function addManuallyIncludedFields(classifiedFields: ClassifiedField[]): Promise<ClassifiedField[]> {
+
+  // fields for education
+  const fieldsForEdu: ClassifiedField[] = [
+    {
+      id: "school--0",
+      intent: "school_name",
+      fieldType: "select",
+      required: true,
+      options: [],
+      confidence: 1,
+      rawLabel: "School",
+      selectors: {
+        inputSelector: "#school--0",
+        inputName: "",
+      },
+    },
+    {
+      id: "degree--0",
+      intent: "degree_name",
+      fieldType: "select",
+      required: true,
+      options: [],
+      confidence: 1,
+      rawLabel: "Degree",
+      selectors: {
+        inputSelector: "#degree--0",
+        inputName: "",
+      },
+    },
+    {
+      id: "discipline--0",
+      intent: "discipline_name",
+      fieldType: "select",
+      required: true,
+      options: [],
+      confidence: 1,
+      rawLabel: "Discipline",
+      selectors: {
+        inputSelector: "#discipline--0",
+        inputName: "",
+      },
+    },
+    {
+      id: "start-month--0",
+      intent: "start_month",
+      fieldType: "number",
+      required: true,
+      confidence: 1,
+      rawLabel: "Start Month",
+      selectors: {
+        inputSelector: "#start-month--0",
+        inputName: "",
+      },
+    },
+    {
+      id: "start-year--0",
+      intent: "start_year",
+      fieldType: "number",
+      required: true,
+      confidence: 1,
+      rawLabel: "Start Date",
+      selectors: {
+        inputSelector: "#start-year--0",
+        inputName: "",
+      },
+    },
+    {
+      id: "end-year--0",
+      intent: "end_year",
+      fieldType: "number",
+      required: true,
+      confidence: 1,
+      rawLabel: "End Date",
+      selectors: {
+        inputSelector: "#end-year--0",
+        inputName: "",
+      },
+    },
+    {
+      id: "end-month--0",
+      intent: "end_month",
+      fieldType: "number",
+      required: true,
+      confidence: 1,
+      rawLabel: "End Month",
+      selectors: {
+        inputSelector: "#end-month--0",
+        inputName: "",
+      },
+    },
+  ]
+
+  // fields for company
+  const fieldsForCompany: ClassifiedField[] = [
+    {
+      id: "company--0",
+      intent: "company_name",
+      fieldType: "text",
+      required: true,
+      confidence: 1,
+      rawLabel: "Company",
+      selectors: {
+        inputSelector: "#company--0",
+        inputName: "",
+      },
+    },
+    {
+      id: "title--0",
+      intent: "title",
+      fieldType: "text",
+      required: true,
+      confidence: 1,
+      rawLabel: "Title",
+      selectors: {
+        inputSelector: "#title--0",
+        inputName: "",
+      },
+    },
+    {
+      id: "start-month--0",
+      intent: "start_month",
+      fieldType: "number",
+      required: true,
+      confidence: 1,
+      rawLabel: "Start Month",
+      selectors: {
+        inputSelector: "#start-month--0",
+        inputName: "",
+      },
+    },
+    {
+      id: "start-year--0",
+      intent: "start_year",
+      fieldType: "number",
+      required: true,
+      confidence: 1,
+      rawLabel: "Start Date",
+      selectors: {
+        inputSelector: "#start-year--0",
+        inputName: "",
+      },
+    },
+    {
+      id: "end-year--0",
+      intent: "end_year",
+      fieldType: "number",
+      required: true,
+      confidence: 1,
+      rawLabel: "End Date",
+      selectors: {
+        inputSelector: "#end-year--0",
+        inputName: "",
+      },
+    },
+    {
+      id: "end-month--0",
+      intent: "end_month",
+      fieldType: "number",
+      required: true,
+      confidence: 1,
+      rawLabel: "End Month",
+      selectors: {
+        inputSelector: "#end-month--0",
+        inputName: "",
+      },
+    },
+  ]
+
+  return [...classifiedFields, ...fieldsForEdu,];
 }

@@ -16,8 +16,7 @@ mkdirSync(SCREENSHOT_DIR, { recursive: true });
 
 const TEST_URLS = [
     { label: 'Yugabyte', url: 'https://job-boards.greenhouse.io/yugabyte/jobs/4656120006', jobRef: 'yugabyte-4656120006' },
-    // { label: 'Type 2a', url: 'https://careers.airbnb.com/positions/7738432/?gh_jid=7738432', jobRef: 'airbnb-7738432' },
-    // { label: 'Type 2b', url: 'https://stripe.com/jobs/listing/account-executive-ai-sales/7546284', jobRef: 'stripe-7546284' },
+    // { label: 'Anthropic', url: 'https://job-boards.greenhouse.io/anthropic/jobs/5110532008', jobRef: 'anthropic-5110532008' },
 ];
 
 // Map labels to realistic short values that React Select can filter.

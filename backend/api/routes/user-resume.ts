@@ -50,13 +50,20 @@ function jsonResumeToProfile(json: Record<string, unknown>): Partial<Profile> {
     location: typeof w.location === 'string' ? w.location : undefined,
     dates: [w.startDate, w.endDate].filter(Boolean).join(' – '),
     bullets: Array.isArray(w.highlights) ? (w.highlights as string[]) : undefined,
+    startMonth: typeof w.startMonth === 'string' ? w.startMonth : undefined,
+    startYear: typeof w.startYear === 'string' ? w.startYear : undefined,
+    endMonth: typeof w.endMonth === 'string' ? w.endMonth : undefined,
+    endYear: typeof w.endYear === 'string' ? w.endYear : undefined,
   }));
-  const ed: Array<{ school?: string; degree?: string; year?: string }> = education.map((e) => {
-    const y = e.endDate ?? e.startDate;
+  const ed: Array<{ school?: string; degree?: string; year?: string; startMonth?: string; startYear?: string; endMonth?: string; endYear?: string }> = education.map((e) => {
     return {
       school: typeof e.institution === 'string' ? e.institution : undefined,
       degree: [e.area, e.studyType].filter(Boolean).join(' '),
-      year: typeof y === 'string' ? y : undefined,
+      year: typeof e.year === 'string' ? e.year : undefined,
+      startMonth: typeof e.startMonth === 'string' ? e.startMonth : undefined,
+      startYear: typeof e.startYear === 'string' ? e.startYear : undefined,
+      endMonth: typeof e.endMonth === 'string' ? e.endMonth : undefined,
+      endYear: typeof e.endYear === 'string' ? e.endYear : undefined,
     };
   });
   const skillsRaw = (json.skills as Array<{ name?: string; keywords?: string[] }>) ?? [];

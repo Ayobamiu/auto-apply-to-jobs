@@ -136,7 +136,7 @@ window.__extractGreenhouseFields = function () {
     }
 
     // ── Options (radio / checkbox / native select) ──────────
-    var options;
+    var options = undefined;
     if (type === 'radio' && name) {
       options = [];
       var radios = form.querySelectorAll('input[type="radio"][name="' + escapeName(name) + '"]');
@@ -164,7 +164,7 @@ window.__extractGreenhouseFields = function () {
     }
 
     // ── Helper text / instructions ──────────────────────────
-    var instructions;
+    var instructions = undefined;
     var cur = control.parentElement;
     while (cur && cur !== form) {
       var helpEl = cur.querySelector('.question-description, .helper-text, small');

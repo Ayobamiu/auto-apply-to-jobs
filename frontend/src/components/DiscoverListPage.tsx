@@ -293,7 +293,7 @@ export function DiscoverListPage() {
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <h2 className="font-semibold text-[14px] text-gray-900 truncate leading-snug">
+                          <h2 className="font-semibold text-[14px] text-gray-900 leading-snug">
                             {listing.title || "Untitled"}
                           </h2>
                           {listing.company && (

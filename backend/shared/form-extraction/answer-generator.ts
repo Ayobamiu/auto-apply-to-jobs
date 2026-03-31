@@ -137,6 +137,68 @@ const PROFILE_RESOLVERS: Partial<Record<FieldIntent, ProfileResolver>> = {
     const declineAlt = findBestOption(field, 'do not want');
     return declineAlt ? { value: declineAlt, confidence: 0.7 } : null;
   },
+
+  // ── Education fields ──────────────────────────────────────────────────────
+
+  school_name: (p, _ext, field) => {
+    const school = p.education?.[0]?.school;
+    if (!school) return null;
+    const match = findBestOption(field, school);
+    return match ? { value: match, confidence: 0.9 } : { value: school, confidence: 0.9 };
+  },
+
+  degree_name: (p, _ext, field) => {
+    const degree = p.education?.[0]?.degree;
+    if (!degree) return null;
+    const match = findBestOption(field, degree);
+    return match ? { value: match, confidence: 0.85 } : { value: degree, confidence: 0.85 };
+  },
+
+  discipline_name: (p, _ext, field) => {
+    // discipline is often embedded in the degree string e.g. "B.S. Computer Science"
+    const degree = p.education?.[0]?.degree;
+    if (!degree) return null;
+    const match = findBestOption(field, degree);
+    return match ? { value: match, confidence: 0.75 } : { value: degree, confidence: 0.75 };
+  },
+
+  // ── Shared date fields (edu + company) ───────────────────────────────────
+
+  start_month: (p, _ext, _field) => {
+    // job arg signals company context; fall back to education
+    const month = p.education?.[0]?.startMonth;
+    return month ? { value: String(month), confidence: 0.7 } : null;
+  },
+
+  start_year: (p, _ext, _field) => {
+    const year = p.education?.[0]?.startYear;
+    return year ? { value: String(year), confidence: 0.8 } : null;
+  },
+
+  end_month: (p, _ext, _field) => {
+    // For education, try expected_graduation first
+    const month = p.education?.[0]?.endMonth;
+    return month ? { value: String(month), confidence: 0.85 } : null;
+  },
+
+  end_year: (p, _ext, _field) => {
+    const year = p.education?.[0]?.endYear;
+    return year ? { value: String(year), confidence: 0.85 } : null;
+  },
+
+  // ── Company / experience fields ──────────────────────────────────────────
+
+  company_name: (p, _ext, _field) => {
+    const company = p.experience?.[0]?.company;
+    return company ? { value: company, confidence: 0.95 } : null;
+  },
+
+  title: (p, _ext, _field) => {
+    const title = p.experience?.[0]?.title;
+    return title ? { value: title, confidence: 0.95 } : null;
+  },
+
+
 };
 
 /**
