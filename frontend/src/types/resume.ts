@@ -28,7 +28,7 @@ export interface Basics {
     url?: string;
     summary?: string;
     location?: Location;
-    profiles?: Profile[];
+    profiles?: BasicProfile[];
 }
 
 export interface Location {
@@ -39,7 +39,7 @@ export interface Location {
     region?: string;
 }
 
-export interface Profile {
+export interface BasicProfile {
     network: string;
     username: string;
     url: string;

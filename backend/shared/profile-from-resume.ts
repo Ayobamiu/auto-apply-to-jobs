@@ -70,7 +70,7 @@ function ensureExperienceEntries(raw: unknown): ExperienceEntry[] {
   });
 }
 
-function ensureSkills(raw: unknown): unknown[] | Record<string, string[]> {
+function ensureSkills(raw: unknown): Array<{ category: string; keywords: string[] }> | Record<string, string[]> {
   if (Array.isArray(raw)) {
     const asObjects = raw.every(
       (x) => x !== null && typeof x === 'object' && 'category' in x && 'keywords' in x
@@ -91,7 +91,7 @@ function ensureSkills(raw: unknown): unknown[] | Record<string, string[]> {
   if (raw !== null && typeof raw === 'object' && !Array.isArray(raw)) {
     return raw as Record<string, string[]>;
   }
-  return [];
+  return [] as Array<{ category: string; keywords: string[] }>;
 }
 
 /**

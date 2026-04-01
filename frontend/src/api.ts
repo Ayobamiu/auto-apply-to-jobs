@@ -1,3 +1,5 @@
+import { Profile } from "./types/profile";
+
 const API_BASE = import.meta.env.VITE_API_BASE;
 if (!API_BASE) {
   throw new Error('API_BASE is not set');
@@ -111,7 +113,7 @@ export async function getProfile(): Promise<ProfileResponse> {
   return request<ProfileResponse>('/profile');
 }
 
-export async function putProfile(data: Record<string, unknown>): Promise<ProfileResponse> {
+export async function putProfile(data: Profile): Promise<ProfileResponse> {
   return request<ProfileResponse>('/profile', {
     method: 'PUT',
     body: JSON.stringify(data),
