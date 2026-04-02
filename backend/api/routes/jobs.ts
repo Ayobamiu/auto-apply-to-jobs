@@ -141,7 +141,7 @@ export async function postScrapeJobDetail(req: Request, res: Response): Promise<
 
   if (site === 'greenhouse') {
     try {
-      await hydrateGreenhouseJob(jobId);
+      await hydrateGreenhouseJob(jobId, userId, false);
       const job = await getJob('greenhouse', jobId);
       if (job) {
         res.status(200).json({ job: { ...job, jobId, site } });

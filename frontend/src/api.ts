@@ -518,12 +518,6 @@ export async function searchJobs(options?: {
   return request<SearchJobsResult>(`/jobs/search${qs ? `?${qs}` : ''}`);
 }
 
-export async function hydrateJob(jobRef: string): Promise<{ hydrated: boolean; job: JobDetailJob | null }> {
-  return request<{ hydrated: boolean; job: JobDetailJob | null }>('/jobs/hydrate', {
-    method: 'POST',
-    body: JSON.stringify({ jobRef }),
-  });
-}
 
 export async function getSubmittedJobList(): Promise<JobListing[]> {
   return request<JobListing[]>('/jobs/submitted-list');

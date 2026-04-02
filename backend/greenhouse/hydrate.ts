@@ -6,7 +6,16 @@
 import { pool } from '../api/db.js';
 import { updateJob, getJob } from '../data/jobs.js';
 import type { GreenhouseJob } from '../types/jobs.js';
-import type { NormalizedFormField, } from '../shared/types.js';
+import type { ApplicationFormRecord, ClassifiedField, GeneratedAnswer, NormalizedFormField, NormalizedFormSchema, } from '../shared/types.js';
+import { classifyAllFields } from '../shared/form-extraction/field-classifier.js';
+import {
+  upsertApplicationForm,
+  getAllSavedAnswers,
+  getExtendedProfile,
+  getApplicationForm,
+} from '../data/application-forms.js';
+import { getProfile } from '../data/profile.js';
+import { generateAnswers } from '../shared/form-extraction/answer-generator.js';
 
 interface GreenhouseQuestionField {
   name: string;
@@ -76,7 +85,7 @@ function ghFieldTypeToNormalized(ghType: string): NormalizedFormField['fieldType
     case 'input_hidden': return 'text';
     case 'textarea': return 'textarea';
     case 'multi_value_single_select': return 'select';
-    case 'multi_value_multi_select': return 'checkbox';
+    case 'multi_value_multi_select': return 'multi_select';
     default: return 'text';
   }
 }
@@ -126,7 +135,7 @@ function convertDemographicQuestions(
   let idx = startIndex;
 
   for (const q of demo.questions) {
-    const fieldType = q.type === 'multi_value_multi_select' ? 'checkbox' : 'select';
+    const fieldType = q.type === 'multi_value_multi_select' ? 'multi_select' : 'select';
     const options = q.answer_options.map((o) => ({
       value: String(o.id),
       label: o.label,
@@ -160,67 +169,307 @@ export async function getGreenhouseSlugForJob(jobId: string): Promise<string | n
   }
 }
 
-export async function hydrateGreenhouseJob(jobId: string, slug?: string): Promise<HydrateResult> {
-  const existing = await getJob('greenhouse', jobId);
-  if (existing?.description && existing.description.length > 100) {
-    return { description: existing.description, content: null, alreadyHydrated: true, formFields: [], education: null };
-  }
-
-  const resolvedSlug = slug ?? await getGreenhouseSlugForJob(jobId);
-  if (!resolvedSlug) {
-    return { description: null, content: null, alreadyHydrated: false, formFields: [], education: null };
-  }
-  //https://developers.greenhouse.io/job-board.html#retrieve-a-job
+export async function hydrateGreenhouseJob(jobId: string, userId: string, processAnswers: boolean = true): Promise<void> {
   try {
-    const res = await fetch(
-      `https://boards-api.greenhouse.io/v1/boards/${resolvedSlug}/jobs/${jobId}?questions=true`,
-      { signal: AbortSignal.timeout(10_000) },
-    );
-    if (!res.ok) {
-      console.warn(`[hydrate] Greenhouse API returned ${res.status} for ${resolvedSlug}/${jobId}`);
-      return { description: null, content: null, alreadyHydrated: false, formFields: [], education: null };
+    const job = await getJob('greenhouse', jobId);
+    // if (job?.description && job.description.length > 100) {
+    //   return;
+    // }
+    const resolvedSlug = await getGreenhouseSlugForJob(jobId);
+    if (!resolvedSlug) {
+      return;
     }
 
-    const data: GreenhouseJobFull = await res.json();
-    const htmlContent = data.content ?? '';
-    const plainDescription = stripHtml(htmlContent);
+    const jobRef = `greenhouse:${jobId}`;
 
-    await updateJob('greenhouse', jobId, {
-      description: plainDescription,
-      title: data.title ?? undefined,
-      url: data.absolute_url ?? undefined,
-      location: data.location?.name ?? undefined,
-    });
-
+    //If formFields Already Exists, use existing formFields
+    let classifiedFields: ClassifiedField[] = [];
+    let education: string | null = null;
     let formFields: NormalizedFormField[] = [];
-    let idx = 0;
+    const existingFormFields = await getApplicationForm(userId, jobRef);
+    if (existingFormFields && existingFormFields.classifiedFields.length > 0) {
+      console.log('[hydrate] form fields already exist');
+      classifiedFields = existingFormFields.classifiedFields;
+    } else {
+      //https://developers.greenhouse.io/job-board.html#retrieve-a-job
+      console.log('[hydrate] fetching form fields from greenhouse api');
+      const res = await fetch(
+        `https://boards-api.greenhouse.io/v1/boards/${resolvedSlug}/jobs/${jobId}?questions=true`,
+        { signal: AbortSignal.timeout(10_000) },
+      );
+      if (!res.ok) {
+        console.warn(`[hydrate] Greenhouse API returned ${res.status} for ${resolvedSlug}/${jobId}`);
+        return;
+      }
 
-    if (data.location_questions) {
-      const locFields = convertQuestionsToFields(data.location_questions, idx);
-      formFields.push(...locFields);
-      idx += locFields.length;
+      const data: GreenhouseJobFull = await res.json();
+      education = data.education ?? null;
+      const htmlContent = data.content ?? '';
+      const plainDescription = stripHtml(htmlContent);
+
+      await updateJob('greenhouse', jobId, {
+        description: plainDescription,
+        title: data.title ?? undefined,
+        url: data.absolute_url ?? undefined,
+        location: data.location?.name ?? undefined,
+      });
+
+      let idx = 0;
+
+      if (data.location_questions) {
+        const locFields = convertQuestionsToFields(data.location_questions, idx);
+        formFields.push(...locFields);
+        idx += locFields.length;
+      }
+
+      if (data.questions) {
+        const qFields = convertQuestionsToFields(data.questions, idx);
+        formFields.push(...qFields);
+        idx += qFields.length;
+      }
+
+      if (data.compliance) {
+        const compFields = convertQuestionsToFields(data.compliance, idx);
+        formFields.push(...compFields);
+        idx += compFields.length;
+      }
+
+      if (data.demographic_questions) {
+        const demoFields = convertDemographicQuestions(data.demographic_questions, idx);
+        formFields.push(...demoFields);
+      }
+      if (formFields.length > 0) {
+        classifiedFields = await classifyAllFields(formFields);
+        // education is required if education: "education_required"
+        if (education && education === "education_required") {
+          formFields.push(...getEducationFormFields());
+        }
+      }
     }
+    console.log({ classifiedFields: existingFormFields?.classifiedFields.length });
 
-    if (data.questions) {
-      const qFields = convertQuestionsToFields(data.questions, idx);
-      formFields.push(...qFields);
-      idx += qFields.length;
+    // Moving answer generation logic here (conditionally based on processAnswers)
+    if (classifiedFields.length > 0) {
+      setImmediate(async () => {
+        try {
+          const schema: NormalizedFormSchema = {
+            jobRef,
+            site: 'greenhouse',
+            extractedAt: new Date().toISOString(),
+            fields: formFields,
+          };
+          const [profile, extendedProfile, savedAnswers] = await Promise.all([
+            getProfile(userId),
+            getExtendedProfile(userId),
+            getAllSavedAnswers(userId),
+          ]);
+          let answers: GeneratedAnswer[] = [];
+          if (processAnswers) {
+            console.log('[hydrate] generating answers');
+            answers = await generateAnswers({
+              classifiedFields,
+              profile,
+              extendedProfile,
+              savedAnswers,
+              job: job ?? undefined,
+            });
+          }
+
+          const formRecord: ApplicationFormRecord = {
+            userId,
+            jobRef,
+            site: 'greenhouse',
+            schema,
+            classifiedFields,
+            answers,
+            status: 'draft',
+          };
+
+          await upsertApplicationForm(formRecord);
+          console.log(`[hydrate] Pre-extracted ${classifiedFields.length} fields, ${answers.length} answers for ${jobRef}`);
+        } catch (err) {
+          console.warn('[hydrate] Background form extraction failed:', (err as Error).message);
+        }
+      });
     }
-
-    if (data.compliance) {
-      const compFields = convertQuestionsToFields(data.compliance, idx);
-      formFields.push(...compFields);
-      idx += compFields.length;
-    }
-
-    if (data.demographic_questions) {
-      const demoFields = convertDemographicQuestions(data.demographic_questions, idx);
-      formFields.push(...demoFields);
-    }
-
-    return { description: plainDescription, content: htmlContent, alreadyHydrated: false, formFields, education: data?.education ?? null };
+    return;
   } catch (err) {
     console.warn('[hydrate] Failed to fetch greenhouse job:', (err as Error).message);
-    return { description: null, content: null, alreadyHydrated: false, formFields: [], education: null };
+    return;
   }
+}
+
+
+export function getEducationFormFields(): ClassifiedField[] {
+  // fields for education
+  const fieldsForEdu: ClassifiedField[] = [
+    {
+      id: "school--0",
+      intent: "school_name",
+      fieldType: "select",
+      required: true,
+      options: [],
+      confidence: 1,
+      rawLabel: "School",
+      selectors: {
+        inputSelector: "#school--0",
+        inputName: "",
+      },
+    },
+    {
+      id: "degree--0",
+      intent: "degree_name",
+      fieldType: "select",
+      required: true,
+      options: [],
+      confidence: 1,
+      rawLabel: "Degree",
+      selectors: {
+        inputSelector: "#degree--0",
+        inputName: "",
+      },
+    },
+    {
+      id: "discipline--0",
+      intent: "discipline_name",
+      fieldType: "select",
+      required: true,
+      options: [],
+      confidence: 1,
+      rawLabel: "Discipline",
+      selectors: {
+        inputSelector: "#discipline--0",
+        inputName: "",
+      },
+    },
+    {
+      id: "start-month--0",
+      intent: "start_month",
+      fieldType: "number",
+      required: true,
+      confidence: 1,
+      rawLabel: "Start Month",
+      selectors: {
+        inputSelector: "#start-month--0",
+        inputName: "",
+      },
+    },
+    {
+      id: "start-year--0",
+      intent: "start_year",
+      fieldType: "number",
+      required: true,
+      confidence: 1,
+      rawLabel: "Start Date",
+      selectors: {
+        inputSelector: "#start-year--0",
+        inputName: "",
+      },
+    },
+    {
+      id: "end-year--0",
+      intent: "end_year",
+      fieldType: "number",
+      required: true,
+      confidence: 1,
+      rawLabel: "End Date",
+      selectors: {
+        inputSelector: "#end-year--0",
+        inputName: "",
+      },
+    },
+    {
+      id: "end-month--0",
+      intent: "end_month",
+      fieldType: "number",
+      required: true,
+      confidence: 1,
+      rawLabel: "End Month",
+      selectors: {
+        inputSelector: "#end-month--0",
+        inputName: "",
+      },
+    },
+  ]
+  return fieldsForEdu;
+}
+
+export function getCompanyFormFields(): ClassifiedField[] {
+  // fields for company
+  const fieldsForCompany: ClassifiedField[] = [
+    {
+      id: "company--0",
+      intent: "company_name",
+      fieldType: "text",
+      required: true,
+      confidence: 1,
+      rawLabel: "Company",
+      selectors: {
+        inputSelector: "#company--0",
+        inputName: "",
+      },
+    },
+    {
+      id: "title--0",
+      intent: "title",
+      fieldType: "text",
+      required: true,
+      confidence: 1,
+      rawLabel: "Title",
+      selectors: {
+        inputSelector: "#title--0",
+        inputName: "",
+      },
+    },
+    {
+      id: "start-month--0",
+      intent: "start_month",
+      fieldType: "number",
+      required: true,
+      confidence: 1,
+      rawLabel: "Start Month",
+      selectors: {
+        inputSelector: "#start-month--0",
+        inputName: "",
+      },
+    },
+    {
+      id: "start-year--0",
+      intent: "start_year",
+      fieldType: "number",
+      required: true,
+      confidence: 1,
+      rawLabel: "Start Date",
+      selectors: {
+        inputSelector: "#start-year--0",
+        inputName: "",
+      },
+    },
+    {
+      id: "end-year--0",
+      intent: "end_year",
+      fieldType: "number",
+      required: true,
+      confidence: 1,
+      rawLabel: "End Date",
+      selectors: {
+        inputSelector: "#end-year--0",
+        inputName: "",
+      },
+    },
+    {
+      id: "end-month--0",
+      intent: "end_month",
+      fieldType: "number",
+      required: true,
+      confidence: 1,
+      rawLabel: "End Month",
+      selectors: {
+        inputSelector: "#end-month--0",
+        inputName: "",
+      },
+    },
+  ]
+
+  return fieldsForCompany;
 }

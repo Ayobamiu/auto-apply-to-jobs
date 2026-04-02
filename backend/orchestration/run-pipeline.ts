@@ -26,6 +26,7 @@ import { getApplicationForm } from '../data/application-forms.js';
 import type { Job, PipelineApplyOutcome, RunPipelineForJobOptions, RunPipelineForJobResult, SectionKey } from '../shared/types.js';
 import { SUPPORTED_SECTION_KEYS } from '../shared/types.js';
 import { runGreenhouseApply } from '../greenhouse/apply.js';
+import { hydrateGreenhouseJob } from '../greenhouse/hydrate.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -75,8 +76,7 @@ export async function runPipelineForJob(
     const endStep0 = startPhase('Step 0: Get greenhouse job (DB + hydrate)');
     const ghJobId = getJobIdFromUrl(jobUrl);
     if (ghJobId) {
-      const { hydrateGreenhouseJob } = await import('../greenhouse/hydrate.js');
-      await hydrateGreenhouseJob(ghJobId);
+      await hydrateGreenhouseJob(ghJobId, userId, true);
       const { getJob: getJobFromDb } = await import('../data/jobs.js');
       const dbJob = await getJobFromDb('greenhouse', ghJobId);
       if (dbJob) {

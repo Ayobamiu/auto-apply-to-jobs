@@ -24,7 +24,6 @@ import {
   approvePipelineJob,
   cancelPipelineJob,
   saveJob,
-  hydrateJob,
   putApplicationFormAnswers,
   postApplicationFormReview,
   type JobDetailResponse,
@@ -115,18 +114,8 @@ export function DiscoverJobDetailPage() {
   const hydrateOrScrape = useCallback(async (ref: string, site: string) => {
     setScrapingDetail(true);
     try {
-      if (site === "greenhouse") {
-        const result = await hydrateJob(ref);
-
-        if (result.job) {
-          setDetail((prev) =>
-            prev ? { ...prev, job: { ...prev.job, ...result.job } } : null,
-          );
-        }
-      } else {
-        const data = await postScrapeJobDetail(ref);
-        setDetail((prev) => (prev ? { ...prev, job: data.job } : null));
-      }
+      const data = await postScrapeJobDetail(ref);
+      setDetail((prev) => (prev ? { ...prev, job: data.job } : null));
     } catch (err) {
       setDetailError(
         err instanceof Error ? err.message : "Failed to load details",

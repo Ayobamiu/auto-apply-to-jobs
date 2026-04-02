@@ -126,7 +126,7 @@ async function scrapeReactSelectOptions(
         await frame.waitForTimeout(200);
         return options.length > 0 ? options : undefined;
     } catch {
-        await loc.press('Escape').catch(() => {});
+        await loc.press('Escape').catch(() => { });
         return undefined;
     }
 }
