@@ -142,7 +142,7 @@ function convertDemographicQuestions(
     }));
 
     fields.push({
-      id: `demographic_${q.id}`,
+      id: String(q.id),
       rawLabel: q.label,
       fieldType,
       required: q.required,
@@ -246,7 +246,15 @@ export async function hydrateGreenhouseJob(jobId: string, userId: string, proces
         }
       }
     }
-    console.log({ classifiedFields: existingFormFields?.classifiedFields.length });
+    // fix: Ignore cover_letter_text and resume_text in classifiedFields if they are not required OR if resume and cover_letter of "fieldType": "file_upload" are already in the fields
+    const removeCoverLetterText = classifiedFields.find(f => (f.id === 'cover_letter_text' && f.required === false) || (f.id === 'cover_letter' && f.fieldType === 'file_upload'));
+    const removeResumeText = classifiedFields.find(f => (f.id === 'resume_text' && f.required === false) || (f.id === 'resume' && f.fieldType === 'file_upload'));
+    if (removeCoverLetterText) {
+      classifiedFields = classifiedFields.filter(f => f.id !== 'cover_letter_text');
+    }
+    if (removeResumeText) {
+      classifiedFields = classifiedFields.filter(f => f.id !== 'resume_text');
+    }
 
     // Moving answer generation logic here (conditionally based on processAnswers)
     if (classifiedFields.length > 0) {

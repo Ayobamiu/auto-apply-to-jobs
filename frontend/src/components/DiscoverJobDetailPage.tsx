@@ -917,7 +917,7 @@ export function DiscoverJobDetailPage() {
               {/* Job description */}
               <Spin
                 description="Loading job description"
-                spinning={!detail?.job?.description && detailLoading}
+                spinning={!detail?.job?.description && scrapingDetail}
                 size="small"
               ></Spin>
               {detail.job.description && (
