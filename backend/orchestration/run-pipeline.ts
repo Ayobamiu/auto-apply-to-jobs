@@ -14,7 +14,7 @@ import { fileURLToPath, pathToFileURL } from 'url';
 import { dirname, resolve } from 'path';
 import { isAppError } from '../shared/errors.js';
 import { preflightForPipeline } from '../shared/preflight.js';
-import { probeRequiredSections } from '../shared/probe-apply-modal.js';
+import { probeRequiredSections, ProbeResultExtended } from '../shared/probe-apply-modal.js';
 import { generateCoverLetter } from '../agents/resume_generator_agent/cover-letter.js';
 import { generateWrittenDocument } from '../agents/resume_generator_agent/written-document.js';
 import { runHandshakeApply } from '../agents/auto_apply_agent/handshake-apply-real.js';
@@ -51,7 +51,8 @@ function getJobUrl(): string | null {
 }
 
 export type { RunPipelineForJobOptions, RunPipelineForJobResult } from '../shared/types.js';
-
+// We currently only support handshake and greenhouse jobs.
+// Make sure only processes related to the site processing is executed.
 export async function runPipelineForJob(
   jobUrl: string | null,
   options: RunPipelineForJobOptions = {}
@@ -68,6 +69,7 @@ export async function runPipelineForJob(
   const onPhase = options.onPhaseChange;
   const siteHint = jobUrl ? getJobSiteFromUrl(jobUrl) : null;
   const isGreenhouse = siteHint === 'greenhouse';
+  const isHandshake = siteHint === 'handshake';
   let job: Job;
 
   if (jobUrl && isGreenhouse) {
@@ -131,7 +133,7 @@ export async function runPipelineForJob(
     return { job, resumePath: undefined, outcome: 'already_applied' };
   }
 
-  const jobHasExternalApplicationOnHandshake = getJobSiteFromUrl(jobUrl) === 'handshake' && job.applyType === 'apply_externally';
+  const jobHasExternalApplicationOnHandshake = isHandshake && job.applyType === 'apply_externally';
 
 
   const siteFromUrl = getJobSiteFromUrl(jobUrl);
@@ -142,16 +144,22 @@ export async function runPipelineForJob(
   if (siteFromUrl && jobIdFromUrl && options.jobId && !jobHasExternalApplicationOnHandshake) {
     onPhase?.('Checking required documents...');
     try {
-      const probeResult = await probeRequiredSections(jobUrl, userId);
-      const requiredSectionsForReuse = probeResult.requiredSections;
-      const unsupported = requiredSectionsForReuse.filter((k) => !SUPPORTED_SECTION_KEYS.includes(k as SectionKey));
-      if (unsupported.length > 0) {
-        throw new Error(UNSUPPORTED_SECTIONS_MESSAGE);
+      let requiredSectionsForReuse: SectionKey[] = [];
+      let probeResult: ProbeResultExtended | null = null;
+      let needCover: boolean = false;
+
+      if (isHandshake) {
+        probeResult = await probeRequiredSections(jobUrl, userId);
+        requiredSectionsForReuse = probeResult.requiredSections;
+        const unsupported = requiredSectionsForReuse.filter((k) => !SUPPORTED_SECTION_KEYS.includes(k as SectionKey));
+        if (unsupported.length > 0) {
+          throw new Error(UNSUPPORTED_SECTIONS_MESSAGE);
+        }
+        await throwIfCancelled(options.checkCancelled);
+        needCover = requiredSectionsForReuse.includes('coverLetter');
       }
-      await throwIfCancelled(options.checkCancelled);
-      const existingResume = await getResumeForJob(userId, siteFromUrl, jobIdFromUrl);
-      const needCover = requiredSectionsForReuse.includes('coverLetter');
       const existingCover = needCover ? await getCoverLetterForJob(userId, siteFromUrl, jobIdFromUrl) : { text: '' };
+      const existingResume = await getResumeForJob(userId, siteFromUrl, jobIdFromUrl);
       if (existingResume && (!needCover || (existingCover && existingCover.text))) {
         console.log('Resume and cover (if required) already exist for this job. Skipping generation.');
         await setPipelineJobAwaitingApproval(options.jobId, {
