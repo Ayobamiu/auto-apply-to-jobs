@@ -36,6 +36,7 @@ import { FormReviewPanel } from "./FormReviewPanel";
 import { WrittenDocsReviewPanel } from "./WrittenDocsReviewPanel";
 import dayjs from "dayjs";
 import { useSubscription } from "../subscription/useSubscription";
+import { Spin } from "antd";
 
 type DocTab = "resume" | "cover" | "form" | "written-doc" | null;
 
@@ -150,6 +151,7 @@ export function DiscoverJobDetailPage() {
   const pipelineStatus = detail?.pipelineJob?.status;
   const isPipelineActive =
     pipelineStatus === "pending" || pipelineStatus === "running";
+  const isPipelineRunning = pipelineStatus === "running";
   useEffect(() => {
     if (!jobRef || !isPipelineActive) return;
     const id = setInterval(() => loadDetail(jobRef, true), 4000);
@@ -358,47 +360,54 @@ export function DiscoverJobDetailPage() {
       ).length;
       return (
         <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-white flex-shrink-0">
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900">
-                Review prefilled form
-              </h3>
-              <p className="text-xs text-gray-500 mt-0.5">
-                These answers were auto-generated from your profile. Review and
-                edit before submission.
-              </p>
+          <Spin
+            spinning={isPipelineRunning}
+            description={pipeline?.phase ?? "Loading"}
+            size="small"
+          >
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-white flex-shrink-0">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Review prefilled form
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  These answers were auto-generated from your profile. Review
+                  and edit before submission.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {!submitted && reviewCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleReviewAll}
+                    className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 cursor-pointer transition-colors"
+                  >
+                    Review all
+                  </button>
+                )}
+                {!submitted && (
+                  <button
+                    type="button"
+                    onClick={handleFormSave}
+                    disabled={formSaving || formAnswers.length === 0}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {formSaving && (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    )}
+                    {formSaving ? "Saving…" : "Save changes"}
+                  </button>
+                )}
+                {formSaved && (
+                  <span className="text-xs text-green-700 inline-flex items-center gap-1">
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    Saved
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              {!submitted && reviewCount > 0 && (
-                <button
-                  type="button"
-                  onClick={handleReviewAll}
-                  className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 cursor-pointer transition-colors"
-                >
-                  Review all
-                </button>
-              )}
-              {!submitted && (
-                <button
-                  type="button"
-                  onClick={handleFormSave}
-                  disabled={formSaving || formAnswers.length === 0}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {formSaving && (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  )}
-                  {formSaving ? "Saving…" : "Save changes"}
-                </button>
-              )}
-              {formSaved && (
-                <span className="text-xs text-green-700 inline-flex items-center gap-1">
-                  <CheckCircle className="w-3.5 h-3.5" />
-                  Saved
-                </span>
-              )}
-            </div>
-          </div>
+          </Spin>
+
           <div className="flex-1 overflow-y-auto p-5">
             <FormReviewPanel
               fields={artifacts.dynamicForm.classifiedFields}

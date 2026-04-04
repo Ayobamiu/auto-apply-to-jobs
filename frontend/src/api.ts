@@ -412,7 +412,7 @@ export interface JobDetailJob {
 
 export interface JobDetailPipeline {
   id: string;
-  status: string;
+  status: 'pending' | 'running' | 'done' | 'failed' | 'awaiting_approval' | 'cancelled';
   phase: string | null;
   result: Record<string, unknown> | null;
   error: string | null;
