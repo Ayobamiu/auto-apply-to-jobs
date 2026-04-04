@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -61,6 +61,13 @@ export function DiscoverJobDetailPage() {
   const [formSaving, setFormSaving] = useState(false);
   const [formSaved, setFormSaved] = useState(false);
   const [formAnswers, setFormAnswers] = useState<GeneratedAnswer[]>([]);
+
+  const answersAvailable = useMemo(() => {
+    return (
+      artifacts?.dynamicForm?.answers &&
+      artifacts.dynamicForm.answers.length > 0
+    );
+  }, [artifacts?.dynamicForm?.answers]);
 
   const {
     isPro,
@@ -353,7 +360,12 @@ export function DiscoverJobDetailPage() {
         />
       );
     }
-    if (activeDoc === "form" && hasDynamicForm && artifacts?.dynamicForm) {
+    if (
+      activeDoc === "form" &&
+      hasDynamicForm &&
+      artifacts?.dynamicForm &&
+      answersAvailable
+    ) {
       const submitted = artifacts.dynamicForm.status === "submitted";
       const reviewCount = formAnswers.filter(
         (a) => a.requiresReview && a.value,
@@ -903,6 +915,11 @@ export function DiscoverJobDetailPage() {
               )}
 
               {/* Job description */}
+              <Spin
+                description="Loading job description"
+                spinning={!detail?.job?.description && detailLoading}
+                size="small"
+              ></Spin>
               {detail.job.description && (
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
