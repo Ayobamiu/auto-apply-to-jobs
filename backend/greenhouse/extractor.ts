@@ -25,7 +25,16 @@ function slugify(label: string, index: number): string {
  */
 function idSelector(id: string): string {
     if (/^[a-zA-Z_][a-zA-Z0-9_-]*$/.test(id)) return `#${id}`;
-    return `[id="${id.replace(/"/g, '\\"')}"]`;
+    // Escape both `"` and `\` inside the attribute value; `[]` in ids is safe inside [id="..."].
+    return `[id="${id.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"]`;
+}
+
+/** Return true when the React Select input at `sel` is in multi-select mode. */
+async function isReactSelectMulti(frame: Page | Frame, sel: string): Promise<boolean> {
+    return frame.locator(sel).evaluate((el) => {
+        const container = el.closest('.select-shell, .select__container');
+        return !!container?.querySelector('.select__value-container--is-multi');
+    }).catch(() => false);
 }
 
 function detectRequiredSections(
@@ -311,6 +320,57 @@ async function fillStaticReactSelect(
 }
 
 /**
+ * Fill a **multi-select** React Select — one where several options can be
+ * chosen simultaneously (`.select__value-container--is-multi`).
+ *
+ * React Select multi keeps the dropdown open after each selection, so we
+ * open it once and then for each value: type to filter → pick → clear the
+ * input → repeat.  We never press Escape between values.
+ */
+async function fillMultiReactSelect(
+    frame: Page | Frame,
+    loc: ReturnType<Frame['locator']>,
+    values: string[],
+    knownOptions?: Array<{ label: string; value: string }>,
+): Promise<void> {
+    // Open the menu once.
+    await loc.click();
+    await frame.waitForTimeout(300);
+
+    for (const raw of values) {
+        // Resolve exact label when known options are available.
+        let searchText = raw;
+        if (knownOptions?.length) {
+            const lv = raw.toLowerCase();
+            const exact = knownOptions.find(
+                (o) => o.value.toLowerCase() === lv || o.label.toLowerCase() === lv,
+            );
+            const partial = !exact
+                ? knownOptions.find(
+                    (o) =>
+                        o.label.toLowerCase().includes(lv) ||
+                        lv.includes(o.label.toLowerCase().slice(0, 8)),
+                )
+                : undefined;
+            const match = exact ?? partial;
+            if (match) searchText = match.label;
+        }
+
+        // Clear whatever the previous pick left in the input, then filter.
+        await loc.fill('');
+        await loc.pressSequentially(searchText, { delay: 30 });
+        await frame.waitForTimeout(500);
+
+        await pickReactSelectOption(frame, searchText);
+        // After picking, React Select clears the text input but keeps the menu open.
+        await frame.waitForTimeout(200);
+    }
+
+    // Close the menu when done.
+    await loc.press('Escape');
+}
+
+/**
  * Fill an **async** React Select — one that fetches suggestions from a remote
  * API as the user types (e.g. candidate-location → geocode.earth,
  * school_name → Greenhouse school search).
@@ -378,26 +438,40 @@ async function fillAsyncReactSelect(
 }
 
 /**
- * Fill a React Select combobox — dispatches to the static or async variant
- * based on the field id.
+ * Fill a React Select combobox — dispatches to the static, async, or multi
+ * variant based on the field id and the rendered DOM state.
  *
- * @param fieldId  The original field id (used to detect async selects).
- * @param knownOptions  Pre-scraped options for static selects (ignored for async).
+ * @param fieldId      The original field id (used to detect async selects).
+ * @param values       All values to select. Single-select uses values[0].
+ * @param knownOptions Pre-scraped options for static selects (ignored for async).
  */
 async function fillReactSelect(
     frame: Page | Frame,
     loc: ReturnType<Frame['locator']>,
-    value: string,
+    values: string | string[],
     fieldId: string,
     knownOptions?: Array<{ label: string; value: string }>,
 ): Promise<void> {
+    const valueArr = Array.isArray(values) ? values : [values];
+    const sel = idSelector(fieldId);
+
     if (isAsyncAutocomplete(fieldId)) {
         console.log(`[greenhouse/fill] Async autocomplete detected for "${fieldId}", using async fill strategy`);
-        await fillAsyncReactSelect(frame, loc, value);
-    } else {
-        console.log('filling static react select', value);
-        await fillStaticReactSelect(frame, loc, value, knownOptions);
+        // Async multi-selects are rare but handled: fill each value in sequence.
+        for (const v of valueArr) {
+            await fillAsyncReactSelect(frame, loc, v);
+        }
+        return;
     }
+
+    const multi = await isReactSelectMulti(frame, sel);
+    if (multi) {
+        console.log(`[greenhouse/fill] Multi-select detected for "${fieldId}" (${valueArr.length} values)`);
+        await fillMultiReactSelect(frame, loc, valueArr, knownOptions);
+        return;
+    }
+
+    await fillStaticReactSelect(frame, loc, valueArr[0] ?? '', knownOptions);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -437,6 +511,10 @@ async function clickToggleInput(
         }, inputId);
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Public extractor object
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const GreenhouseSiteFormExtractor = {
     site: SITE,
@@ -513,17 +591,40 @@ export const GreenhouseSiteFormExtractor = {
 
                     case 'select': {
                         const loc = frame.locator(sel);
-                        const strVal = String(value);
                         const tag = await loc.evaluate((el) => el.tagName.toLowerCase()).catch(() => '');
                         // Native <select> element — use Playwright's selectOption.
                         if (tag === 'select') {
-                            await loc.selectOption({ value: strVal }).catch(async () => {
-                                await loc.selectOption({ label: strVal });
+                            const allValues = Array.isArray(answer.value) ? answer.value : [String(answer.value)];
+                            await loc.selectOption(allValues.map((v) => ({ value: String(v) }))).catch(async () => {
+                                await loc.selectOption(allValues.map((v) => ({ label: String(v) })));
                             });
                             break;
                         }
-                        // React Select (static or async) — dispatch to unified helper.
-                        await fillReactSelect(frame, loc, strVal, inputId, field.options);
+
+                        // React Select (static, async, or multi) — pass the full value
+                        // array so the dispatcher can choose the right fill strategy.
+                        const reactValues = Array.isArray(answer.value)
+                            ? answer.value.map(String)
+                            : [String(answer.value)];
+                        await fillReactSelect(frame, loc, reactValues, inputId, field.options);
+                        break;
+                    }
+
+                    case 'multi_select': {
+                        const loc = frame.locator(sel);
+                        const tag = await loc.evaluate((el) => el.tagName.toLowerCase()).catch(() => '');
+                        const allValues = Array.isArray(answer.value)
+                            ? answer.value.map(String)
+                            : [String(answer.value)];
+
+                        if (tag === 'select') {
+                            await loc.selectOption(allValues.map((v) => ({ value: v }))).catch(async () => {
+                                await loc.selectOption(allValues.map((v) => ({ label: v })));
+                            });
+                            break;
+                        }
+
+                        await fillMultiReactSelect(frame, loc, allValues, field.options);
                         break;
                     }
 
