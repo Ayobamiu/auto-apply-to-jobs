@@ -108,6 +108,11 @@ function convertQuestionsToFields(
           label: v.label,
         })) ?? [];
 
+        // special case for location
+        // if location, convert id to candidate-location
+        if (f.name === 'location') {
+          f.name = 'candidate-location';
+        }
         fields.push({
           id: f.name || `gh_field_${idx}`,
           rawLabel: q.label,
@@ -190,6 +195,7 @@ export async function hydrateGreenhouseJob(jobId: string, userId: string, proces
     if (existingFormFields && existingFormFields.classifiedFields.length > 0) {
       console.log('[hydrate] form fields already exist');
       classifiedFields = existingFormFields.classifiedFields;
+      formFields = existingFormFields.schema.fields;
     } else {
       //https://developers.greenhouse.io/job-board.html#retrieve-a-job
       console.log('[hydrate] fetching form fields from greenhouse api');
@@ -200,7 +206,9 @@ export async function hydrateGreenhouseJob(jobId: string, userId: string, proces
       if (!res.ok) {
         console.warn(`[hydrate] Greenhouse API returned ${res.status} for ${resolvedSlug}/${jobId}`);
         // update job to be inactive
-        await updateJob('greenhouse', jobId, { is_active: false });
+        if (res.status === 404) {
+          await updateJob('greenhouse', jobId, { is_active: false, job_closed: true });
+        }
         return { success: false, outcome: res.status === 404 ? 'job_not_found' : 'error' };
       }
 

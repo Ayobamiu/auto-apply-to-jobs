@@ -194,75 +194,215 @@ export async function extractGreenhouseForm(
     return { schema, presentSections };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Autocomplete detection
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * Fill a React Select combobox. If `knownOptions` are provided (from extraction),
- * resolve the best match first and type that exact label for a precise pick.
- * Otherwise fall back to typing the raw value and picking the closest menu hit.
+ * IDs (or id substrings) that Greenhouse renders as async autocomplete inputs —
+ * i.e. they fetch suggestions from a remote API on keystroke rather than
+ * rendering a pre-populated React Select menu.
+ *
+ * Extend this list as new async fields are discovered.
  */
-async function fillReactSelect(
+const ASYNC_AUTOCOMPLETE_IDS = [
+    'candidate-location',   // geocode.earth / Pelias locality autocomplete
+    'candidate_location',
+    'location',
+    'school_name',          // Greenhouse school search (API-backed)
+    'college',
+    'university',
+] as const;
+
+/**
+ * Returns true when a field should be treated as an async autocomplete —
+ * meaning the dropdown only populates AFTER the user types, not on click.
+ */
+function isAsyncAutocomplete(fieldId: string): boolean {
+    const lower = fieldId.toLowerCase();
+    return ASYNC_AUTOCOMPLETE_IDS.some((pattern) => lower.includes(pattern));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// React Select helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Shared option-picking logic once a React Select menu is open and populated.
+ * Tries exact label match → prefix match → first available.
+ */
+async function pickReactSelectOption(
+    frame: Page | Frame,
+    searchText: string,
+): Promise<boolean> {
+    const menuOpts = frame.locator(
+        '.select__menu .select__option, .select__menu [role="option"]',
+    );
+    const count = await menuOpts.count();
+    if (count === 0) return false;
+
+    // 1. Exact match
+    for (let i = 0; i < count; i++) {
+        const text = (await menuOpts.nth(i).textContent().catch(() => '')) ?? '';
+        if (text.trim().toLowerCase() === searchText.toLowerCase()) {
+            await menuOpts.nth(i).click({ timeout: 3_000 });
+            return true;
+        }
+    }
+
+    // 2. Partial match on first 8 chars of search term
+    const prefix = searchText.toLowerCase().slice(0, 8);
+    for (let i = 0; i < count; i++) {
+        const text = (await menuOpts.nth(i).textContent().catch(() => '')) ?? '';
+        if (text.toLowerCase().includes(prefix)) {
+            await menuOpts.nth(i).click({ timeout: 3_000 });
+            return true;
+        }
+    }
+
+    // 3. First available
+    await menuOpts.first().click({ timeout: 3_000 });
+    return true;
+}
+
+/**
+ * Fill a **static** React Select (options are pre-loaded, no network fetch).
+ * Strategy: click to open → type to filter → pick best match.
+ */
+async function fillStaticReactSelect(
     frame: Page | Frame,
     loc: ReturnType<Frame['locator']>,
     value: string,
     knownOptions?: Array<{ label: string; value: string }>,
 ): Promise<void> {
-    // When we have extracted options, find the best match and use its exact label.
+    // Resolve the best search text from known options when available.
     let searchText = value;
     if (knownOptions?.length) {
         const lv = value.toLowerCase();
-        const exact = knownOptions.find((o) => o.value.toLowerCase() === lv || o.label.toLowerCase() === lv);
+        const exact = knownOptions.find(
+            (o) => o.value.toLowerCase() === lv || o.label.toLowerCase() === lv,
+        );
         const partial = !exact
-            ? knownOptions.find((o) => o.label.toLowerCase().includes(lv) || lv.includes(o.label.toLowerCase().slice(0, 8)))
+            ? knownOptions.find(
+                (o) =>
+                    o.label.toLowerCase().includes(lv) ||
+                    lv.includes(o.label.toLowerCase().slice(0, 8)),
+            )
             : undefined;
         const match = exact ?? partial;
         if (match) searchText = match.label;
     }
 
+    // Open the menu, clear, type.
     await loc.click();
     await frame.waitForTimeout(300);
-
     await loc.fill('');
     await loc.pressSequentially(searchText, { delay: 30 });
-    await frame.waitForTimeout(1000);
+    await frame.waitForTimeout(600);
 
-    const menuOpts = frame.locator('.select__menu .select__option, .select__menu [role="option"]');
-    let picked = false;
-
-    const count = await menuOpts.count();
-    if (count > 0) {
-        // Try exact match on the full searchText first
-        for (let i = 0; i < count && !picked; i++) {
-            const text = (await menuOpts.nth(i).textContent().catch(() => '')) ?? '';
-            if (text.trim().toLowerCase() === searchText.toLowerCase()) {
-                await menuOpts.nth(i).click({ timeout: 3_000 });
-                picked = true;
-            }
-        }
-        // Then try partial match
-        if (!picked) {
-            for (let i = 0; i < count && !picked; i++) {
-                const text = (await menuOpts.nth(i).textContent().catch(() => '')) ?? '';
-                if (text && text.toLowerCase().includes(searchText.toLowerCase().slice(0, 8))) {
-                    await menuOpts.nth(i).click({ timeout: 3_000 });
-                    picked = true;
-                }
-            }
-        }
-        if (!picked) {
-            await menuOpts.first().click({ timeout: 3_000 });
-            picked = true;
-        }
-    }
+    const picked = await pickReactSelectOption(frame, searchText);
 
     if (!picked) {
-        await frame.waitForTimeout(2000);
-        const lateOpts = frame.locator('.select__menu .select__option, .select__menu [role="option"]');
-        if (await lateOpts.count() > 0) {
-            await lateOpts.first().click({ timeout: 3_000 });
-        } else {
-            await loc.press('Tab');
-        }
+        // Last resort: wait a bit longer and retry once.
+        await frame.waitForTimeout(1_500);
+        const retried = await pickReactSelectOption(frame, searchText);
+        if (!retried) await loc.press('Tab');
     }
 }
+
+/**
+ * Fill an **async** React Select — one that fetches suggestions from a remote
+ * API as the user types (e.g. candidate-location → geocode.earth,
+ * school_name → Greenhouse school search).
+ *
+ * Key differences from the static variant:
+ *   • Do NOT click first — clicking an async select before typing shows an
+ *     empty or "loading" state with no options to pick.
+ *   • Type directly into the input to trigger the API fetch.
+ *   • Wait for the menu to actually appear in the DOM before picking,
+ *     rather than using a fixed timeout. Use a generous max-wait because
+ *     external API latency is unpredictable.
+ *   • If the menu never appears, fall back to Tab (leaves whatever was typed).
+ */
+async function fillAsyncReactSelect(
+    frame: Page | Frame,
+    loc: ReturnType<Frame['locator']>,
+    value: string,
+    options: {
+        /** Maximum ms to wait for the suggestion menu to appear. Default 6000. */
+        menuTimeoutMs?: number;
+        /** Delay between keystrokes in ms. Slower = fewer dropped API calls. Default 60. */
+        keystrokeDelay?: number;
+    } = {},
+): Promise<void> {
+    const { menuTimeoutMs = 6_000, keystrokeDelay = 60 } = options;
+
+    // Focus the input without opening an empty dropdown.
+    await loc.focus();
+    await frame.waitForTimeout(150);
+
+    // Clear any existing value before typing.
+    await loc.selectText().catch(() => { });
+    await loc.press('Control+a');
+    await loc.press('Backspace');
+
+    // Type slowly to give the debounced API fetch time to fire.
+    await loc.pressSequentially(value, { delay: keystrokeDelay });
+
+    // Wait for the menu to appear rather than sleeping a fixed duration.
+    // The menu selector covers both React Select and custom suggestion lists
+    // that Greenhouse renders for geocode.earth.
+    const menuSelector = [
+        '.select__menu .select__option',
+        '.select__menu [role="option"]',
+        '[role="listbox"] [role="option"]',
+        '[role="listbox"] li',
+        'ul.suggestions li',
+        '[id$="-listbox"] [role="option"]',
+    ].join(', ');
+
+    try {
+        await frame.waitForSelector(menuSelector, { timeout: menuTimeoutMs });
+    } catch {
+        // Menu never appeared — API may have failed or returned no results.
+        console.warn(
+            `[greenhouse/fill] Async autocomplete menu did not appear for value "${value}" ` +
+            `within ${menuTimeoutMs}ms. Falling back to Tab.`,
+        );
+        await loc.press('Tab');
+        return;
+    }
+
+    const picked = await pickReactSelectOption(frame, value);
+    if (!picked) await loc.press('Tab');
+}
+
+/**
+ * Fill a React Select combobox — dispatches to the static or async variant
+ * based on the field id.
+ *
+ * @param fieldId  The original field id (used to detect async selects).
+ * @param knownOptions  Pre-scraped options for static selects (ignored for async).
+ */
+async function fillReactSelect(
+    frame: Page | Frame,
+    loc: ReturnType<Frame['locator']>,
+    value: string,
+    fieldId: string,
+    knownOptions?: Array<{ label: string; value: string }>,
+): Promise<void> {
+    if (isAsyncAutocomplete(fieldId)) {
+        console.log(`[greenhouse/fill] Async autocomplete detected for "${fieldId}", using async fill strategy`);
+        await fillAsyncReactSelect(frame, loc, value);
+    } else {
+        console.log('filling static react select', value);
+        await fillStaticReactSelect(frame, loc, value, knownOptions);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Toggle / checkbox helpers (unchanged)
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Click a checkbox or radio input reliably.
@@ -375,13 +515,15 @@ export const GreenhouseSiteFormExtractor = {
                         const loc = frame.locator(sel);
                         const strVal = String(value);
                         const tag = await loc.evaluate((el) => el.tagName.toLowerCase()).catch(() => '');
+                        // Native <select> element — use Playwright's selectOption.
                         if (tag === 'select') {
                             await loc.selectOption({ value: strVal }).catch(async () => {
                                 await loc.selectOption({ label: strVal });
                             });
                             break;
                         }
-                        await fillReactSelect(frame, loc, strVal, field.options);
+                        // React Select (static or async) — dispatch to unified helper.
+                        await fillReactSelect(frame, loc, strVal, inputId, field.options);
                         break;
                     }
 
