@@ -196,13 +196,13 @@ const FIELD_SPEC: { section: string; fields: FieldCheck[] }[] = [
         required: true,
         satisfied: (p) => !!p.work_authorization?.trim(),
       },
-      {
-        key: "resume_url",
-        label: "Resume on file",
-        weight: 6,
-        required: true,
-        satisfied: (p) => !!p.resume_url?.trim(),
-      },
+      // {
+      //   key: "resume_url",
+      //   label: "Resume on file",
+      //   weight: 6,
+      //   required: true,
+      //   satisfied: (p) => !!p.resume_url?.trim(),
+      // },
       {
         key: "availability_start_date",
         label: "Availability date",
@@ -307,7 +307,7 @@ export function ProfileCompletionMeter({
   const { score, sections, missingRequired, canAutoSubmit } = result;
   const colors = scoreColor(score);
 
-  const [showBreakdown, setShowBreakdown] = useState(true);
+  const [showBreakdown, setShowBreakdown] = useState(false);
   // Arc math for the ring
   const R = 36;
   const CIRC = 2 * Math.PI * R;
