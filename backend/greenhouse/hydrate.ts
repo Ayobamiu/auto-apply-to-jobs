@@ -101,6 +101,14 @@ function convertQuestionsToFields(
     if (q?.fields && q?.fields?.length > 0) {
       for (const f of q.fields) {
         if (f.type === 'input_hidden') continue;
+        // special case for location
+        // if location, convert id to candidate-location
+        if (f.name === 'location') {
+          f.name = 'candidate-location';
+          // Greenhouse renders this as an async React Select autocomplete
+          // even though the API reports it as input_text
+          f.type = 'multi_value_single_select';
+        }
 
         const fieldType = ghFieldTypeToNormalized(f.type);
         const options = f.values?.map((v) => ({
@@ -108,11 +116,6 @@ function convertQuestionsToFields(
           label: v.label,
         })) ?? [];
 
-        // special case for location
-        // if location, convert id to candidate-location
-        if (f.name === 'location') {
-          f.name = 'candidate-location';
-        }
         fields.push({
           id: f.name || `gh_field_${idx}`,
           rawLabel: q.label,
@@ -249,11 +252,11 @@ export async function hydrateGreenhouseJob(jobId: string, userId: string, proces
         formFields.push(...demoFields);
       }
       if (formFields.length > 0) {
-        classifiedFields = await classifyAllFields(formFields);
         // education is required if education: "education_required"
         if (education && education === "education_required") {
           formFields.push(...getEducationFormFields());
         }
+        classifiedFields = await classifyAllFields(formFields);
       }
     }
     // fix: Ignore cover_letter_text and resume_text in classifiedFields if they are not required OR if resume and cover_letter of "fieldType": "file_upload" are already in the fields
