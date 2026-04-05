@@ -168,8 +168,8 @@ export async function getGreenhouseSlugForJob(jobId: string): Promise<string | n
     return null;
   }
 }
-
-export async function hydrateGreenhouseJob(jobId: string, userId: string, processAnswers: boolean = true): Promise<void> {
+type HydrateGreenhouseJobResult = { success: boolean, outcome: 'fetch_failed' | 'job_not_found' | 'success' | 'error' };
+export async function hydrateGreenhouseJob(jobId: string, userId: string, processAnswers: boolean = true): Promise<HydrateGreenhouseJobResult> {
   try {
     const job = await getJob('greenhouse', jobId);
     // if (job?.description && job.description.length > 100) {
@@ -177,7 +177,7 @@ export async function hydrateGreenhouseJob(jobId: string, userId: string, proces
     // }
     const resolvedSlug = await getGreenhouseSlugForJob(jobId);
     if (!resolvedSlug) {
-      return;
+      return { success: false, outcome: 'job_not_found' };
     }
 
     const jobRef = `greenhouse:${jobId}`;
@@ -199,7 +199,9 @@ export async function hydrateGreenhouseJob(jobId: string, userId: string, proces
       );
       if (!res.ok) {
         console.warn(`[hydrate] Greenhouse API returned ${res.status} for ${resolvedSlug}/${jobId}`);
-        return;
+        // update job to be inactive
+        await updateJob('greenhouse', jobId, { is_active: false });
+        return { success: false, outcome: res.status === 404 ? 'job_not_found' : 'error' };
       }
 
       const data: GreenhouseJobFull = await res.json();
@@ -300,10 +302,10 @@ export async function hydrateGreenhouseJob(jobId: string, userId: string, proces
         }
       });
     }
-    return;
+    return { success: true, outcome: 'success' };
   } catch (err) {
     console.warn('[hydrate] Failed to fetch greenhouse job:', (err as Error).message);
-    return;
+    return { success: false, outcome: 'error' };
   }
 }
 

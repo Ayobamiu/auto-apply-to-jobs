@@ -78,13 +78,16 @@ export async function runPipelineForJob(
     const endStep0 = startPhase('Step 0: Get greenhouse job (DB + hydrate)');
     const ghJobId = getJobIdFromUrl(jobUrl);
     if (ghJobId) {
-      await hydrateGreenhouseJob(ghJobId, userId, true);
+      const { outcome } = await hydrateGreenhouseJob(ghJobId, userId, true);
       const { getJob: getJobFromDb } = await import('../data/jobs.js');
       const dbJob = await getJobFromDb('greenhouse', ghJobId);
       if (dbJob) {
         job = dbJob;
       } else {
         throw new Error(`Greenhouse job ${ghJobId} not found in DB after hydration`);
+      }
+      if (outcome === 'job_not_found') {
+        return { job, resumePath: undefined, outcome: 'job_not_found' };
       }
     } else {
       throw new Error(`Could not parse job ID from greenhouse URL: ${jobUrl}`);

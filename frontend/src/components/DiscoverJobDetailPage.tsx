@@ -36,7 +36,7 @@ import { FormReviewPanel } from "./FormReviewPanel";
 import { WrittenDocsReviewPanel } from "./WrittenDocsReviewPanel";
 import dayjs from "dayjs";
 import { useSubscription } from "../subscription/useSubscription";
-import { Spin } from "antd";
+import { message, Spin } from "antd";
 
 type DocTab = "resume" | "cover" | "form" | "written-doc" | null;
 
@@ -125,6 +125,17 @@ export function DiscoverJobDetailPage() {
       const data = await postScrapeJobDetail(ref);
       setDetail((prev) => (prev ? { ...prev, job: data.job } : null));
     } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to load details";
+      if (errorMessage === "Job not found") {
+        //show message to user that the job is not found and go back to the previous page
+        // make the transition smooth
+        message.error("The job you are trying to apply to does not exist.");
+        setTimeout(() => {
+          navigate(-1);
+        }, 1000);
+        return;
+      }
       setDetailError(
         err instanceof Error ? err.message : "Failed to load details",
       );

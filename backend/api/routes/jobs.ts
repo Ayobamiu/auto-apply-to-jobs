@@ -141,7 +141,11 @@ export async function postScrapeJobDetail(req: Request, res: Response): Promise<
 
   if (site === 'greenhouse') {
     try {
-      await hydrateGreenhouseJob(jobId, userId, false);
+      const { success, outcome } = await hydrateGreenhouseJob(jobId, userId, false);
+      if (!success) {
+        res.status(404).json({ error: outcome === 'job_not_found' ? 'Job not found' : 'Failed to hydrate job' });
+        return;
+      }
       const job = await getJob('greenhouse', jobId);
       if (job) {
         res.status(200).json({ job: { ...job, jobId, site } });
