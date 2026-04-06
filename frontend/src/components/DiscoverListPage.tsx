@@ -178,39 +178,37 @@ export function DiscoverListPage() {
         </button>
       </div>
 
-      {/* Search bar */}
+      {/* Search bar 2: pure html form */}
       <div className="mb-6">
-        <div className="flex items-center gap-2 flex-wrap">
+        <form
+          action="/discover"
+          method="get"
+          className="flex items-center gap-2 flex-wrap"
+        >
           <input
             type="text"
             placeholder="Search jobs…"
             defaultValue={getUrlParams("query") || ""}
-            onChange={(e) => {
-              setUrlParams("query", e.target.value);
-            }}
-            // onKeyDown={handleInputKeyDown}
+            name="query"
             className="flex-1 min-w-[140px] max-w-xs px-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
           />
           <input
             type="text"
             placeholder="Location"
             defaultValue={getUrlParams("location") || ""}
-            onChange={(e) => {
-              setUrlParams("location", e.target.value);
-            }}
+            name="location"
             className="flex-1 min-w-[120px] max-w-[200px] px-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
           />
           <button
-            type="button"
+            type="submit"
             disabled={loading}
-            onClick={async () => await handleSearch()}
             className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-white bg-blue-600 border-0 rounded-xl hover:bg-blue-700 cursor-pointer transition-colors"
           >
             <Search className="w-4 h-4" />
             Search
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
           </button>
-        </div>
+        </form>
 
         {/* Results count */}
         {!loading && totalCount > 0 && (
