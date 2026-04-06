@@ -118,6 +118,6 @@ export async function getOnboardingStatusHandler(req: Request, res: Response): P
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
-  const { hasProfile, hasSession, hasTranscript: userHasTranscript } = await checkPrerequisites(req.userId);
-  res.status(200).json({ resume_uploaded: hasProfile, profile_complete: hasProfile, handshake_connected: hasSession, transcript_uploaded: userHasTranscript });
+  const { hasProfile, hasSession, hasTranscript: userHasTranscript, hasBaseResume } = await checkPrerequisites(req.userId);
+  res.status(200).json({ resume_uploaded: hasBaseResume, profile_complete: hasProfile, handshake_connected: hasSession, transcript_uploaded: userHasTranscript });
 }

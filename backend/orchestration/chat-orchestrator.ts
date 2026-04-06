@@ -32,6 +32,7 @@ import type {
   Intent,
 } from '../shared/types.js';
 import { detectIntentFromLLM } from '../shared/intent-from-llm.js';
+import { getBaseResume } from '../data/user-resumes.js';
 
 export type { ChatMessage, OrchestratorResult } from '../shared/types.js';
 
@@ -166,16 +167,18 @@ export async function checkPrerequisites(userId: string): Promise<{
   hasSession: boolean;
   sessionStale: boolean;
   hasTranscript: boolean;
+  hasBaseResume: boolean;
 }> {
-  const [profile, sessionAge, transcriptResult] = await Promise.all([
+  const [profile, sessionAge, transcriptResult, baseResume] = await Promise.all([
     getProfile(userId),
     getSessionAge(userId),
     hasTranscript(userId),
+    getBaseResume(userId),
   ]);
   const hasProfile = !!(profile?.name?.trim());
   const hasSession = sessionAge !== null;
   const sessionStale = hasSession && sessionAge! > SESSION_STALE_THRESHOLD_MS;
-  return { hasProfile, hasSession, sessionStale, hasTranscript: transcriptResult.hasTranscript };
+  return { hasProfile, hasSession, sessionStale, hasTranscript: transcriptResult.hasTranscript, hasBaseResume: !!baseResume };
 }
 
 function looksLikeSkipOrContinue(message: string): boolean {
@@ -196,7 +199,7 @@ async function handleOnboarding(userId: string, message: string): Promise<Orches
   const intent = detectIntent(message);
   if (intent !== 'help') return null;
 
-  const { hasProfile, hasSession, sessionStale, hasTranscript: userHasTranscript } = await checkPrerequisites(userId);
+  const { hasProfile, hasSession, sessionStale, hasTranscript: userHasTranscript, hasBaseResume } = await checkPrerequisites(userId);
 
   if (!hasProfile && !hasSession) {
     return {

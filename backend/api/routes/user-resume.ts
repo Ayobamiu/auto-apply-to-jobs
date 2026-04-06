@@ -7,7 +7,7 @@ import multer from 'multer';
 import { getBaseResume, saveBaseResume } from '../../data/user-resumes.js';
 import { extractResumeJsonFromText } from '../../shared/resume-json-from-text.js';
 import { pdfBufferToText } from '../../shared/pdf-to-text.js';
-import { updateProfile } from '../../data/profile.js';
+import { getProfile, updateProfile } from '../../data/profile.js';
 import type { Profile } from '../../shared/types.js';
 
 const memoryStorage = multer.memoryStorage();
@@ -151,9 +151,13 @@ export async function postUserResume(req: Request, res: Response): Promise<void>
   try {
     const json = await extractResumeJsonFromText(resumeText);
     await saveBaseResume(req.userId, json);
-    const profileUpdate = jsonResumeToProfile(json);
-    if (profileUpdate.name || profileUpdate.email) {
-      await updateProfile(profileUpdate, req.userId);
+    // dont update profile if it already exists
+    const profile = await getProfile(req.userId);
+    if (!profile) {
+      const profileUpdate = jsonResumeToProfile(json);
+      if (profileUpdate.name || profileUpdate.email) {
+        await updateProfile(profileUpdate, req.userId);
+      }
     }
     res.status(200).json({ resume: json });
   } catch (err) {

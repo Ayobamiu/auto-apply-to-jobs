@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { getOnboardingStatus, OnboardingStatusResponse } from "../api";
 
-const TASKS: { id: string; label: string; description: string; href: string }[] = [
+const TASKS: { id: string; label: string; description: string; href: string; optional?: boolean }[] = [
     { id: "resume_uploaded", label: "Upload your resume", description: "We'll extract your profile automatically", href: "/settings/resume" },
     { id: "profile_complete", label: "Complete your profile", description: "Name, university, contact info", href: "/settings/profile" },
-    { id: "handshake_connected", label: "Connect Handshake", description: "Link your university account", href: "/settings/handshake" },
     { id: "transcript_uploaded", label: "Upload your transcript", description: "For jobs that require it", href: "/settings/transcript" },
+    { id: "handshake_connected", label: "Connect Handshake", description: "Unlock extra jobs from your university's portal", href: "/settings/handshake", optional: true },
 ];
 
 export function useOnboarding() {
@@ -38,11 +38,12 @@ export function useOnboarding() {
     }, []);
 
     const { completedCount, totalCount, isComplete, progressPercent, nextTask } = useMemo(() => {
-        const completedCount = Object.values(completion).filter(Boolean).length;
-        const totalCount = TASKS.length;
+        const requiredTasks = TASKS.filter((t) => !t.optional);
+        const completedCount = requiredTasks.filter((t) => completion[t.id as keyof typeof completion]).length;
+        const totalCount = requiredTasks.length;
         const isComplete = completedCount === totalCount;
         const progressPercent = Math.round((completedCount / totalCount) * 100);
-        const nextTask = TASKS.find((t) => !completion[t.id as keyof typeof completion]) ?? null;
+        const nextTask = requiredTasks.find((t) => !completion[t.id as keyof typeof completion]) ?? null;
         return {
             completedCount,
             totalCount,
@@ -67,5 +68,6 @@ export function useOnboarding() {
         nextTask,
         markComplete,
         loading,
+        completion
     };
 }

@@ -132,7 +132,11 @@ export function DiscoverListPage() {
     [savingRefs, savedRefs],
   );
 
-  const { isComplete, loading: onboardingLoading } = useOnboarding();
+  const {
+    isComplete,
+    loading: onboardingLoading,
+    completion,
+  } = useOnboarding();
 
   if (onboardingLoading) {
     return (
@@ -155,31 +159,32 @@ export function DiscoverListPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-6 py-8">
       {/* Hero: paste link */}
-      <div className="mb-8 rounded-2xl bg-gradient-to-br from-blue-50 to-white border border-blue-100 p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0">
-          <Link2 className="w-5 h-5 text-white" />
+      {completion.handshake_connected && (
+        <div className="mb-8 rounded-2xl bg-gradient-to-br from-blue-50 to-white border border-blue-100 p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0">
+            <Link2 className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-[15px] font-semibold text-gray-900">
+              Have a specific job in mind?
+            </h2>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Paste a job link and we'll generate a tailored resume and cover
+              letter.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setHandshakeModalOpen(true)}
+            className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors border-0 cursor-pointer"
+          >
+            <Link2 className="w-4 h-4" />
+            Paste link
+          </button>
         </div>
-        <div className="flex-1 min-w-0">
-          <h2 className="text-[15px] font-semibold text-gray-900">
-            Have a specific job in mind?
-          </h2>
-          <p className="text-sm text-gray-500 mt-0.5">
-            Paste a job link and we'll generate a tailored resume and cover
-            letter.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setHandshakeModalOpen(true)}
-          className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors border-0 cursor-pointer"
-        >
-          <Link2 className="w-4 h-4" />
-          Paste link
-        </button>
-      </div>
-
-      {/* Search bar 2: pure html form */}
-      <div className="mb-6">
+      )}
+      {/* Search bar: pure html form */}
+      <div className="mb-6 mx-auto max-w-3xl">
         <form
           action="/discover"
           method="get"
@@ -303,10 +308,13 @@ export function DiscoverListPage() {
                       </div>
 
                       <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3 text-xs text-gray-400">
+                        {/* location should show at most two lines with optional ellipsis */}
                         {listing.location && (
                           <span className="inline-flex items-center gap-1">
                             <MapPin className="w-3 h-3" />
-                            {listing.location}
+                            <span className="truncate max-w-[200px]">
+                              {listing.location}
+                            </span>
                           </span>
                         )}
                         {departments && departments.length > 0 && (
@@ -319,7 +327,7 @@ export function DiscoverListPage() {
                     </Link>
 
                     <div className="flex items-center gap-2 px-5 pb-4 pt-1">
-                      {listing.url && (
+                      {/* {listing.url && (
                         <a
                           href={listing.url}
                           target="_blank"
@@ -330,7 +338,7 @@ export function DiscoverListPage() {
                           <ExternalLink className="w-3.5 h-3.5" />
                           View
                         </a>
-                      )}
+                      )} */}
                       {listing.applicationSubmitted ? (
                         <span className="ml-auto inline-flex items-center gap-1 text-xs text-emerald-600 font-medium">
                           <CheckCircle className="w-3.5 h-3.5" />
