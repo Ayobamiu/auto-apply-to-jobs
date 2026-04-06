@@ -11,7 +11,7 @@ import { ProfileFormSection } from "./ProfileFormSection";
 import { ResumeSettingsSection } from "./ResumeSettingsSection";
 import { TranscriptSettingsSection } from "./TranscriptSettingsSection";
 import { HandshakeSettingsSection } from "./HandshakeSettingsSection";
-import { ApplicationSettingsSection } from "./ApplicationSettingsSection";
+// import { ApplicationSettingsSection } from "./ApplicationSettingsSection";
 import { useLocation, useNavigate } from "react-router-dom";
 import { SubscriptionSettingsPage } from "./SubscriptionSettingsPage";
 
@@ -19,7 +19,7 @@ type Tab =
   | "profile"
   | "resume"
   | "transcript"
-  | "application"
+  // | "application"
   | "handshake"
   | "subscription";
 
@@ -47,12 +47,12 @@ const TABS: {
     description: "For jobs that require it",
     icon: GraduationCap,
   },
-  {
-    key: "application",
-    label: "Application",
-    description: "Auto-fill preferences",
-    icon: ClipboardList,
-  },
+  // {
+  //   key: "application",
+  //   label: "Application",
+  //   description: "Auto-fill preferences",
+  //   icon: ClipboardList,
+  // },
   {
     key: "handshake",
     label: "Handshake",
@@ -146,7 +146,7 @@ export function SettingsPage() {
             {isActive("profile") && <ProfileFormSection />}
             {isActive("resume") && <ResumeSettingsSection />}
             {isActive("transcript") && <TranscriptSettingsSection />}
-            {isActive("application") && <ApplicationSettingsSection />}
+            {/* {isActive("application") && <ApplicationSettingsSection />} */}
             {isActive("handshake") && <HandshakeSettingsSection />}
             {isActive("subscription") && <SubscriptionSettingsPage />}
           </div>

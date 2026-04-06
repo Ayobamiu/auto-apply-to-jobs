@@ -309,11 +309,14 @@ function MonthYearPicker({
   includeFuture = false,
   allowPresent = false,
 }: MonthYearProps) {
-  const yearOptions = includeFuture
+  let yearOptions = includeFuture
     ? [...FUTURE_YEARS, ...YEARS]
     : allowPresent
       ? ["Present", ...YEARS]
       : YEARS;
+  //make the year options unique
+  yearOptions = [...new Set(yearOptions)];
+
   return (
     <div className="flex gap-2">
       <select
