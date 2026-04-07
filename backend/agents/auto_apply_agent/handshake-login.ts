@@ -13,7 +13,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 function ensureAuthDirForUser(userId: string): void {
   try {
     mkdirSync(join(ROOT, '.auth', userId), { recursive: true });
-  } catch (_) {}
+  } catch (_) { }
 }
 
 async function main(): Promise<void> {
@@ -21,7 +21,7 @@ async function main(): Promise<void> {
   const paths = getPathsForUser(userId);
   ensureAuthDirForUser(userId);
 
-  const browser = await chromium.launch({ headless: false });
+  const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
   const page = await context.newPage();
 

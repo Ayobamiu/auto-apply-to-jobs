@@ -20,7 +20,7 @@ function ensureAuthDir(userId: string): void {
   const { navigationLog } = getPathsForUser(userId);
   try {
     mkdirSync(dirname(navigationLog), { recursive: true });
-  } catch (_) {}
+  } catch (_) { }
 }
 
 function writeLogToFile(entries: LogEntry[], userId: string): void {
@@ -46,7 +46,7 @@ async function main(): Promise<void> {
     writeLogToFile(entries, userId);
   }
 
-  const browser = await chromium.launch({ headless: false });
+  const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
   const page = await context.newPage();
 
@@ -78,7 +78,7 @@ async function main(): Promise<void> {
   await page.goto(LOGIN_URL, { waitUntil: 'load' });
   record(page.url(), 'initial');
 
-  await new Promise(() => {});
+  await new Promise(() => { });
 }
 
 main().catch((err) => {

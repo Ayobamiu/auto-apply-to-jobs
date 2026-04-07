@@ -46,7 +46,7 @@ export async function runGreenhouseApply(
   const jobRef = toJobRef(site, jobId);
   const job = await getJob(site, jobId) ?? undefined;
 
-  const browser = await chromium.launch({ headless: false });
+  const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
   const page = await context.newPage();
 

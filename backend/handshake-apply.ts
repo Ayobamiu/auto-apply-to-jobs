@@ -24,7 +24,7 @@ export async function runHandshakeApply(options: RunHandshakeApplyOptions = {}):
   const { headless = true, stopBeforeSubmit = true, keepOpen = false } = options;
   const submittedLogs: string[] = [];
 
-  const browser = await chromium.launch({ headless: false });
+  const browser = await chromium.launch({ headless });
   const context = await browser.newContext();
   const page = await context.newPage();
 
