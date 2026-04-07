@@ -14,7 +14,6 @@ import {
   X,
   Bookmark,
   BookmarkCheck,
-  ChevronDown,
 } from "lucide-react";
 import {
   getJobDetail,
@@ -55,7 +54,6 @@ export function DiscoverJobDetailPage() {
   const [artifacts, setArtifacts] = useState<PipelineArtifacts | null>(null);
   const [activeDoc, setActiveDoc] = useState<DocTab>(null);
   const [mobileDocOpen, setMobileDocOpen] = useState(false);
-  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [formSaving, setFormSaving] = useState(false);
@@ -485,12 +483,17 @@ export function DiscoverJobDetailPage() {
       </div>
     );
   };
+  function decodeHtml(html: string): string {
+    const txt = document.createElement("textarea");
+    txt.innerHTML = html;
+    return txt.value;
+  }
 
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-56px)]">
       {/* ── Left sidebar ── */}
-      <aside className="w-full lg:w-[340px] xl:w-[380px] flex-shrink-0 border-b lg:border-b-0 lg:border-r border-gray-200 overflow-y-auto bg-white">
-        <div className="p-5 space-y-5">
+      <aside className="w-full lg:w-[340px] xl:w-[380px] flex-shrink-0 border-b lg:border-b-0 lg:border-r border-gray-200 bg-white flex flex-col h-full lg:h-auto">
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
           {/* Back link */}
           <Link
             to="/discover"
@@ -571,17 +574,38 @@ export function DiscoverJobDetailPage() {
                     )}
                   </div>
                 </div>
-                {detail.job.url && (
-                  <a
-                    href={detail.job.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                    title="View original listing"
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving || saved}
+                    title={saved ? "Saved" : "Save job"}
+                    className={`p-1.5 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed border-0 cursor-pointer ${
+                      saved
+                        ? "text-blue-600 bg-blue-50"
+                        : "text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                    }`}
                   >
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
-                )}
+                    {saving ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : saved ? (
+                      <BookmarkCheck className="w-4 h-4" />
+                    ) : (
+                      <Bookmark className="w-4 h-4" />
+                    )}
+                  </button>
+                  {detail.job.url && (
+                    <a
+                      href={detail.job.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                      title="View original listing"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  )}
+                </div>
               </div>
 
               {/* Applied badge */}
@@ -594,173 +618,6 @@ export function DiscoverJobDetailPage() {
                       ? `· ${dayjs(detail.userState.appliedAt).format("MMMM D YYYY, h:mm:ss a")}`
                       : ""}
                   </span>
-                </div>
-              )}
-
-              {/* ── Action card ── */}
-              {!appliedAt && (
-                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 space-y-3">
-                  {/* Save */}
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={saving || saved}
-                    className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border transition-colors cursor-pointer ${
-                      saved
-                        ? "bg-blue-50 border-blue-200 text-blue-600"
-                        : "bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600"
-                    } disabled:opacity-60 disabled:cursor-not-allowed`}
-                  >
-                    {saving ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : saved ? (
-                      <BookmarkCheck className="w-4 h-4" />
-                    ) : (
-                      <Bookmark className="w-4 h-4" />
-                    )}
-                    {saved ? "Saved" : "Save job"}
-                  </button>
-
-                  {/* Cannot apply notice */}
-                  {cannotApply && (
-                    <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 space-y-2">
-                      <p className="text-xs font-medium text-amber-800">
-                        We can't apply to this job through the app.
-                      </p>
-                      <p className="text-xs text-amber-700">
-                        You can still generate a tailored resume and cover
-                        letter to use when applying manually.
-                      </p>
-                      {pipeline?.error && (
-                        <p className="text-xs text-amber-600">
-                          {pipeline.error}
-                        </p>
-                      )}
-                      {detail.job.url && (
-                        <button
-                          type="button"
-                          disabled={
-                            !!generatingUrl || !!applyingUrl || isPipelineActive
-                          }
-                          onClick={() => handleGenerate(detail.job.url!)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed border-0 cursor-pointer"
-                        >
-                          {generatingUrl === detail.job.url ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <FileText className="w-3.5 h-3.5" />
-                          )}
-                          {generatingUrl === detail.job.url
-                            ? "Generating…"
-                            : "Generate documents"}
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Generate docs */}
-                  {showGenerate && (
-                    <div className="space-y-1">
-                      <button
-                        type="button"
-                        disabled={
-                          !!generatingUrl || !!applyingUrl || isPipelineActive
-                        }
-                        onClick={() => {
-                          if (!cannotApply && detail.job.url)
-                            handleGenerate(detail.job.url);
-                        }}
-                        className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed border-0 cursor-pointer transition-colors"
-                      >
-                        {generatingUrl === detail.job.url ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <FileText className="w-4 h-4" />
-                        )}
-                        {generatingUrl === detail.job.url
-                          ? "Generating…"
-                          : isPipelineActive
-                            ? "Processing…"
-                            : "Generate resume & cover letter"}
-                      </button>
-                      <p className="text-xs text-gray-400 text-center">
-                        Tailored to this job description
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Apply */}
-                  {showApply && (
-                    <div className="space-y-1">
-                      <button
-                        type="button"
-                        disabled={
-                          !!applyingUrl ||
-                          !!generatingUrl ||
-                          isPipelineActive ||
-                          subscriptionLoading ||
-                          jobHasExternalApplicationOnHandshake
-                        }
-                        onClick={() => {
-                          if (!cannotApply && detail.job.url) {
-                            if (!isPro) {
-                              openUpgradeModal("submit");
-                              return;
-                            }
-                            handleApply(detail.job.url);
-                          }
-                        }}
-                        className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl disabled:opacity-60 disabled:cursor-not-allowed border-0 cursor-pointer transition-colors ${
-                          showGenerate
-                            ? "text-blue-600 bg-blue-50 hover:bg-blue-100"
-                            : "text-white bg-blue-600 hover:bg-blue-700"
-                        }`}
-                      >
-                        {applyingUrl === detail.job.url ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Send className="w-4 h-4" />
-                        )}
-                        {applyingUrl === detail.job.url
-                          ? "Starting…"
-                          : isPipelineActive
-                            ? "Applying…"
-                            : pipeline?.status === "failed"
-                              ? "Re-apply"
-                              : "Apply with Merit"}
-                      </button>
-                      <p className="text-xs text-gray-400 text-center">
-                        Generates docs and auto-submits your application
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Failed + retry allowed → also offer generate */}
-                  {pipeline?.status === "failed" &&
-                    pipeline?.retryAllowed !== false &&
-                    !cannotApply &&
-                    detail.job.url && (
-                      <div className="space-y-1">
-                        <button
-                          type="button"
-                          disabled={
-                            !!generatingUrl || !!applyingUrl || isPipelineActive
-                          }
-                          onClick={() => handleGenerate(detail.job.url!)}
-                          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:border-blue-300 hover:text-blue-600 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors"
-                        >
-                          {generatingUrl === detail.job.url ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <FileText className="w-3.5 h-3.5" />
-                          )}
-                          Generate resume and cover letter anyway
-                        </button>
-                        <p className="text-xs text-gray-400 text-center">
-                          You can still create documents to use elsewhere.
-                        </p>
-                      </div>
-                    )}
                 </div>
               )}
 
@@ -804,26 +661,6 @@ export function DiscoverJobDetailPage() {
                       <Loader2 className="w-3 h-3 animate-spin" /> Loading job
                       details…
                     </p>
-                  )}
-
-                  {pipeline.status === "awaiting_approval" && (
-                    <div className="flex gap-2 pt-1 pl-6">
-                      <button
-                        type="button"
-                        onClick={handleApprove}
-                        className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 border-0 cursor-pointer"
-                        disabled={subscriptionLoading}
-                      >
-                        Approve & Submit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleCancel}
-                        className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                    </div>
                   )}
                 </div>
               )}
@@ -933,31 +770,15 @@ export function DiscoverJobDetailPage() {
               ></Spin>
               {detail.job.description && (
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                     Job description
                   </p>
                   <div
-                    className={`text-xs text-gray-600 whitespace-pre-wrap rounded-xl bg-gray-50 border border-gray-100 p-3 overflow-y-auto leading-relaxed ${
-                      descriptionExpanded ? "" : "max-h-48"
-                    }`}
-                  >
-                    {detail.job.description.slice(
-                      0,
-                      descriptionExpanded ? undefined : 5000,
-                    )}
-                  </div>
-                  {detail.job.description.length > 300 && (
-                    <button
-                      type="button"
-                      onClick={() => setDescriptionExpanded((v) => !v)}
-                      className="inline-flex items-center gap-1 mt-1.5 text-xs text-blue-600 hover:text-blue-700 bg-transparent border-0 cursor-pointer"
-                    >
-                      <ChevronDown
-                        className={`w-3.5 h-3.5 transition-transform ${descriptionExpanded ? "rotate-180" : ""}`}
-                      />
-                      {descriptionExpanded ? "Show less" : "Show more"}
-                    </button>
-                  )}
+                    className="prose prose-sm max-w-none text-gray-700"
+                    dangerouslySetInnerHTML={{
+                      __html: decodeHtml(detail.job.description),
+                    }}
+                  />
                 </div>
               )}
 
@@ -968,6 +789,160 @@ export function DiscoverJobDetailPage() {
             </>
           )}
         </div>
+
+        {/* ── Fixed bottom action bar ── */}
+        {detail && !appliedAt && (
+          <div className="border-t border-gray-200 bg-white p-4 pb-[calc(1rem+56px)] md:pb-4 space-y-2 flex-shrink-0">
+            {cannotApply ? (
+              <>
+                <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 space-y-2 mb-2">
+                  <p className="text-xs font-medium text-amber-800">
+                    We can't apply to this job through the app.
+                  </p>
+                  <p className="text-xs text-amber-700">
+                    You can still generate a tailored resume and cover letter to
+                    use when applying manually.
+                  </p>
+                  {pipeline?.error && (
+                    <p className="text-xs text-amber-600">{pipeline.error}</p>
+                  )}
+                </div>
+                {detail.job.url && (
+                  <button
+                    type="button"
+                    disabled={
+                      !!generatingUrl || !!applyingUrl || isPipelineActive
+                    }
+                    onClick={() => handleGenerate(detail.job.url!)}
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed border-0 cursor-pointer transition-colors"
+                  >
+                    {generatingUrl === detail.job.url ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <FileText className="w-4 h-4" />
+                    )}
+                    {generatingUrl === detail.job.url
+                      ? "Generating…"
+                      : "Generate documents"}
+                  </button>
+                )}
+              </>
+            ) : pipeline?.status === "awaiting_approval" ? (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleApprove}
+                  disabled={subscriptionLoading}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed border-0 cursor-pointer transition-colors"
+                >
+                  Approve & Submit
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="px-4 py-2.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {showGenerate && (
+                  <div className="space-y-1">
+                    <button
+                      type="button"
+                      disabled={
+                        !!generatingUrl || !!applyingUrl || isPipelineActive
+                      }
+                      onClick={() => {
+                        if (detail.job.url) handleGenerate(detail.job.url);
+                      }}
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed border-0 cursor-pointer transition-colors"
+                    >
+                      {generatingUrl === detail.job.url ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <FileText className="w-4 h-4" />
+                      )}
+                      {generatingUrl === detail.job.url
+                        ? "Generating…"
+                        : isPipelineActive
+                          ? "Processing…"
+                          : "Generate resume & cover letter"}
+                    </button>
+                    <p className="text-xs text-gray-400 text-center">
+                      Tailored to this job description
+                    </p>
+                  </div>
+                )}
+                {showApply && (
+                  <div className="space-y-1">
+                    <button
+                      type="button"
+                      disabled={
+                        !!applyingUrl ||
+                        !!generatingUrl ||
+                        isPipelineActive ||
+                        subscriptionLoading ||
+                        jobHasExternalApplicationOnHandshake
+                      }
+                      onClick={() => {
+                        if (!cannotApply && detail.job.url) {
+                          if (!isPro) {
+                            openUpgradeModal("submit");
+                            return;
+                          }
+                          handleApply(detail.job.url);
+                        }
+                      }}
+                      className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl disabled:opacity-60 disabled:cursor-not-allowed border-0 cursor-pointer transition-colors ${
+                        showGenerate
+                          ? "text-blue-600 bg-blue-50 hover:bg-blue-100"
+                          : "text-white bg-blue-600 hover:bg-blue-700"
+                      }`}
+                    >
+                      {applyingUrl === detail.job.url ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Send className="w-4 h-4" />
+                      )}
+                      {applyingUrl === detail.job.url
+                        ? "Starting…"
+                        : isPipelineActive
+                          ? "Applying…"
+                          : pipeline?.status === "failed"
+                            ? "Re-apply"
+                            : "Apply with Merit"}
+                    </button>
+                    <p className="text-xs text-gray-400 text-center">
+                      Generates docs and auto-submits your application
+                    </p>
+                  </div>
+                )}
+                {pipeline?.status === "failed" &&
+                  pipeline?.retryAllowed !== false &&
+                  !cannotApply &&
+                  detail.job.url && (
+                    <button
+                      type="button"
+                      disabled={
+                        !!generatingUrl || !!applyingUrl || isPipelineActive
+                      }
+                      onClick={() => handleGenerate(detail.job.url!)}
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:border-blue-300 hover:text-blue-600 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                    >
+                      {generatingUrl === detail.job.url ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <FileText className="w-3.5 h-3.5" />
+                      )}
+                      Generate resume and cover letter anyway
+                    </button>
+                  )}
+              </div>
+            )}
+          </div>
+        )}
       </aside>
 
       {/* ── Right panel: document editor (desktop) ── */}
