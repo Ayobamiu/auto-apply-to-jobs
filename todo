@@ -1,6 +1,21 @@
-fix resume dowload feature: resume PDF doesnt have all the details in preview
+show Salary
 auto-fix and populate user's profile when they correct forms
 Bug: edit hostories not saved
+x save original Description
+x resume should update/set profile only once. Subsequent resume update shouldnt update profile. User should be able to see/update full profile
+x make 'connect handshake' optional in Onboarding process
+x feature: make search better; default search based on user resume [label and location]; dont show jobs i have applied to
+x feature: save google api compatible location [when saving/updating profile, selecting location for search]
+x fix: select/multi select forms that use api autocomplete are not working well; convert all location id to candidate-location
+x fix: Ignore cover_letter_text and resume_text in classifiedFields if they are not required OR if resume and cover_letter of "fieldType": "file_upload" are already in the fields
+x handle case of job not existing 404
+x fix: Update pipeline to skip processes not related to greenhouse when Processing greenhouse
+x add loading indicator when Description is loading
+x add loading indicator when answers are being Generated. The questions are already loaded.
+x fix: Update hydrate process: dont generate answers Initially postJobsHydrate(generate: boolean)
+x fix: Answers Generated for checkboxes are not displayed well for review http://localhost:5173/discover/job/greenhouse%3A8112909002, http://localhost:5173/discover/job/greenhouse%3A5179639004
+x fix: Education section was missed in the greenhouse forms captured
+x fix resume dowload feature: resume PDF doesnt have all the details in preview
 x fix animation in prod
 x remove pro Restrictions from resume download
 x Monetize Very Important!

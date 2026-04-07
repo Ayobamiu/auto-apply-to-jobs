@@ -84,6 +84,7 @@ export async function updateJob(
   const url = merged.url ?? null;
   const applyType = merged.applyType ?? null;
   const jobClosed = merged.jobClosed ?? null;
+  const isActive = merged.isActive ?? false;
   const location = merged.location ?? null;
   const salaryEmploymentType = merged.salaryEmploymentType ?? null;
   const companyLogoUrl = merged.companyLogoUrl ?? null;
@@ -93,8 +94,8 @@ export async function updateJob(
     payloadJson[k] = v;
   }
   await pool.query(
-    `INSERT INTO jobs (site, job_id, title, company, description, url, apply_type, job_closed, location, salary_employment_type, company_logo_url, payload)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb)
+    `INSERT INTO jobs (site, job_id, title, company, description, url, apply_type, job_closed, is_active, location, salary_employment_type, company_logo_url, payload)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb)
      ON CONFLICT (site, job_id) DO UPDATE SET
        title = EXCLUDED.title,
        company = EXCLUDED.company,
@@ -102,12 +103,13 @@ export async function updateJob(
        url = EXCLUDED.url,
        apply_type = EXCLUDED.apply_type,
        job_closed = EXCLUDED.job_closed,
+       is_active = EXCLUDED.is_active,
        location = EXCLUDED.location,
        salary_employment_type = EXCLUDED.salary_employment_type,
        company_logo_url = EXCLUDED.company_logo_url,
        payload = EXCLUDED.payload,
        updated_at = now()`,
-    [site, id, title, company, description, url, applyType, jobClosed, location, salaryEmploymentType, companyLogoUrl, JSON.stringify(payloadJson)]
+    [site, id, title, company, description, url, applyType, jobClosed, isActive, location, salaryEmploymentType, companyLogoUrl, JSON.stringify(payloadJson)]
   );
 }
 

@@ -29,9 +29,23 @@
           "properties": {
             "school": { "type": "string" },
             "degree": { "type": "string" },
-            "year": { "type": "string" }
+            "discipline": { "type": "string" },
+            "year": { "type": "string" },
+            "startMonth": { "type": "string" },
+            "startYear": { "type": "string" },
+            "endMonth": { "type": "string" },
+            "endYear": { "type": "string" }
           },
-          "required": ["school", "degree", "year"]
+          "required": [
+            "school",
+            "degree",
+            "discipline",
+            "year",
+            "startMonth",
+            "startYear",
+            "endMonth",
+            "endYear"
+          ]
         }
       },
       "experience": {

@@ -11,9 +11,19 @@ interface AppShellProps {
 }
 
 const NAV_ITEMS = [
-  { to: "/discover", label: "Discover", icon: Compass },
-  { to: "/jobs", label: "My Jobs", icon: Briefcase },
-  { to: "/settings", label: "Profile & Settings", icon: Settings },
+  {
+    to: "/discover",
+    label: "Discover",
+    icon: Compass,
+    mobileLabel: "Discover",
+  },
+  { to: "/jobs", label: "My Jobs", icon: Briefcase, mobileLabel: "My Jobs" },
+  {
+    to: "/settings",
+    label: "Profile & Settings",
+    icon: Settings,
+    mobileLabel: "Profile",
+  },
 ];
 
 export function AppShell({ children, onLogout }: AppShellProps) {
@@ -84,7 +94,7 @@ export function AppShell({ children, onLogout }: AppShellProps) {
 
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 flex items-center justify-around px-2 h-14">
-        {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
+        {NAV_ITEMS.map(({ to, label, icon: Icon, mobileLabel }) => {
           const active =
             to === "/discover"
               ? pathname === "/discover" || pathname.startsWith("/discover/")
@@ -98,7 +108,7 @@ export function AppShell({ children, onLogout }: AppShellProps) {
               }`}
             >
               <Icon className="w-5 h-5" />
-              {label.split(" ")[0]}
+              {mobileLabel}
             </Link>
           );
         })}

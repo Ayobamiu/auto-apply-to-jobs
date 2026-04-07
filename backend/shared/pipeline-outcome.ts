@@ -2,7 +2,7 @@
  * Explicit pipeline apply outcomes. Use these instead of overlapping applied/skipped booleans
  * to prevent miscommunication between pipeline result and user-facing messages.
  */
-export const PIPELINE_APPLY_OUTCOMES = ['submitted', 'already_applied', 'skipped', 'no_apply', 'handshake_apply_externally_not_supported'] as const;
+export const PIPELINE_APPLY_OUTCOMES = ['submitted', 'already_applied', 'skipped', 'no_apply', 'handshake_apply_externally_not_supported', 'job_not_found'] as const;
 export type PipelineApplyOutcome = (typeof PIPELINE_APPLY_OUTCOMES)[number];
 
 export interface PipelineResultWithOutcome {
@@ -45,6 +45,8 @@ export function getPipelineOutcomeMessage(
       return `Pipeline completed for "${jobTitle}". No apply step was run.`;
     case 'handshake_apply_externally_not_supported':
       return `This job uses "Apply externally" and is not supported. Only in-Handshake apply is supported.`;
+    case 'job_not_found':
+      return `The job you are trying to apply to does not exist.`;
     default: {
       const _: never = outcome;
       return `Pipeline completed for "${jobTitle}".`;

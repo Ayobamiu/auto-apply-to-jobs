@@ -471,6 +471,21 @@ function FieldInput({
       );
 
     case "select":
+      if (field.id === "candidate-location") {
+        return (
+          <input
+            type="text"
+            className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-200 outline-none"
+            value={
+              typeof localValue === "string"
+                ? localValue
+                : (localValue[0] ?? "")
+            }
+            onChange={(e) => handleChange(e.target.value)}
+            placeholder="City, State, Country"
+          />
+        );
+      }
       return (
         <select
           className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-200 outline-none"

@@ -14,7 +14,7 @@ import { fileURLToPath, pathToFileURL } from 'url';
 import { dirname, resolve } from 'path';
 import { isAppError } from '../shared/errors.js';
 import { preflightForPipeline } from '../shared/preflight.js';
-import { probeRequiredSections } from '../shared/probe-apply-modal.js';
+import { probeRequiredSections, ProbeResultExtended } from '../shared/probe-apply-modal.js';
 import { generateCoverLetter } from '../agents/resume_generator_agent/cover-letter.js';
 import { generateWrittenDocument } from '../agents/resume_generator_agent/written-document.js';
 import { runHandshakeApply } from '../agents/auto_apply_agent/handshake-apply-real.js';
@@ -25,6 +25,8 @@ import { getResumeForJob, getCoverLetterForJob, getWrittenDocumentForJob, getWri
 import { getApplicationForm } from '../data/application-forms.js';
 import type { Job, PipelineApplyOutcome, RunPipelineForJobOptions, RunPipelineForJobResult, SectionKey } from '../shared/types.js';
 import { SUPPORTED_SECTION_KEYS } from '../shared/types.js';
+import { runGreenhouseApply } from '../greenhouse/apply.js';
+import { hydrateGreenhouseJob } from '../greenhouse/hydrate.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -49,7 +51,8 @@ function getJobUrl(): string | null {
 }
 
 export type { RunPipelineForJobOptions, RunPipelineForJobResult } from '../shared/types.js';
-
+// We currently only support handshake and greenhouse jobs.
+// Make sure only processes related to the site processing is executed.
 export async function runPipelineForJob(
   jobUrl: string | null,
   options: RunPipelineForJobOptions = {}
@@ -64,8 +67,35 @@ export async function runPipelineForJob(
   await throwIfCancelled(options.checkCancelled);
 
   const onPhase = options.onPhaseChange;
+  const siteHint = jobUrl ? getJobSiteFromUrl(jobUrl) : null;
+  const isGreenhouse = siteHint === 'greenhouse';
+  const isHandshake = siteHint === 'handshake';
   let job: Job;
-  if (jobUrl) {
+
+  if (jobUrl && isGreenhouse) {
+    onPhase?.('Loading job from database...');
+    console.log('Step 0: Get greenhouse job from DB + API hydration...');
+    const endStep0 = startPhase('Step 0: Get greenhouse job (DB + hydrate)');
+    const ghJobId = getJobIdFromUrl(jobUrl);
+    if (ghJobId) {
+      const { outcome } = await hydrateGreenhouseJob(ghJobId, userId, true);
+      const { getJob: getJobFromDb } = await import('../data/jobs.js');
+      const dbJob = await getJobFromDb('greenhouse', ghJobId);
+      if (dbJob) {
+        job = dbJob;
+      } else {
+        throw new Error(`Greenhouse job ${ghJobId} not found in DB after hydration`);
+      }
+      if (outcome === 'job_not_found') {
+        return { job, resumePath: undefined, outcome: 'job_not_found' };
+      }
+    } else {
+      throw new Error(`Could not parse job ID from greenhouse URL: ${jobUrl}`);
+    }
+    endStep0();
+    await throwIfCancelled(options.checkCancelled);
+    console.log('Job:', job.title || job.company || jobUrl);
+  } else if (jobUrl) {
     onPhase?.('Scraping job...');
     console.log('Step 0: Get job from URL (scrape or cache)...');
     const endStep0 = startPhase('Step 0: Get job (scrape or cache)');
@@ -106,7 +136,7 @@ export async function runPipelineForJob(
     return { job, resumePath: undefined, outcome: 'already_applied' };
   }
 
-  const jobHasExternalApplicationOnHandshake = getJobSiteFromUrl(jobUrl) === 'handshake' && job.applyType === 'apply_externally';
+  const jobHasExternalApplicationOnHandshake = isHandshake && job.applyType === 'apply_externally';
 
 
   const siteFromUrl = getJobSiteFromUrl(jobUrl);
@@ -117,16 +147,22 @@ export async function runPipelineForJob(
   if (siteFromUrl && jobIdFromUrl && options.jobId && !jobHasExternalApplicationOnHandshake) {
     onPhase?.('Checking required documents...');
     try {
-      const probeResult = await probeRequiredSections(jobUrl, userId);
-      const requiredSectionsForReuse = probeResult.requiredSections;
-      const unsupported = requiredSectionsForReuse.filter((k) => !SUPPORTED_SECTION_KEYS.includes(k as SectionKey));
-      if (unsupported.length > 0) {
-        throw new Error(UNSUPPORTED_SECTIONS_MESSAGE);
+      let requiredSectionsForReuse: SectionKey[] = [];
+      let probeResult: ProbeResultExtended | null = null;
+      let needCover: boolean = false;
+
+      if (isHandshake) {
+        probeResult = await probeRequiredSections(jobUrl, userId);
+        requiredSectionsForReuse = probeResult.requiredSections;
+        const unsupported = requiredSectionsForReuse.filter((k) => !SUPPORTED_SECTION_KEYS.includes(k as SectionKey));
+        if (unsupported.length > 0) {
+          throw new Error(UNSUPPORTED_SECTIONS_MESSAGE);
+        }
+        await throwIfCancelled(options.checkCancelled);
+        needCover = requiredSectionsForReuse.includes('coverLetter');
       }
-      await throwIfCancelled(options.checkCancelled);
-      const existingResume = await getResumeForJob(userId, siteFromUrl, jobIdFromUrl);
-      const needCover = requiredSectionsForReuse.includes('coverLetter');
       const existingCover = needCover ? await getCoverLetterForJob(userId, siteFromUrl, jobIdFromUrl) : { text: '' };
+      const existingResume = await getResumeForJob(userId, siteFromUrl, jobIdFromUrl);
       if (existingResume && (!needCover || (existingCover && existingCover.text))) {
         console.log('Resume and cover (if required) already exist for this job. Skipping generation.');
         await setPipelineJobAwaitingApproval(options.jobId, {
@@ -163,8 +199,42 @@ export async function runPipelineForJob(
   onPhase?.('Checking required documents...');
   let coverPath = options.coverPath;
   let requiredSections: string[] = ['resume', 'coverLetter'];
-  //skip this for handshake:apply_externally
-  if (!jobHasExternalApplicationOnHandshake) {
+
+  if (isGreenhouse) {
+    console.log('Step 2: Determine required sections from greenhouse form data...');
+    const endProbe = startPhase('Step 2: Greenhouse form sections');
+    try {
+      if (siteFromUrl && jobIdFromUrl) {
+        const { toJobRef: buildJobRef } = await import('../data/user-job-state.js');
+        const jRef = buildJobRef(siteFromUrl, jobIdFromUrl);
+        if (jRef) {
+          const formData = await getApplicationForm(userId, jRef);
+          if (formData) {
+            requiredSections = [];
+            const hasResume = formData.classifiedFields.some((f) =>
+              f.intent === 'upload_resume' || (f.fieldType === 'file_upload' && /resume|cv/i.test(f.rawLabel)),
+            );
+            const hasCover = formData.classifiedFields.some((f) =>
+              f.intent === 'upload_cover_letter' || (f.fieldType === 'file_upload' && /cover/i.test(f.rawLabel)),
+            );
+            if (hasResume) requiredSections.push('resume');
+            if (hasCover) requiredSections.push('coverLetter');
+          }
+        }
+      }
+      if (requiredSections.includes('coverLetter') && !coverPath) {
+        console.log('Cover letter required — generating...');
+        const endCover = startPhase('Step 2b: Generate cover letter');
+        const { coverPath: generated } = await generateCoverLetter({ job, userId });
+        coverPath = generated;
+        endCover();
+        await throwIfCancelled(options.checkCancelled);
+      }
+    } catch (err) {
+      console.warn('Greenhouse section detection failed, using defaults:', (err as Error).message);
+    }
+    endProbe();
+  } else if (!jobHasExternalApplicationOnHandshake) {
     console.log('Step 2: Probe required attachment sections...');
     const endProbe = startPhase('Step 2: Probe apply modal');
     try {
@@ -187,7 +257,6 @@ export async function runPipelineForJob(
         console.log('Cover letter:', coverPath);
       }
 
-      // Generate written document(s) if the form has upload_other_document fields with instructions
       if (siteFromUrl && jobIdFromUrl) {
         const { toJobRef: buildJobRef } = await import('../data/user-job-state.js');
         const jRef = buildJobRef(siteFromUrl, jobIdFromUrl);
@@ -285,6 +354,29 @@ export async function runPipelineForJob(
   }
 
   onPhase?.('Applying to job...');
+
+  if (isGreenhouse) {
+    console.log('Step 3: Run Greenhouse apply (browser form fill + submit)...');
+    const endApply = startPhase('Step 3: Greenhouse apply (browser fill + submit)');
+    try {
+
+      const ghResult = await runGreenhouseApply(jobUrl, {
+        submit: options.submit ?? false,
+        resumePath: resumePath ?? undefined,
+        coverPath,
+        userId,
+      });
+      endApply();
+      endTotal();
+      const outcome: PipelineApplyOutcome = ghResult.applied ? 'submitted' : 'skipped';
+      return { job, resumePath: resumePath ?? undefined, outcome };
+    } catch (err) {
+      endApply();
+      endTotal();
+      throw err;
+    }
+  }
+
   let transcriptPath: string | undefined;
   if (requiredSections.includes('transcript')) {
     const path = await getTranscriptPath(userId);

@@ -215,7 +215,7 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
     } catch (_) {
       schema = { sections: [], capturedAt: new Date().toISOString() };
     }
-    const saved = jobId ? getApplyFormSchema(jobId) : null;
+    const saved = jobId ? await getApplyFormSchema(jobId) : null;
 
     const doSubmit =
       options.submit !== undefined
@@ -243,7 +243,7 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
       presentSections = await getPresentSectionConfigs(page, applyModal);
     }
     if (jobId) {
-      saveApplyFormSchema(jobId, { ...schema, presentSections });
+      await saveApplyFormSchema(jobId, { ...schema, presentSections });
     }
 
     const endAttach = startPhase('Apply: attach transcript + resume + cover');
@@ -274,8 +274,8 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
         } else {
           if (usedCachedPresentSections && jobId) {
             const fresh = await getPresentSectionConfigs(page, applyModal);
-            const current = getApplyFormSchema(jobId);
-            if (current) saveApplyFormSchema(jobId, { ...current, presentSections: fresh });
+            const current = await getApplyFormSchema(jobId);
+            if (current) await saveApplyFormSchema(jobId, { ...current, presentSections: fresh });
             const retryConfig = fresh.find((f) => f.key === config.key);
             if (retryConfig) {
               try {

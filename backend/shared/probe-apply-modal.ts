@@ -37,7 +37,7 @@ export async function probeRequiredSections(jobUrl: string, userId: string): Pro
   const jobId = getJobIdFromUrl(normalized);
 
   if (jobId) {
-    const cached = getApplyFormSchema(jobId);
+    const cached = await getApplyFormSchema(jobId);
     // If cached present sections are found, use them
     if (cached && Array.isArray(cached.presentSections) && cached.presentSections.length > 0) {
       const keys = (cached.presentSections as Array<{ key: SectionKey }>).map((s) => s.key);
@@ -99,7 +99,7 @@ export async function probeRequiredSections(jobUrl: string, userId: string): Pro
       } catch {
         schema = { sections: [], capturedAt: new Date().toISOString() };
       }
-      saveApplyFormSchema(jobId, { ...schema, presentSections });
+      await saveApplyFormSchema(jobId, { ...schema, presentSections });
     }
 
     // Run dynamic form extraction pipeline

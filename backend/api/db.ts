@@ -188,6 +188,18 @@ export async function ensureDataTables(): Promise<void> {
   await pool.query('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS location text');
   await pool.query('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS salary_employment_type text');
   await pool.query('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS company_logo_url text');
+  await pool.query('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS ats text');
+  await pool.query('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS greenhouse_slug text');
+  await pool.query("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS last_seen_at timestamptz DEFAULT now()");
+  await pool.query('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS is_active boolean DEFAULT true');
+  // Remove the index CREATE statements from ensureDataTables (keep only table CREATE IF NOT EXISTS).
+  // await pool.query('CREATE INDEX IF NOT EXISTS idx_jobs_is_active ON jobs (is_active)');
+  // await pool.query('CREATE INDEX IF NOT EXISTS idx_jobs_ats ON jobs (ats)');
+  // await pool.query('CREATE INDEX IF NOT EXISTS idx_jobs_greenhouse_slug ON jobs (greenhouse_slug)');
+  // await pool.query('CREATE INDEX IF NOT EXISTS idx_jobs_last_seen_at ON jobs (last_seen_at)');
+  // await pool.query(`CREATE INDEX IF NOT EXISTS idx_jobs_fts ON jobs USING gin (
+  //   to_tsvector('english', COALESCE(title,'') || ' ' || COALESCE(company,'') || ' ' || COALESCE(location,''))
+  // )`);
   await pool.query("ALTER TABLE job_artifacts ADD COLUMN IF NOT EXISTS edit_history jsonb DEFAULT '[]'::jsonb");
   // Expand artifact_type constraint to include written_document (safe if already correct)
   await pool.query(`

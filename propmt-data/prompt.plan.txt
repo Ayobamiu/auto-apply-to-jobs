@@ -227,3 +227,439 @@ Fix In:
 Get Inspiration from:
     - backend/api/routes/resume.ts#L6
     - backend/shared/profile-from-resume.ts#L132
+
+
+
+I have the interface and type data for Profile and ExtendedProfileFields. 
+I also have my profile table schema
+Base on my profile schema and ExtendedProfileFields, i want Everything in Extended be just inside profile. And deprecate the extended field inside profile.
+Context: the profile is use to prefill application forms. 
+I have also included an Example POST request that has most of the fields submit for the job Application.
+Base on all the info, If there are things missing in my Profile types, add them 
+- Write SQL query to update my Supabase database to reflect the new profile.
+
+export interface ExtendedProfileFields {
+  website?: string;
+  github?: string;
+  work_authorization?: string;
+  requires_visa_sponsorship?: boolean;
+  willing_to_relocate?: boolean;
+  preferred_locations?: string[];
+  availability_start_date?: string;
+  current_degree_status?: string;
+  expected_graduation?: string;
+  eeo_gender?: string;
+  eeo_race?: string;
+  eeo_veteran_status?: string;
+  eeo_disability_status?: string;
+  referral_source?: string;
+}
+
+/** One education entry in a profile. */
+export interface EducationEntry {
+  school?: string;
+  degree?: string;
+  discipline?: string;
+  year?: string;
+  startMonth?: string | number;
+  startYear?: string | number;
+  endMonth?: string | number;
+  endYear?: string | number;
+  [key: string]: unknown;
+}
+
+/** One experience entry in a profile. */
+export interface ExperienceEntry {
+  title?: string;
+  company?: string;
+  location?: string;
+  dates?: string;
+  bullets?: string[];
+  startMonth?: string | number;
+  startYear?: string | number;
+  endMonth?: string | number;
+  endYear?: string | number;
+  [key: string]: unknown;
+}
+
+/** Profile shape (data/profile.json). */
+export interface Profile {
+  name?: string;
+  email?: string;
+  phone?: string;
+  linkedin?: string;
+  summary?: string;
+  education?: EducationEntry[];
+  experience?: ExperienceEntry[];
+  /** Array of strings, or object mapping category name to string[] */
+  skills?: unknown[] | Record<string, string[]>;
+  [key: string]: unknown;
+}
+
+create table public.profiles (
+  user_id text not null,
+  name text null,
+  email text null,
+  phone text null,
+  linkedin text null,
+  summary text null,
+  education jsonb null default '[]'::jsonb,
+  experience jsonb null default '[]'::jsonb,
+  skills jsonb null default '[]'::jsonb,
+  payload jsonb null default '{}'::jsonb,
+  updated_at timestamp with time zone null default now(),
+  extended jsonb null default '{}'::jsonb,
+  constraint profiles_pkey primary key (user_id)
+) TABLESPACE pg_default;
+
+Profile Schema
+{
+  "name": "profile_schema",
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "name": { "type": "string" },
+      "email": { "type": "string" },
+      "phone": { "type": "string" },
+      "linkedin": { "type": "string" },
+      "summary": { "type": "string" },
+      "location": { "type": "string" },
+      "title": { "type": "string" },
+      "github": { "type": "string" },
+      "contact": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "email": { "type": "string" },
+          "phone": { "type": "string" }
+        },
+        "required": ["email", "phone"]
+      },
+      "education": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "school": { "type": "string" },
+            "degree": { "type": "string" },
+            "discipline": { "type": "string" },
+            "year": { "type": "string" },
+            "startMonth": { "type": "string" },
+            "startYear": { "type": "string" },
+            "endMonth": { "type": "string" },
+            "endYear": { "type": "string" }
+          },
+          "required": [
+            "school",
+            "degree",
+            "discipline",
+            "year",
+            "startMonth",
+            "startYear",
+            "endMonth",
+            "endYear"
+          ]
+        }
+      },
+      "experience": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "title": { "type": "string" },
+            "company": { "type": "string" },
+            "location": { "type": "string" },
+            "dates": { "type": "string" },
+            "bullets": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "required": ["title", "company", "location", "dates", "bullets"]
+        }
+      },
+      "projects": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string" },
+            "bullets": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "required": ["name", "bullets"]
+        }
+      },
+      "skills": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "category": { "type": "string" },
+            "keywords": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "required": ["category", "keywords"]
+        }
+      }
+    },
+    "required": [
+      "name",
+      "email",
+      "phone",
+      "linkedin",
+      "summary",
+      "location",
+      "title",
+      "github",
+      "contact",
+      "education",
+      "experience",
+      "projects",
+      "skills"
+    ]
+  }
+}
+
+
+curl -X POST \ 
+  -H "Content-Type: multipart/form-data" \
+  -H "Authorization: Basic MGQwMzFkODIyN2VhZmE2MWRjMzc1YTZjMmUwNjdlMjQ6" \
+  -F "first_name=Sammy" \
+  -F "last_name=McSamson" \
+  -F "email=sammy@example.com" \
+  -F "phone=3337778888" \
+  -F "location=110 5th Ave New York, NY, 10011" \
+  -F "latitude=40.7376671" \
+  -F "longitude=-73.9929196" \
+  -F "resume=@/path/to/resume/ADA084551.pdf" \
+  -F "cover_letter=@/path/to/coverletter/blah.pdf" \
+  -F "educations[][school_name_id]=5417077" \
+  -F "educations[][degree_id]=5494452"\
+  -F "educations[][discipline_id]=5494865" \
+  -F "educations[][start_date][month]=8" \
+  -F "educations[][start_date][year]=2012" \
+  -F "educations[][end_date][month]=5" \
+  -F "educations[][end_date][year]=2016" \
+  -F "employments[][company_name]=Business Co" \
+  -F "employments[][title]=Sales Manager" \
+  -F "employments[][start_date][month]=1" \
+  -F "employments[][start_date][year]=2016" \
+  -F "employments[][end_date][month]=2" \
+  -F "employments[][end_date][year]=2018" \
+  -F "employments[][current]=false"
+  -F "mapped_url_token=token12345" \
+  -F "question_12349_url=http://dropbox.com/dl/attachment.pdf" \
+  -F "question_12349_url_filename=attachment.pdf" \
+  -F "question_12350_content=SGVsbG8sIHdvcmxkIQo=" \
+  -F "question_12350_content_filename=something_else.txt" \
+  -F "demographic_answers[][question_id]=87" \
+  -F "demographic_answers[][answer_options][][answer_option_id]=194" \
+  -F "demographic_answers[][question_id]=88" \
+  -F "demographic_answers[][answer_options][][answer_option_id]=212" \
+  -F "demographic_answers[][answer_options][][text]=Free-form Answer" \
+  -F "data_compliance[gdpr_consent_given]=true" \ # `gdpr_consent_given` to be deprecated. Use if your organization doesn't have single-purpose consent configured, otherwise use separate values for processing and retention
+  -F "data_compliance[gdpr_processing_consent_given]=true" \
+  -F "data_compliance[gdpr_retention_consent_given]=true" \
+  -F "data_compliance[gdpr_demographic_data_consent_given]=true" \
+  -F "applicant_ip=203.0.113.47" \
+  "https://boards-api.greenhouse.io/v1/boards/very_awesome_inc/jobs/127817"
+
+
+
+
+/**
+ * Core interfaces for the JSON Resume Standard
+ * Based on https://jsonresume.org/schema/
+ */
+
+export interface Resume {
+    $schema?: string;
+    basics: Basics;
+    work?: Work[];
+    volunteer?: Volunteer[];
+    education?: Education[];
+    awards?: Award[];
+    publications?: Publication[];
+    skills?: Skill[];
+    languages?: Language[];
+    interests?: Interest[];
+    references?: Reference[];
+    projects?: Project[];
+    meta?: Meta;
+}
+
+export interface Basics {
+    name: string;
+    label?: string;
+    image?: string;
+    email: string;
+    phone?: string;
+    url?: string;
+    summary?: string;
+    location?: Location;
+    profiles?: Profile[];
+}
+
+export interface Location {
+    address?: string;
+    postalCode?: string;
+    city?: string;
+    countryCode?: string;
+    region?: string;
+}
+
+export interface Profile {
+    network: string;
+    username: string;
+    url: string;
+}
+
+export interface Work {
+    name: string;
+    position: string;
+    url?: string;
+    startDate: string;
+    endDate?: string; // e.g., "2025-09" or "Present"
+    summary?: string;
+    highlights: string[];
+}
+
+export interface Volunteer {
+    organization: string;
+    position: string;
+    url?: string;
+    startDate: string;
+    endDate?: string;
+    summary?: string;
+    highlights?: string[];
+}
+
+export interface Education {
+    institution: string;
+    url?: string;
+    area: string;
+    studyType?: string;
+    startDate: string;
+    endDate?: string;
+    score?: string;
+    courses?: string[];
+}
+
+export interface Award {
+    title: string;
+    date: string;
+    awarder: string;
+    summary?: string;
+}
+
+export interface Publication {
+    name: string;
+    publisher: string;
+    releaseDate: string;
+    url?: string;
+    summary?: string;
+}
+
+export interface Skill {
+    name: string;
+    level?: string;
+    keywords: string[];
+}
+
+export interface Language {
+    language: string;
+    fluency: string;
+}
+
+export interface Interest {
+    name: string;
+    keywords: string[];
+}
+
+export interface Reference {
+    name: string;
+    reference: string;
+}
+
+export interface Project {
+    name: string;
+    description?: string;
+    highlights: string[];
+    keywords?: string[];
+    startDate?: string;
+    endDate?: string;
+    url?: string;
+    roles?: string[];
+    entity?: string;
+    type?: string;
+}
+
+export interface Meta {
+    canonical?: string;
+    version?: string;
+    lastModified?: string;
+    theme?: string;
+}
+
+function jsonResumeToProfile(json: Record<string, unknown>): Partial<Profile> {
+  const basics = (json.basics as Record<string, unknown>) ?? {};
+  const name = typeof basics.name === 'string' ? basics.name : '';
+  const email = typeof basics.email === 'string' ? basics.email : '';
+  const phone = typeof basics.phone === 'string' ? basics.phone : '';
+  const summary = typeof basics.summary === 'string' ? basics.summary : '';
+  const loc = basics.location;
+  const location =
+    typeof loc === 'string' ? loc : loc && typeof loc === 'object' && 'region' in loc ? String((loc as Record<string, unknown>).region ?? '') : '';
+  const profiles = (basics.profiles as Array<{ network?: string; url?: string }>) ?? [];
+  const linkedin = profiles.find((p) => p?.network?.toLowerCase() === 'linkedin')?.url ?? '';
+  const work = (json.work as Array<Record<string, unknown>>) ?? [];
+  const education = (json.education as Array<Record<string, unknown>>) ?? [];
+  const experience = work.map((w) => ({
+    title: typeof w.position === 'string' ? w.position : undefined,
+    company: typeof w.name === 'string' ? w.name : undefined,
+    location: typeof w.location === 'string' ? w.location : undefined,
+    dates: [w.startDate, w.endDate].filter(Boolean).join(' – '),
+    bullets: Array.isArray(w.highlights) ? (w.highlights as string[]) : undefined,
+    startMonth: typeof w.startMonth === 'string' ? w.startMonth : undefined,
+    startYear: typeof w.startYear === 'string' ? w.startYear : undefined,
+    endMonth: typeof w.endMonth === 'string' ? w.endMonth : undefined,
+    endYear: typeof w.endYear === 'string' ? w.endYear : undefined,
+  }));
+  const ed: Array<{ school?: string; degree?: string; year?: string; startMonth?: string; startYear?: string; endMonth?: string; endYear?: string }> = education.map((e) => {
+    return {
+      school: typeof e.institution === 'string' ? e.institution : undefined,
+      degree: [e.area, e.studyType].filter(Boolean).join(' '),
+      year: typeof e.year === 'string' ? e.year : undefined,
+      startMonth: typeof e.startMonth === 'string' ? e.startMonth : undefined,
+      startYear: typeof e.startYear === 'string' ? e.startYear : undefined,
+      endMonth: typeof e.endMonth === 'string' ? e.endMonth : undefined,
+      endYear: typeof e.endYear === 'string' ? e.endYear : undefined,
+    };
+  });
+  const skillsRaw = (json.skills as Array<{ name?: string; keywords?: string[] }>) ?? [];
+  const skills = skillsRaw.map((s) => ({
+    category: s.name ?? 'Skills',
+    keywords: Array.isArray(s.keywords) ? s.keywords : [],
+  }));
+  return {
+    name,
+    email,
+    phone,
+    linkedin,
+    summary: summary || undefined,
+    location: location || undefined,
+    experience,
+    education: ed,
+    skills,
+  };
+}

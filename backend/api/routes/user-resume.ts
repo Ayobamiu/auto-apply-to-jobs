@@ -7,7 +7,7 @@ import multer from 'multer';
 import { getBaseResume, saveBaseResume } from '../../data/user-resumes.js';
 import { extractResumeJsonFromText } from '../../shared/resume-json-from-text.js';
 import { pdfBufferToText } from '../../shared/pdf-to-text.js';
-import { updateProfile } from '../../data/profile.js';
+import { getProfile, updateProfile } from '../../data/profile.js';
 import type { Profile } from '../../shared/types.js';
 
 const memoryStorage = multer.memoryStorage();
@@ -37,43 +37,85 @@ function jsonResumeToProfile(json: Record<string, unknown>): Partial<Profile> {
   const email = typeof basics.email === 'string' ? basics.email : '';
   const phone = typeof basics.phone === 'string' ? basics.phone : '';
   const summary = typeof basics.summary === 'string' ? basics.summary : '';
-  const loc = basics.location;
-  const location =
-    typeof loc === 'string' ? loc : loc && typeof loc === 'object' && 'region' in loc ? String((loc as Record<string, unknown>).region ?? '') : '';
+
+  // Fix 3: join city + region for a more complete location string
+  const loc = basics.location as Record<string, unknown> | undefined;
+  const location = loc
+    ? [loc.city, loc.region].filter(Boolean).join(', ')
+    : '';
+
   const profiles = (basics.profiles as Array<{ network?: string; url?: string }>) ?? [];
   const linkedin = profiles.find((p) => p?.network?.toLowerCase() === 'linkedin')?.url ?? '';
+  // Fix 4: extract github
+  const github = profiles.find((p) => p?.network?.toLowerCase() === 'github')?.url ?? '';
+
+  // Fix 1: parse startDate/endDate strings into month/year parts
+  function parseDate(dateStr: unknown): { month?: string; year?: string } {
+    if (typeof dateStr !== 'string' || !dateStr) return {};
+    const [year, month] = dateStr.split('-');
+    return { year, month };
+  }
+
   const work = (json.work as Array<Record<string, unknown>>) ?? [];
-  const education = (json.education as Array<Record<string, unknown>>) ?? [];
-  const experience = work.map((w) => ({
-    title: typeof w.position === 'string' ? w.position : undefined,
-    company: typeof w.name === 'string' ? w.name : undefined,
-    location: typeof w.location === 'string' ? w.location : undefined,
-    dates: [w.startDate, w.endDate].filter(Boolean).join(' – '),
-    bullets: Array.isArray(w.highlights) ? (w.highlights as string[]) : undefined,
-  }));
-  const ed: Array<{ school?: string; degree?: string; year?: string }> = education.map((e) => {
-    const y = e.endDate ?? e.startDate;
+  const experience = work.map((w) => {
+    const start = parseDate(w.startDate);
+    const end = parseDate(w.endDate);
     return {
-      school: typeof e.institution === 'string' ? e.institution : undefined,
-      degree: [e.area, e.studyType].filter(Boolean).join(' '),
-      year: typeof y === 'string' ? y : undefined,
+      title: typeof w.position === 'string' ? w.position : undefined,
+      company: typeof w.name === 'string' ? w.name : undefined,
+      location: typeof w.location === 'string' ? w.location : undefined,
+      dates: [w.startDate, w.endDate ?? 'Present'].filter(Boolean).join(' – '),
+      bullets: Array.isArray(w.highlights) ? (w.highlights as string[]) : [],
+      startMonth: start.month,
+      startYear: start.year,
+      endMonth: end.month,
+      endYear: end.year,
     };
   });
+
+  const education = (json.education as Array<Record<string, unknown>>) ?? [];
+  const ed = education.map((e) => {
+    const start = parseDate(e.startDate);
+    const end = parseDate(e.endDate);
+    return {
+      school: typeof e.institution === 'string' ? e.institution : undefined,
+      // Fix 2: studyType first ("Bachelor"), then area ("Computer Science")
+      degree: [e.studyType, e.area].filter(Boolean).join(' '),
+      // Fix 2: pull year from endDate
+      year: end.year,
+      discipline: typeof e.area === 'string' ? e.area : undefined,
+      startMonth: start.month,
+      startYear: start.year,
+      endMonth: end.month,
+      endYear: end.year,
+    };
+  });
+
   const skillsRaw = (json.skills as Array<{ name?: string; keywords?: string[] }>) ?? [];
   const skills = skillsRaw.map((s) => ({
     category: s.name ?? 'Skills',
     keywords: Array.isArray(s.keywords) ? s.keywords : [],
   }));
+
+  // Fix 5: map projects
+  const projectsRaw = (json.projects as Array<Record<string, unknown>>) ?? [];
+  const projects = projectsRaw.map((p) => ({
+    name: typeof p.name === 'string' ? p.name : '',
+    bullets: Array.isArray(p.highlights) ? (p.highlights as string[]) : [],
+  }));
+
   return {
     name,
     email,
     phone,
     linkedin,
-    summary: summary || undefined,
+    github: github || undefined,
     location: location || undefined,
+    summary: summary || undefined,
     experience,
     education: ed,
     skills,
+    projects,
   };
 }
 
@@ -109,9 +151,13 @@ export async function postUserResume(req: Request, res: Response): Promise<void>
   try {
     const json = await extractResumeJsonFromText(resumeText);
     await saveBaseResume(req.userId, json);
-    const profileUpdate = jsonResumeToProfile(json);
-    if (profileUpdate.name || profileUpdate.email) {
-      await updateProfile(profileUpdate, req.userId);
+    // dont update profile if it already exists
+    const profile = await getProfile(req.userId);
+    if (!profile) {
+      const profileUpdate = jsonResumeToProfile(json);
+      if (profileUpdate.name || profileUpdate.email) {
+        await updateProfile(profileUpdate, req.userId);
+      }
     }
     res.status(200).json({ resume: json });
   } catch (err) {

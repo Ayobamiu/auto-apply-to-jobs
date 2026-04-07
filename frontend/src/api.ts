@@ -1,3 +1,5 @@
+import { Profile } from "./types/profile";
+
 const API_BASE = import.meta.env.VITE_API_BASE;
 if (!API_BASE) {
   throw new Error('API_BASE is not set');
@@ -111,7 +113,7 @@ export async function getProfile(): Promise<ProfileResponse> {
   return request<ProfileResponse>('/profile');
 }
 
-export async function putProfile(data: Record<string, unknown>): Promise<ProfileResponse> {
+export async function putProfile(data: Profile): Promise<ProfileResponse> {
   return request<ProfileResponse>('/profile', {
     method: 'PUT',
     body: JSON.stringify(data),
@@ -393,6 +395,7 @@ export interface JobListing {
   /** Job lifecycle state set by the lifecycle system. */
   lifecycleStatus?: 'saved' | 'in_progress' | 'submitted';
   savedAt?: string;
+  greenhouseSlug?: string;
 }
 
 export interface JobDetailJob {
@@ -410,7 +413,7 @@ export interface JobDetailJob {
 
 export interface JobDetailPipeline {
   id: string;
-  status: string;
+  status: 'pending' | 'running' | 'done' | 'failed' | 'awaiting_approval' | 'cancelled';
   phase: string | null;
   result: Record<string, unknown> | null;
   error: string | null;
@@ -488,6 +491,34 @@ export async function findJobs(options?: {
   const qs = params.toString();
   return request<{ listings: JobListing[]; lastRefreshAt?: string | null }>(`/jobs/find${qs ? `?${qs}` : ''}`);
 }
+
+export interface SearchJobsResult {
+  listings: (JobListing & { ats?: string; greenhouseSlug?: string; departments?: { name: string }[] })[];
+  totalCount: number;
+  page: number;
+  perPage: number;
+  totalPages: number;
+}
+
+export async function searchJobs(options?: {
+  query?: string;
+  location?: string;
+  company?: string;
+  page?: number;
+  perPage?: number;
+}): Promise<SearchJobsResult> {
+  const params = new URLSearchParams();
+  if (options?.query) params.set('query', options.query);
+  if (options?.location) params.set('location', options.location);
+  if (options?.company) params.set('company', options.company);
+  if (options?.page != null) params.set('page', String(options.page));
+  if (options?.perPage != null) params.set('perPage', String(options.perPage));
+  const qs = params.toString();
+  console.log({ qs });
+
+  return request<SearchJobsResult>(`/jobs/search${qs ? `?${qs}` : ''}`);
+}
+
 
 export async function getSubmittedJobList(): Promise<JobListing[]> {
   return request<JobListing[]>('/jobs/submitted-list');

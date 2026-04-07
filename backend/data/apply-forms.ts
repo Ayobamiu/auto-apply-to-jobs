@@ -1,33 +1,30 @@
 /**
- * Apply form schema per job (captured when apply modal is open). CRUD-style API for future DB swap.
+ * Apply form schema per job (captured when apply modal is open). CRUD-style API.
+ * Migrated from filesystem to Postgres (application_forms.schema column).
  */
-import { readFileSync, writeFileSync, mkdirSync } from 'fs';
-import { join } from 'path';
-import { PATHS } from '../shared/config.js';
-// TODO: move to DB
+import { pool, ensureDataTables } from '../api/db.js';
 
-function ensureApplyFormsDir(): void {
-  try {
-    mkdirSync(PATHS.applyForms, { recursive: true });
-  } catch (_) { }
-}
-
-export function getApplyFormSchema(jobId: string): Record<string, unknown> | null {
+export async function getApplyFormSchema(jobId: string): Promise<Record<string, unknown> | null> {
   if (!jobId) return null;
-  const path = join(PATHS.applyForms, `${jobId}.json`);
-  try {
-    const raw = readFileSync(path, 'utf8');
-    return JSON.parse(raw) as Record<string, unknown>;
-  } catch (err) {
-    const e = err as NodeJS.ErrnoException;
-    if (e.code === 'ENOENT') return null;
-    throw err;
-  }
+  await ensureDataTables();
+  const res = await pool.query<{ schema: Record<string, unknown> }>(
+    `SELECT schema FROM application_forms WHERE job_ref LIKE $1 ORDER BY updated_at DESC LIMIT 1`,
+    [`%:${jobId}`],
+  );
+  if (res.rows[0]?.schema) return res.rows[0].schema as Record<string, unknown>;
+  return null;
 }
 
-export function saveApplyFormSchema(jobId: string, schema: Record<string, unknown>): void {
+export async function saveApplyFormSchema(jobId: string, schema: Record<string, unknown>): Promise<void> {
   if (!jobId) return;
-  ensureApplyFormsDir();
-  const path = join(PATHS.applyForms, `${jobId}.json`);
-  writeFileSync(path, JSON.stringify(schema, null, 2), 'utf8');
+  await ensureDataTables();
+  const jobRef = `unknown:${jobId}`;
+  await pool.query(
+    `INSERT INTO application_forms (user_id, job_ref, site, schema, classified_fields, answers, status)
+     VALUES ('system', $1, 'unknown', $2, '[]'::jsonb, '[]'::jsonb, 'draft')
+     ON CONFLICT (user_id, job_ref) DO UPDATE SET
+       schema = $2,
+       updated_at = now()`,
+    [jobRef, JSON.stringify(schema)],
+  );
 }

@@ -3,6 +3,7 @@
  * Also serves the frontend SPA from frontend/dist when built.
  */
 import './bootstrap.js';
+import '../jobs/syncGreenhouseJobs.js';
 import { existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -15,6 +16,7 @@ import { register, login } from './routes/auth.js';
 import { postPipeline } from './routes/pipeline.js';
 import { getJobs, getJobsStatus, getJobsDetail, postScrapeJobDetail, getSubmittedJobList, postSaveJob, getJobLifecycleList } from './routes/jobs.js';
 import { getJobsFind } from './routes/jobs-find.js';
+import { getJobsSearch } from './routes/jobs-search.js';
 import { postCreateCheckout, getSubscriptionStatus, postSubscriptionPortal } from './routes/subscription.js';
 import { postStripeWebhook } from './routes/stripe-webhook.js';
 import { requireProForAutoSubmit } from './middleware/requirePro.js';
@@ -97,6 +99,7 @@ app.post('/jobs/scrape', authMiddleware, postScrapeJobDetail);
 app.get('/jobs/detail', authMiddleware, getJobsDetail);
 app.get('/jobs', authMiddleware, getJobs);
 app.get('/jobs/find', authMiddleware, getJobsFind);
+app.get('/jobs/search', authMiddleware, getJobsSearch);
 app.get('/jobs/status', authMiddleware, getJobsStatus);
 app.get('/jobs/submitted-list', authMiddleware, getSubmittedJobList);
 app.post('/jobs/save', authMiddleware, postSaveJob);
