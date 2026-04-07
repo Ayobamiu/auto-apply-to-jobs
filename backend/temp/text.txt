@@ -1,0 +1,258 @@
+export async function getJobsSearch(req: Request, res: Response): Promise<void> {
+  const userId = req.userId;
+  if (!userId) { res.status(401).json({ error: 'Unauthorized' }); return; }
+
+  await ensureDataTables();
+
+  const query = typeof req.query.query === 'string' ? req.query.query.trim() : '';
+  const location = typeof req.query.location === 'string' ? req.query.location.trim() : '';
+  const company = typeof req.query.company === 'string' ? req.query.company.trim() : '';
+  const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10) || 1);
+  const perPage = Math.min(100, Math.max(1, parseInt(String(req.query.perPage ?? '30'), 10) || 30));
+  const offset = (page - 1) * perPage;
+
+  const conditions: string[] = ["site = 'greenhouse'", 'is_active = true'];
+  const params: unknown[] = [];
+  let paramIdx = 1;
+
+  if (query) {
+    conditions.push(`to_tsvector('english', COALESCE(title,'') || ' ' || COALESCE(company,'') || ' ' || COALESCE(location,'')) @@ plainto_tsquery('english', $${paramIdx})`);
+    params.push(query);
+    paramIdx++;
+  }
+
+  if (location) {
+    conditions.push(`location ILIKE $${paramIdx}`);
+    params.push(`%${location}%`);
+    paramIdx++;
+  }
+
+  if (company) {
+    conditions.push(`company ILIKE $${paramIdx}`);
+    params.push(`%${company}%`);
+    paramIdx++;
+  }
+
+  const where = conditions.join(' AND ');
+
+  const countRes = await pool.query<{ count: string }>(
+    `SELECT COUNT(*) as count FROM jobs WHERE ${where}`,
+    params,
+  );
+  const totalCount = parseInt(countRes.rows[0]?.count ?? '0', 10);
+
+  const dataRes = await pool.query<SearchRow>(
+    `SELECT site, job_id, title, company, url, location, salary_employment_type,
+            company_logo_url, ats, greenhouse_slug, payload, last_seen_at
+     FROM jobs
+     WHERE ${where}
+     ORDER BY last_seen_at DESC NULLS LAST
+     LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+    [...params, perPage, offset],
+  );
+
+  const listings = dataRes.rows.map((r) => ({
+    site: r.site,
+    jobId: r.job_id,
+    url: r.url ?? `https://boards.greenhouse.io/${r.greenhouse_slug ?? 'unknown'}/jobs/${r.job_id}`,
+    title: r.title ?? undefined,
+    company: r.company ?? undefined,
+    location: r.location ?? undefined,
+    salaryEmploymentType: r.salary_employment_type ?? undefined,
+    companyLogoUrl: r.company_logo_url ?? undefined,
+    ats: r.ats ?? undefined,
+    greenhouseSlug: r.greenhouse_slug ?? undefined,
+    departments: (r.payload as any)?.departments ?? [],
+  }));
+
+  res.status(200).json({
+    listings,
+    totalCount,
+    page,
+    perPage,
+    totalPages: Math.ceil(totalCount / perPage),
+  });
+}
+
+create table public.jobs (
+  site text not null,
+  job_id text not null,
+  title text null,
+  company text null,
+  description text null,
+  url text null,
+  apply_type text null,
+  job_closed boolean null,
+  payload jsonb null default '{}'::jsonb,
+  updated_at timestamp with time zone null default now(),
+  location text null,
+  salary_employment_type text null,
+  company_logo_url text null,
+  ats text null,
+  greenhouse_slug text null,
+  last_seen_at timestamp with time zone null default now(),
+  is_active boolean null default true,
+  constraint jobs_pkey primary key (site, job_id)
+) TABLESPACE pg_default;
+
+create index IF not exists idx_jobs_is_active on public.jobs using btree (is_active) TABLESPACE pg_default;
+
+create index IF not exists idx_jobs_ats on public.jobs using btree (ats) TABLESPACE pg_default;
+
+create index IF not exists idx_jobs_greenhouse_slug on public.jobs using btree (greenhouse_slug) TABLESPACE pg_default;
+
+create index IF not exists idx_jobs_last_seen_at on public.jobs using btree (last_seen_at) TABLESPACE pg_default;
+
+create index IF not exists idx_jobs_fts on public.jobs using gin (
+  to_tsvector(
+    'english'::regconfig,
+    (
+      (
+        (
+          (COALESCE(title, ''::text) || ' '::text) || COALESCE(company, ''::text)
+        ) || ' '::text
+      ) || COALESCE(location, ''::text)
+    )
+  )
+) TABLESPACE pg_default;
+
+
+
+create table public.user_job_state (
+  user_id text not null,
+  job_ref text not null,
+  resume_basename text null,
+  application_submitted boolean null,
+  applied_at text null,
+  updated_at timestamp with time zone null default now(),
+  lifecycle_status text null,
+  saved_at timestamp with time zone null,
+  constraint user_job_state_pkey primary key (user_id, job_ref)
+) TABLESPACE pg_default;
+
+
+Me: """
+Here is my job search logic, jobs and user_job_state tables' schema.
+feature: 
+* make search better; 
+* dont show jobs i have applied to. 
+* Show better jobs list.
+* They currently show with each company jobs' listed after each other.
+* Generally, what will make user have the best experience with their search results.
+Dont implement yet. Discuss
+"""
+
+Claude: """Good foundation to work with. Let me go through each dimension:
+
+**Filtering out applied jobs**
+
+This is straightforward — `LEFT JOIN user_job_state ujs ON ujs.job_ref = site || ':' || job_id AND ujs.user_id = $userId` then add `AND (ujs.application_submitted IS NULL OR ujs.application_submitted = false)` to the WHERE. You already have the data, just not the join.
+
+You probably also want to filter `lifecycle_status` — if a user saved a job but didn't apply, should it still show? Worth deciding. Options: hide only `application_submitted = true`, or also hide `lifecycle_status IN ('rejected', 'withdrawn')`.
+
+---
+
+**The clustering problem (same company appearing in bunches)**
+
+This happens because you're ordering by `last_seen_at DESC`. If a company posted 8 jobs recently they all bubble to the top together. Two approaches:
+
+- **Deduplicate by company** — one result per company, with a "3 more at Acme" affordance. Good for discovery but loses jobs.
+- **Interleave with row_number** — assign a `ROW_NUMBER() OVER (PARTITION BY company ORDER BY last_seen_at DESC)` then sort by that row number first, then recency. So you get rank-1 from each company before seeing any rank-2. This preserves all jobs but spreads them out naturally.
+
+The second approach is better for your use case since users are looking for any match, not just one per company.
+
+---
+
+**Making search better**
+
+A few problems with the current implementation:
+
+The FTS query uses `plainto_tsquery` which doesn't support partial matching — searching "Eng" won't match "Engineer". Consider `websearch_to_tsquery` instead, which is more forgiving of natural language input and handles multi-word phrases better.
+
+Location search is a pure `ILIKE` with no intelligence — "New York" won't match "NYC" or "New York, NY". You could normalize location on ingest, or add common aliases. More impactful: let users search "remote" and have that match against `salary_employment_type` as well as `location`.
+
+There's no relevance ranking — a job where the title exactly matches the query ranks the same as one where it's buried in the company name. `ts_rank` on the FTS vector would help, and you could boost title matches higher than location matches by building a weighted vector: `setweight(to_tsvector('english', COALESCE(title,'')), 'A') || setweight(to_tsvector('english', COALESCE(company,'')), 'B')`.
+
+The description field exists in the DB but isn't included in the FTS index or search. That's probably intentional for speed, but it means searching for a skill like "React" won't match unless the title says React. Adding description at weight C/D would significantly improve recall.
+
+---
+
+**Better results list — what makes the best UX**
+
+A few things that matter most:
+
+**Personalization signal** — you have a profile with skills, title, location, and work authorization. The search should incorporate these passively. If the user's profile says "Software Engineer" in San Francisco, results should bias toward engineering roles in SF even when the search query is generic. This doesn't require ML — a secondary scoring pass that boosts jobs matching profile title keywords and location is enough.
+
+**Saved vs unsaved state** — show clearly which jobs are saved. Users scan lists and re-encounter jobs they've already seen; showing that state inline prevents wasted clicks.
+
+**Staleness** — `last_seen_at` going stale is a signal a job may be closed. Jobs not seen in 7+ days should either be deprioritized or shown with a "may be expired" indicator.
+
+**Missing data handling** — some rows will have null salary, null company logo, null location. The list should degrade gracefully rather than showing empty slots, which makes the list feel inconsistent and low quality.
+
+**Pagination vs infinite scroll** — for job search, infinite scroll works better than page numbers because users scan vertically and rarely know what "page 3" means. But if you keep pagination, showing total count ("847 jobs") gives users a sense of supply.
+
+---
+
+**Priority order I'd suggest**
+
+1. Filter applied jobs first — most impactful, trivially easy
+2. Fix the clustering with the row_number interleaving
+3. Add `ts_rank` based ordering with title weighting
+4. Add saved/lifecycle state to the response so the frontend can show it inline
+5. Profile-based boosting once 1-4 are solid
+
+Want to go through implementation on any of these?
+"""
+
+Me: """
+* Lets also use the websearch_to_tsquery
+* for later, lets plan how to make the location search intelligent
+* Lets include the description field in the FTS index or search
+For the "Better results list":
+* I like your recommendations 
+* lets keep pagination for now
+
+Now:
+* write the code to implement your recommendations and few things I pointed out
+* For parts you need questions and clarity, ask me
+"""
+
+Claude: """
+A few quick questions before I write anything:
+
+**Applied jobs filter**
+When you say "don't show applied jobs" — should that also hide jobs where `lifecycle_status` is `'saved'`? Or only hide when `application_submitted = true`? And what about `'rejected'`/`'withdrawn'` — hide those too or show them differently?
+
+**Description in FTS**
+The description column exists but isn't in the current GIN index. Do you want me to add description to the index (requires a migration + reindex, better long-term performance) or just include it in the query-time vector (no migration, slightly slower at query time)? Given descriptions can be long, I'd lean toward weight D in the index, but want to confirm you're okay with the migration.
+
+**Profile-based boosting**
+The search endpoint receives `req.userId` — do you want me to fetch the user's profile title/location inside `getJobsSearch` to use for boosting, or is there a profile already available on the request object?
+
+**Staleness threshold**
+You mentioned `last_seen_at` — what's your job ingestion frequency? That determines what "stale" means. Is 7 days the right cutoff to deprioritize, or is it shorter given your ingestion cadence?
+
+**Response shape**
+The current response includes `lifecycle_status` indirectly through the join I'll add. Do you want `savedAt`, `lifecycleStatus`, and `applicationSubmitted` included in each listing object so the frontend can render saved/applied badges inline?
+"""
+
+Me: """
+* Hide those too
+
+* add description to the index
+
+* fetch the user's profile title/location inside `getJobsSearch` to use for boosting. title is in profile.payload, location is in profile.payload
+
+* leave out the staleness of rnow. it is being handle every night when we scrape jobs.
+
+* Yes, I want `savedAt`, `lifecycleStatus`, and `applicationSubmitted` included in each listing object so the frontend can render saved/applied badges inline?
+
+
+
+create table public.profiles (  user_id text not null,  name text null,  email text null,  phone text null,  linkedin text null,  summary text null,  education jsonb null default '[]'::jsonb,  experience jsonb null default '[]'::jsonb,  skills jsonb null default '[]'::jsonb,  payload jsonb null default '{}'::jsonb,  updated_at timestamp with time zone null default now(),  extended jsonb null default '{}'::jsonb,  website text null,  github text null,  work_authorization text null,  requires_visa_sponsorship boolean null,  willing_to_relocate boolean null,  preferred_locations text[] null default '{}'::text[],  availability_start_date text null,  current_degree_status text null,  expected_graduation text null,  eeo_gender text null,  eeo_race text null,  eeo_veteran_status text null,  eeo_disability_status text null,  referral_source text null,  latitude numeric(10, 7) null,  longitude numeric(10, 7) null,  resume_url text null,  cover_letter_url text null,  mapped_url_token text null,  data_compliance jsonb null default '{}'::jsonb,  demographic_answers jsonb null default '[]'::jsonb,  constraint profiles_pkey primary key (user_id)
+) TABLESPACE pg_default;
+
+create index IF not exists profiles_location_idx on public.profiles using btree (latitude, longitude) TABLESPACE pg_default
+
+where  (    (latitude is not null)    and (longitude is not null)  );
+"""

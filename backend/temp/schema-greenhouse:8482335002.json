@@ -1,0 +1,882 @@
+{
+  "absolute_url": "https://job-boards.greenhouse.io/twitch/jobs/8369609002",
+  "data_compliance": [
+    {
+      "type": "gdpr",
+      "requires_consent": false,
+      "requires_processing_consent": false,
+      "requires_retention_consent": false,
+      "retention_period": null,
+      "demographic_data_consent_applies": false
+    }
+  ],
+  "education": "education_optional",
+  "internal_job_id": 6341466002,
+  "location": { "name": "San Francisco, CA" },
+  "metadata": null,
+  "id": 8369609002,
+  "updated_at": "2026-03-24T16:04:04-04:00",
+  "requisition_id": "R9072",
+  "title": "Software Development Engineer, Onboarding/Payouts",
+  "company_name": "Twitch",
+  "first_published": "2026-01-15T17:30:23-05:00",
+  "language": "en",
+  "content": "\u0026lt;h3\u0026gt;\u0026lt;strong\u0026gt;About Us\u0026lt;/strong\u0026gt;\u0026lt;/h3\u0026gt;\n\u0026lt;p\u0026gt;Twitch is the worldâ€™s biggest live streaming service, with global communities built around gaming, entertainment, music, sports, cooking, and more. It is where thousands of communities come together for whatever, every day.\u0026lt;/p\u0026gt;\n\u0026lt;p\u0026gt;Weâ€™re about community, inside and out. Youâ€™ll find coworkers who are eager to team up, collaborate, and smash (or elegantly solve) problems together. Weâ€™re on a quest to empower live communities, so if this sounds good to you, see what weâ€™re up to on \u0026lt;a class=\u0026quot;c-link\u0026quot; href=\u0026quot;https://link.twitch.tv/TwitchLinkedinJD\u0026quot; target=\u0026quot;_blank\u0026quot; data-stringify-link=\u0026quot;https://link.twitch.tv/TwitchLinkedinJD\u0026quot; data-sk=\u0026quot;tooltip_parent\u0026quot;\u0026gt;LinkedIn\u0026lt;/a\u0026gt;\u0026amp;nbsp;and\u0026amp;nbsp;\u0026lt;a class=\u0026quot;c-link\u0026quot; href=\u0026quot;https://link.twitch.tv/TwitchTwitterJD\u0026quot; target=\u0026quot;_blank\u0026quot; data-stringify-link=\u0026quot;https://link.twitch.tv/TwitchTwitterJD\u0026quot; data-sk=\u0026quot;tooltip_parent\u0026quot;\u0026gt;X\u0026lt;/a\u0026gt;,\u0026amp;nbsp; and discover the projects weâ€™re solving on our\u0026amp;nbsp;\u0026lt;a class=\u0026quot;c-link\u0026quot; href=\u0026quot;https://link.twitch.tv/TwitchBlogJD\u0026quot; target=\u0026quot;_blank\u0026quot; data-stringify-link=\u0026quot;https://link.twitch.tv/TwitchBlogJD\u0026quot; data-sk=\u0026quot;tooltip_parent\u0026quot;\u0026gt;Blog\u0026lt;/a\u0026gt;. Be sure to explore our\u0026amp;nbsp;\u0026lt;a class=\u0026quot;c-link\u0026quot; href=\u0026quot;https://link.twitch.tv/TwitchInterviewingJD\u0026quot; target=\u0026quot;_blank\u0026quot; data-stringify-link=\u0026quot;https://link.twitch.tv/TwitchInterviewingJD\u0026quot; data-sk=\u0026quot;tooltip_parent\u0026quot;\u0026gt;Interviewing Guide\u0026lt;/a\u0026gt;\u0026amp;nbsp;to learn how to ace our interview process.\u0026lt;/p\u0026gt;\n\u0026lt;h3\u0026gt;\u0026lt;strong\u0026gt;About the Role\u0026lt;/strong\u0026gt;\u0026lt;/h3\u0026gt;\n\u0026lt;p\u0026gt;We\u0026#39;re looking for a Software Engineer to join our Creator Monetization team - the engine that helps 7+ million creators turn their passion into sustainable careers. Our teamâ€™s mission is to empower creators to continue doing what they love by building intuitive, accessible monetization tools, programs, and resources that reward authentic community engagement. You\u0026#39;ll work on the engineering systems that directly impact creatorsâ€™ livelihoods, building and scaling the platforms that enable the\u0026amp;nbsp;\u0026lt;a href=\u0026quot;https://www.twitch.tv/p/en/partners/?utm_referrer=https://www.google.com/\u0026quot;\u0026gt;Twitch Partner Program\u0026lt;/a\u0026gt;,\u0026amp;nbsp;\u0026lt;a href=\u0026quot;https://www.twitch.tv/dj-program\u0026quot;\u0026gt;DJ Program\u0026lt;/a\u0026gt;,\u0026amp;nbsp;\u0026lt;a href=\u0026quot;https://blog.twitch.tv/en/2023/06/15/introducing-the-partner-plus-program/\u0026quot;\u0026gt;Plus Program\u0026lt;/a\u0026gt;, and\u0026amp;nbsp;\u0026lt;a href=\u0026quot;https://dev.twitch.tv/\u0026quot;\u0026gt;Extensions Monetization\u0026lt;/a\u0026gt;. These are the large-scale distributed systems that allow creators to monetize, calculate creator earnings, and power revenue analytics that help creators understand and grow their income on Twitch.\u0026lt;/p\u0026gt;\n\u0026lt;h3\u0026gt;\u0026lt;strong\u0026gt;You Will:\u0026lt;/strong\u0026gt;\u0026lt;/h3\u0026gt;\n\u0026lt;ul\u0026gt;\n\u0026lt;li\u0026gt;\u0026lt;strong\u0026gt;Build systems that matter:\u0026lt;/strong\u0026gt;\u0026amp;nbsp;Contribute to experiences and services that power creator earnings, payouts, and monetization programs that directly impact millions of creatorsâ€™ livelihoods\u0026lt;/li\u0026gt;\n\u0026lt;li\u0026gt;\u0026lt;strong\u0026gt;Deliver code with impact\u0026lt;/strong\u0026gt;: Write and maintain code in Go, TypeScript, or other languages in our stack, with mentorship from senior engineers and tech leads who will help you grow\u0026lt;/li\u0026gt;\n\u0026lt;li\u0026gt;\u0026lt;strong\u0026gt;Solve problems that span multiple teams\u0026lt;/strong\u0026gt;: Collaborate with product managers, designers, and engineers across the organization to understand complex requirements and deliver elegant solutions\u0026lt;/li\u0026gt;\n\u0026lt;li\u0026gt;\u0026lt;strong\u0026gt;Shape how we build:\u0026lt;/strong\u0026gt;\u0026amp;nbsp;Improve engineering processes, participate in design discussions, and contribute to code reviews that raise the bar for the entire team\u0026lt;/li\u0026gt;\n\u0026lt;/ul\u0026gt;\n\u0026lt;h3\u0026gt;\u0026lt;strong\u0026gt;You Have:\u0026lt;/strong\u0026gt;\u0026lt;/h3\u0026gt;\n\u0026lt;ul\u0026gt;\n\u0026lt;li\u0026gt;Minimum of Bachelorâ€™s degree in Computer Science or prior relevant engineering experiences\u0026lt;/li\u0026gt;\n\u0026lt;li\u0026gt;Strong understanding of data structures, algorithms, data modeling and schema design\u0026lt;/li\u0026gt;\n\u0026lt;li\u0026gt;Strong problem-solving skills and eagerness to learn new technologies and systems\u0026lt;/li\u0026gt;\n\u0026lt;li\u0026gt;Experience creating detailed technical documentation\u0026lt;/li\u0026gt;\n\u0026lt;li\u0026gt;Proficient experience level in one or more of the following language: Go, Typescript, Java, C++\u0026lt;/li\u0026gt;\n\u0026lt;li\u0026gt;Familiar with AWS ecosystem\u0026lt;/li\u0026gt;\n\u0026lt;/ul\u0026gt;\n\u0026lt;h3\u0026gt;\u0026lt;strong\u0026gt;Bonus Points\u0026lt;/strong\u0026gt;\u0026lt;/h3\u0026gt;\n\u0026lt;ul\u0026gt;\n\u0026lt;li\u0026gt;Previous experience in monetization or payouts domain\u0026lt;/li\u0026gt;\n\u0026lt;li\u0026gt;Youâ€™re a creator or Twitch streamer or have previous experience in the gaming industry or creator space\u0026lt;/li\u0026gt;\n\u0026lt;/ul\u0026gt;\n\u0026lt;h3\u0026gt;\u0026lt;strong\u0026gt;Perks\u0026lt;/strong\u0026gt;\u0026lt;/h3\u0026gt;\n\u0026lt;ul\u0026gt;\n\u0026lt;li\u0026gt;Medical, Dental, Vision \u0026amp;amp; Disability Insurance\u0026lt;/li\u0026gt;\n\u0026lt;li\u0026gt;401(k)\u0026lt;/li\u0026gt;\n\u0026lt;li\u0026gt;Maternity \u0026amp;amp; Parental Leave\u0026lt;/li\u0026gt;\n\u0026lt;li\u0026gt;Flexible PTO\u0026lt;/li\u0026gt;\n\u0026lt;li\u0026gt;Amazon Employee Discount\u0026lt;/li\u0026gt;\n\u0026lt;/ul\u0026gt;\n\u0026lt;p\u0026gt;\u0026lt;em\u0026gt;Pursuant to the San Francisco Fair Chance Ordinance, we will consider for employment qualified applicants with arrest and conviction records.\u0026lt;/em\u0026gt;\u0026amp;nbsp;\u0026lt;/p\u0026gt;\n\u0026lt;p\u0026gt;Job ID: TW9072\u0026lt;/p\u0026gt;\u0026lt;div class=\u0026quot;content-pay-transparency\u0026quot;\u0026gt;\u0026lt;div class=\u0026quot;pay-input\u0026quot;\u0026gt;\u0026lt;div class=\u0026quot;description\u0026quot;\u0026gt;\u0026lt;p\u0026gt;The base salary range for this position is listed below. Your Amazon package will include sign-on payments and restricted stock units (RSUs). Final compensation will be determined based on factors including experience, qualifications, and location. Amazon also offers comprehensive benefits including health insurance (medical, dental, vision, prescription, Basic Life \u0026amp;amp; AD\u0026amp;amp;D insurance and option for Supplemental life plans, EAP, Mental Health Support, Medical Advice Line, Flexible Spending Accounts, Adoption and Surrogacy Reimbursement coverage), 401(k) matching, paid time off, and parental leave. Learn more about our benefits at \u0026lt;a href=\u0026quot;https://amazon.jobs/en/benefits\u0026quot;\u0026gt;https://amazon.jobs/en/benefits\u0026lt;/a\u0026gt;.\u0026lt;/p\u0026gt;\u0026lt;/div\u0026gt;\u0026lt;div class=\u0026quot;title\u0026quot;\u0026gt;US, CA, San Francisco\u0026lt;/div\u0026gt;\u0026lt;div class=\u0026quot;pay-range\u0026quot;\u0026gt;\u0026lt;span\u0026gt;$127,100\u0026lt;/span\u0026gt;\u0026lt;span class=\u0026quot;divider\u0026quot;\u0026gt;\u0026amp;mdash;\u0026lt;/span\u0026gt;\u0026lt;span\u0026gt;$185,000 USD\u0026lt;/span\u0026gt;\u0026lt;/div\u0026gt;\u0026lt;/div\u0026gt;\u0026lt;/div\u0026gt;\u0026lt;div class=\u0026quot;content-conclusion\u0026quot;\u0026gt;\u0026lt;p\u0026gt;\u0026lt;em\u0026gt;Twitch is an equal opportunity employer and does not discriminate on the basis of protected veteran status, disability, or other legally protected status.\u0026lt;/em\u0026gt;\u0026lt;/p\u0026gt;\n\u0026lt;p\u0026gt;\u0026lt;em\u0026gt;Twitch values your privacy. Please consult our \u0026lt;a href=\u0026quot;https://www.twitch.tv/jobs/en/legal/privacy-notice/\u0026quot; target=\u0026quot;_blank\u0026quot;\u0026gt;Candidate Privacy Notice\u0026lt;/a\u0026gt;, for information about how we collect, use, and disclose personal information of our candidates.\u0026lt;/em\u0026gt;\u0026lt;/p\u0026gt;\u0026lt;/div\u0026gt;",
+  "departments": [
+    {
+      "id": 4036550002,
+      "name": "Community Growth ",
+      "child_ids": [],
+      "parent_id": 4036629002
+    }
+  ],
+  "offices": [
+    {
+      "id": 4019292002,
+      "name": "San Francisco, CA",
+      "location": "San Francisco, CA",
+      "child_ids": [],
+      "parent_id": 4019370002
+    }
+  ],
+  "compliance": [
+    {
+      "type": "eeoc",
+      "questions": [],
+      "description": "\u0026lt;p\u0026gt;PUBLIC BURDEN STATEMENT: According to the Paperwork Reduction Act of 1995 no persons are required to respond to a collection of information unless such collection displays a valid OMB control number. This survey should take about 5 minutes to complete.\u0026lt;/p\u0026gt;\n"
+    },
+    {
+      "type": "eeoc",
+      "questions": [
+        {
+          "required": false,
+          "label": "DisabilityStatus",
+          "fields": [
+            {
+              "name": "disability_status",
+              "type": "multi_value_single_select",
+              "values": [
+                { "label": "I do not want to answer", "value": "3" },
+                {
+                  "label": "No, I do not have a disability and have not had one in the past",
+                  "value": "2"
+                },
+                {
+                  "label": "Yes, I have a disability, or have had one in the past",
+                  "value": "1"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "description": "\u0026lt;h3\u0026gt;\u0026lt;strong\u0026gt;Voluntary Self-Identification of Disability\u0026lt;/strong\u0026gt;\u0026lt;/h3\u0026gt;\n\u0026lt;div style=\u0026quot;display:flex; justify-content:space-between;\u0026quot;\u0026gt;\n  \u0026lt;div\u0026gt;\n    \u0026lt;div\u0026gt;Form CC-305\u0026lt;/div\u0026gt;\n    \u0026lt;div\u0026gt;Page 1 of 1\u0026lt;/div\u0026gt;\n  \u0026lt;/div\u0026gt;\n  \u0026lt;div\u0026gt;\n    \u0026lt;div\u0026gt;OMB Control Number 1250-0005\u0026lt;/div\u0026gt;\n    \u0026lt;div\u0026gt;Expires 04/30/2026\u0026lt;/div\u0026gt;\n  \u0026lt;/div\u0026gt;\n\u0026lt;/div\u0026gt;\n\u0026lt;br\u0026gt;\n\u0026lt;strong\u0026gt;Why are you being asked to complete this form?\u0026lt;/strong\u0026gt;\n\u0026lt;p\u0026gt;We are a federal contractor or subcontractor. The law requires us to provide equal employment opportunity to qualified people with disabilities. We have a goal of having at least 7% of our workers as people with disabilities. The law says we must measure our progress towards this goal. To do this, we must ask applicants and employees if they have a disability or have ever had one. People can become disabled, so we need to ask this question at least every five years.\u0026lt;/p\u0026gt;\n\u0026lt;p\u0026gt;Completing this form is voluntary, and we hope that you will choose to do so. Your answer is confidential. No one who makes hiring decisions will see it. Your decision to complete the form and your answer will not harm you in any way. If you want to learn more about the law or this form, visit the U.S. Department of Laborâ€™s Office of Federal Contract Compliance Programs (OFCCP) website at \u0026lt;a href=\u0026quot;https://www.dol.gov/ofccp\u0026quot; target=\u0026quot;_blank\u0026quot;\u0026gt;www.dol.gov/ofccp\u0026lt;/a\u0026gt;.\u0026lt;/p\u0026gt;\n\u0026lt;strong\u0026gt;How do you know if you have a disability?\u0026lt;/strong\u0026gt;\n\u0026lt;p\u0026gt;A disability is a condition that substantially limits one or more of your â€œmajor life activities.â€ If you have or have ever had such a condition, you are a person with a disability. \u0026lt;strong\u0026gt;Disabilities include, but are not limited to:\u0026lt;/strong\u0026gt;\u0026lt;/p\u0026gt;\n\u0026lt;ul\u0026gt;\n  \u0026lt;li\u0026gt;Alcohol or other substance use disorder (not currently using drugs illegally)\u0026lt;/li\u0026gt;\n  \u0026lt;li\u0026gt;Autoimmune disorder, for example, lupus, fibromyalgia, rheumatoid arthritis, HIV/AIDS\u0026lt;/li\u0026gt;\n  \u0026lt;li\u0026gt;Blind or low vision\u0026lt;/li\u0026gt;\n  \u0026lt;li\u0026gt;Cancer (past or present)\u0026lt;/li\u0026gt;\n  \u0026lt;li\u0026gt;Cardiovascular or heart disease\u0026lt;/li\u0026gt;\n  \u0026lt;li\u0026gt;Celiac disease\u0026lt;/li\u0026gt;\n  \u0026lt;li\u0026gt;Cerebral palsy\u0026lt;/li\u0026gt;\n  \u0026lt;li\u0026gt;Deaf or serious difficulty hearing\u0026lt;/li\u0026gt;\n  \u0026lt;li\u0026gt;Diabetes\u0026lt;/li\u0026gt;\n  \u0026lt;li\u0026gt;Disfigurement, for example, disfigurement caused by burns, wounds, accidents, or congenital disorders\u0026lt;/li\u0026gt;\n  \u0026lt;li\u0026gt;Epilepsy or other seizure disorder\u0026lt;/li\u0026gt;\n  \u0026lt;li\u0026gt;Gastrointestinal disorders, for example, Crohn\u0026#39;s Disease, irritable bowel syndrome\u0026lt;/li\u0026gt;\n  \u0026lt;li\u0026gt;Intellectual or developmental disability\u0026lt;/li\u0026gt;\n  \u0026lt;li\u0026gt;Mental health conditions, for example, depression, bipolar disorder, anxiety disorder, schizophrenia, PTSD\u0026lt;/li\u0026gt;\n  \u0026lt;li\u0026gt;Missing limbs or partially missing limbs\u0026lt;/li\u0026gt;\n  \u0026lt;li\u0026gt;Mobility impairment, benefiting from the use of a wheelchair, scooter, walker, leg brace(s) and/or other supports\u0026lt;/li\u0026gt;\n  \u0026lt;li\u0026gt;Nervous system condition, for example, migraine headaches, Parkinsonâ€™s disease, multiple sclerosis (MS)\u0026lt;/li\u0026gt;\n  \u0026lt;li\u0026gt;Neurodivergence, for example, attention-deficit/hyperactivity disorder (ADHD), autism spectrum disorder, dyslexia, dyspraxia, other learning disabilities\u0026lt;/li\u0026gt;\n  \u0026lt;li\u0026gt;Partial or complete paralysis (any cause)\u0026lt;/li\u0026gt;\n  \u0026lt;li\u0026gt;Pulmonary or respiratory conditions, for example, tuberculosis, asthma, emphysema\u0026lt;/li\u0026gt;\n  \u0026lt;li\u0026gt;Short stature (dwarfism)\u0026lt;/li\u0026gt;\n  \u0026lt;li\u0026gt;Traumatic brain injury\u0026lt;/li\u0026gt;\n\u0026lt;/ul\u0026gt;\n"
+    },
+    {
+      "type": "eeoc",
+      "questions": [
+        {
+          "required": false,
+          "label": "VeteranStatus",
+          "fields": [
+            {
+              "name": "veteran_status",
+              "type": "multi_value_single_select",
+              "values": [
+                { "label": "I don't wish to answer", "value": "3" },
+                {
+                  "label": "I identify as one or more of the classifications of a protected veteran",
+                  "value": "2"
+                },
+                { "label": "I am not a protected veteran", "value": "1" }
+              ]
+            }
+          ]
+        }
+      ],
+      "description": "\u0026lt;p\u0026gt;\n  If you believe you belong to any of the categories of protected veterans listed below, please indicate by making the appropriate selection.\n  As a government contractor subject to the Vietnam Era Veterans\u0026#39; Readjustment Assistance Act (VEVRAA), we request this information in order to measure\n  the effectiveness of the outreach and positive recruitment efforts we undertake pursuant to VEVRAA. Classification of protected categories\n  is as follows:\n\u0026lt;/p\u0026gt;\n\u0026lt;p\u0026gt;A \u0026quot;disabled veteran\u0026quot; is one of the following: a veteran of the U.S. military, ground, naval or air service who is entitled to compensation (or who but for the receipt of military retired pay would be entitled to compensation) under laws administered by the Secretary of Veterans Affairs; or a person who was discharged or released from active duty because of a service-connected disability.\u0026lt;/p\u0026gt;\n\u0026lt;p\u0026gt;A \u0026quot;recently separated veteran\u0026quot; means any veteran during the three-year period beginning on the date of such veteran\u0026#39;s discharge or release from active duty in the U.S. military, ground, naval, or air service.\u0026lt;/p\u0026gt;\n\u0026lt;p\u0026gt;An \u0026quot;active duty wartime or campaign badge veteran\u0026quot; means a veteran who served on active duty in the U.S. military, ground, naval or air service during a war, or in a campaign or expedition for which a campaign badge has been authorized under the laws administered by the Department of Defense.\u0026lt;/p\u0026gt;\n\u0026lt;p\u0026gt;An \u0026quot;Armed forces service medal veteran\u0026quot; means a veteran who, while serving on active duty in the U.S. military, ground, naval or air service, participated in a United States military operation for which an Armed Forces service medal was awarded pursuant to Executive Order 12985.\u0026lt;/p\u0026gt;\n"
+    },
+    {
+      "type": "eeoc",
+      "questions": [
+        {
+          "required": false,
+          "label": "Race",
+          "fields": [
+            {
+              "name": "race",
+              "type": "multi_value_single_select",
+              "values": [
+                { "label": "Decline To Self Identify", "value": "8" },
+                { "label": "Two or More Races", "value": "7" },
+                {
+                  "label": "Native Hawaiian or Other Pacific Islander",
+                  "value": "6"
+                },
+                { "label": "White", "value": "5" },
+                { "label": "Hispanic or Latino", "value": "4" },
+                { "label": "Black or African American", "value": "3" },
+                { "label": "Asian", "value": "2" },
+                { "label": "American Indian or Alaskan Native", "value": "1" }
+              ]
+            }
+          ]
+        },
+        {
+          "required": false,
+          "label": "Gender",
+          "fields": [
+            {
+              "name": "gender",
+              "type": "multi_value_single_select",
+              "values": [
+                { "label": "Decline To Self Identify", "value": "3" },
+                { "label": "Female", "value": "2" },
+                { "label": "Male", "value": "1" }
+              ]
+            }
+          ]
+        }
+      ],
+      "description": "\u0026lt;h3\u0026gt;\u0026lt;strong\u0026gt;Voluntary Self-Identification\u0026lt;/strong\u0026gt;\u0026lt;/h3\u0026gt;\u0026lt;br/\u0026gt;\u0026lt;p\u0026gt;For government reporting purposes, we ask candidates to respond to the below self-identification survey.\nCompletion of the form is entirely voluntary. Whatever your decision, it will not be considered in the hiring\nprocess or thereafter. Any information that you do provide will be recorded and maintained in a\nconfidential file.\u0026lt;/p\u0026gt;\n\n\u0026lt;p\u0026gt;As set forth in Twitchâ€™s Equal Employment Opportunity policy,\nwe do not discriminate on the basis of any protected group status under any applicable law.\u0026lt;/p\u0026gt;\n"
+    }
+  ],
+  "demographic_questions": null,
+  "questions": [
+    {
+      "description": null,
+      "label": "First Name",
+      "required": true,
+      "fields": [{ "name": "first_name", "type": "input_text", "values": [] }]
+    },
+    {
+      "description": null,
+      "label": "Last Name",
+      "required": true,
+      "fields": [{ "name": "last_name", "type": "input_text", "values": [] }]
+    },
+    {
+      "description": null,
+      "label": "Email",
+      "required": true,
+      "fields": [{ "name": "email", "type": "input_text", "values": [] }]
+    },
+    {
+      "description": null,
+      "label": "Phone",
+      "required": true,
+      "fields": [{ "name": "phone", "type": "input_text", "values": [] }]
+    },
+    {
+      "description": null,
+      "label": "Resume/CV",
+      "required": true,
+      "fields": [
+        { "name": "resume", "type": "input_file", "values": [] },
+        { "name": "resume_text", "type": "textarea", "values": [] }
+      ]
+    },
+    {
+      "description": null,
+      "label": "Cover Letter",
+      "required": false,
+      "fields": [
+        { "name": "cover_letter", "type": "input_file", "values": [] },
+        { "name": "cover_letter_text", "type": "textarea", "values": [] }
+      ]
+    },
+    {
+      "description": null,
+      "label": "LinkedIn Profile",
+      "required": false,
+      "fields": [
+        { "name": "question_34846626002", "type": "input_text", "values": [] }
+      ]
+    },
+    {
+      "description": null,
+      "label": "Website",
+      "required": false,
+      "fields": [
+        { "name": "question_34846627002", "type": "input_text", "values": [] }
+      ]
+    },
+    {
+      "description": "\u003cp\u003eWe review all applications equally, whether you're an advanced user or new to the platform. Let us know your history with us!\u003c/p\u003e",
+      "label": "Are you familiar with Twitch? ",
+      "required": true,
+      "fields": [
+        {
+          "name": "question_34846628002",
+          "type": "multi_value_single_select",
+          "values": [
+            { "label": "Yes, I'm a Twitch Partner", "value": 219219056002 },
+            { "label": "Yes, I'm a Twitch Affiliate", "value": 219219057002 },
+            {
+              "label": "Yes, I use Twitch (I'm a streamer and a viewer)",
+              "value": 219219058002
+            },
+            {
+              "label": "Yes, I use Twitch (I'm a viewer)",
+              "value": 219219059002
+            },
+            {
+              "label": "Yes, I'm familiar with Twitch, but I'm not a user",
+              "value": 219219060002
+            },
+            { "label": "No, I'm not on Twitch", "value": 219219061002 }
+          ]
+        }
+      ]
+    },
+    {
+      "description": null,
+      "label": "Are you currently a Twitch employee?",
+      "required": true,
+      "fields": [
+        {
+          "name": "question_34846629002",
+          "type": "multi_value_single_select",
+          "values": [
+            { "label": "Yes", "value": 1 },
+            { "label": "No", "value": 0 }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "\u003cp\u003ePlease choose a location from the list below if you're open to relocating with Twitch. If not, select your preference from the remaining options.\u0026nbsp;\u003c/p\u003e",
+      "label": "Are you open to relocation? ",
+      "required": true,
+      "fields": [
+        {
+          "name": "question_34846630002",
+          "type": "multi_value_single_select",
+          "values": [
+            { "label": "No", "value": 219219062002 },
+            {
+              "label": "No, but I'm open to a remote position",
+              "value": 219219063002
+            },
+            { "label": "San Francisco, CA", "value": 219219064002 },
+            { "label": "Irvine, CA", "value": 219219065002 },
+            { "label": "Los Angeles, CA", "value": 219219066002 },
+            { "label": "Seattle, WA", "value": 219219067002 },
+            { "label": "New York, NY", "value": 219219068002 },
+            { "label": "Salt Lake City, UT", "value": 219219069002 },
+            { "label": "Chicago, IL", "value": 219219070002 },
+            { "label": "London, UK", "value": 219219071002 },
+            { "label": "Seoul, Korea", "value": 219219072002 },
+            { "label": "Tokyo, Japan", "value": 219219073002 },
+            { "label": "Taipei, Taiwan", "value": 219219074002 },
+            { "label": "Berlin, Germany", "value": 219219075002 },
+            { "label": "Hamburg, Germany", "value": 219219076002 },
+            { "label": "Singapore", "value": 219219077002 },
+            { "label": "Sydney, Australia", "value": 219219078002 }
+          ]
+        }
+      ]
+    },
+    {
+      "description": null,
+      "label": "Are you a current employee with Amazon or any Amazon subsidiary (outside of Twitch)?",
+      "required": true,
+      "fields": [
+        {
+          "name": "question_34846631002",
+          "type": "multi_value_single_select",
+          "values": [
+            { "label": "Yes", "value": 1 },
+            { "label": "No", "value": 0 }
+          ]
+        }
+      ]
+    },
+    {
+      "description": null,
+      "label": "Have you previously applied to Amazon or any Amazon subsidiary?",
+      "required": true,
+      "fields": [
+        {
+          "name": "question_34846632002",
+          "type": "multi_value_single_select",
+          "values": [
+            { "label": "Yes", "value": 1 },
+            { "label": "No", "value": 0 }
+          ]
+        }
+      ]
+    },
+    {
+      "description": null,
+      "label": "Have you previously been employed by Amazon or any Amazon subsidiary? ",
+      "required": true,
+      "fields": [
+        {
+          "name": "question_34846633002",
+          "type": "multi_value_single_select",
+          "values": [
+            { "label": "Yes", "value": 1 },
+            { "label": "No", "value": 0 }
+          ]
+        }
+      ]
+    },
+    {
+      "description": null,
+      "label": "Are you subject to a non-competition agreement or other agreement that would preclude or restrict your employment at Amazon? ",
+      "required": true,
+      "fields": [
+        {
+          "name": "question_34846634002",
+          "type": "multi_value_single_select",
+          "values": [
+            { "label": "Yes", "value": 1 },
+            { "label": "No", "value": 0 }
+          ]
+        }
+      ]
+    },
+    {
+      "description": null,
+      "label": "If offered employment by Amazon, would you be legally eligible to begin employment immediately?",
+      "required": true,
+      "fields": [
+        {
+          "name": "question_34846635002",
+          "type": "multi_value_single_select",
+          "values": [
+            { "label": "Yes", "value": 1 },
+            { "label": "No", "value": 0 }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "\u003cp\u003eThis includes support (such as J-1, F-1 CPT letter or STEM OPT Training Plan), visa sponsorship for employment (H-1B, H-1B1, E-3, O-1, or TN), and any EAD holders that will need longer term employment authorization (temporary work visa or permanent residency\u003c/p\u003e",
+      "label": "Your response is mandatory when applying for a U.S.-based position. Do you need, or will you need in the future, any immigration related support or sponsorship from Amazon in order to begin or continue employment with Amazon? ",
+      "required": true,
+      "fields": [
+        {
+          "name": "question_34846636002",
+          "type": "multi_value_single_select",
+          "values": [
+            { "label": "Yes", "value": 1 },
+            { "label": "No", "value": 0 }
+          ]
+        }
+      ]
+    },
+    {
+      "description": null,
+      "label": "Have you held H-1B status, or had an H-1B petition approved on your behalf, within the preceding 6 years for an employer other than a cap exempt institution? ",
+      "required": true,
+      "fields": [
+        {
+          "name": "question_34846637002",
+          "type": "multi_value_single_select",
+          "values": [
+            { "label": "Yes", "value": 1 },
+            { "label": "No", "value": 0 }
+          ]
+        }
+      ]
+    },
+    {
+      "description": null,
+      "label": "In which country/region do you have citizenship?",
+      "required": true,
+      "fields": [
+        {
+          "name": "question_34846638002[]",
+          "type": "multi_value_multi_select",
+          "values": [
+            { "label": "Afghanistan", "value": 219219079002 },
+            { "label": "Albania", "value": 219219080002 },
+            { "label": "Algeria", "value": 219219081002 },
+            { "label": "Andorra", "value": 219219082002 },
+            { "label": "Angola", "value": 219219083002 },
+            { "label": "Antigua and Barbuda", "value": 219219084002 },
+            { "label": "Argentina", "value": 219219085002 },
+            { "label": "Armenia", "value": 219219086002 },
+            { "label": "Australia", "value": 219219087002 },
+            { "label": "Austria", "value": 219219088002 },
+            { "label": "Azerbaijan", "value": 219219089002 },
+            { "label": "Bahamas", "value": 219219090002 },
+            { "label": "Bahrain", "value": 219219091002 },
+            { "label": "Bangladesh", "value": 219219092002 },
+            { "label": "Barbados", "value": 219219093002 },
+            { "label": "Belarus", "value": 219219094002 },
+            { "label": "Belgium", "value": 219219095002 },
+            { "label": "Belize", "value": 219219096002 },
+            { "label": "Benin", "value": 219219097002 },
+            { "label": "Bhutan", "value": 219219098002 },
+            { "label": "Bolivia", "value": 219219099002 },
+            { "label": "Bosnia and Herzegovina", "value": 219219100002 },
+            { "label": "Botswana", "value": 219219101002 },
+            { "label": "Brazil", "value": 219219102002 },
+            { "label": "Brunei", "value": 219219103002 },
+            { "label": "Bulgaria", "value": 219219104002 },
+            { "label": "Burkina Faso", "value": 219219105002 },
+            { "label": "Burundi", "value": 219219106002 },
+            { "label": "Cabo Verde", "value": 219219107002 },
+            { "label": "Cambodia", "value": 219219108002 },
+            { "label": "Cameroon", "value": 219219109002 },
+            { "label": "Canada", "value": 219219110002 },
+            { "label": "Central African Republic", "value": 219219111002 },
+            { "label": "Chad", "value": 219219112002 },
+            { "label": "Chile", "value": 219219113002 },
+            { "label": "China", "value": 219219114002 },
+            { "label": "Colombia", "value": 219219115002 },
+            { "label": "Comoros", "value": 219219116002 },
+            {
+              "label": "Congo, Democratic Republic of the",
+              "value": 219219117002
+            },
+            { "label": "Congo, Republic of the", "value": 219219118002 },
+            { "label": "Costa Rica", "value": 219219119002 },
+            { "label": "Cote d'Ivoire", "value": 219219120002 },
+            { "label": "Croatia", "value": 219219121002 },
+            { "label": "Cuba", "value": 219219122002 },
+            { "label": "Cyprus", "value": 219219123002 },
+            { "label": "Czechia", "value": 219219124002 },
+            { "label": "Denmark", "value": 219219125002 },
+            { "label": "Djibouti", "value": 219219126002 },
+            { "label": "Dominica", "value": 219219127002 },
+            { "label": "Dominican Republic", "value": 219219128002 },
+            { "label": "Ecuador", "value": 219219129002 },
+            { "label": "Egypt", "value": 219219130002 },
+            { "label": "El Salvador", "value": 219219131002 },
+            { "label": "Equatorial Guinea", "value": 219219132002 },
+            { "label": "Eritrea", "value": 219219133002 },
+            { "label": "Estonia", "value": 219219134002 },
+            { "label": "Eswatini", "value": 219219135002 },
+            { "label": "Ethiopia", "value": 219219136002 },
+            { "label": "Fiji", "value": 219219137002 },
+            { "label": "Finland", "value": 219219138002 },
+            { "label": "France", "value": 219219139002 },
+            { "label": "Gabon", "value": 219219140002 },
+            { "label": "Gambia", "value": 219219141002 },
+            { "label": "Georgia", "value": 219219142002 },
+            { "label": "Germany", "value": 219219143002 },
+            { "label": "Ghana", "value": 219219144002 },
+            { "label": "Greece", "value": 219219145002 },
+            { "label": "Grenada", "value": 219219146002 },
+            { "label": "Guatemala", "value": 219219147002 },
+            { "label": "Guinea", "value": 219219148002 },
+            { "label": "Guinea-Bissau", "value": 219219149002 },
+            { "label": "Guyana", "value": 219219150002 },
+            { "label": "Haiti", "value": 219219151002 },
+            { "label": "Honduras", "value": 219219152002 },
+            { "label": "Hungary", "value": 219219153002 },
+            { "label": "Iceland", "value": 219219154002 },
+            { "label": "India", "value": 219219155002 },
+            { "label": "Indonesia", "value": 219219156002 },
+            { "label": "Iran", "value": 219219157002 },
+            { "label": "Iraq", "value": 219219158002 },
+            { "label": "Ireland", "value": 219219159002 },
+            { "label": "Israel", "value": 219219160002 },
+            { "label": "Italy", "value": 219219161002 },
+            { "label": "Jamaica", "value": 219219162002 },
+            { "label": "Japan", "value": 219219163002 },
+            { "label": "Jordan", "value": 219219164002 },
+            { "label": "Kazakhstan", "value": 219219165002 },
+            { "label": "Kenya", "value": 219219166002 },
+            { "label": "Kiribati", "value": 219219167002 },
+            { "label": "Kosovo", "value": 219219168002 },
+            { "label": "Kuwait", "value": 219219169002 },
+            { "label": "Kyrgyzstan", "value": 219219170002 },
+            { "label": "Laos", "value": 219219171002 },
+            { "label": "Latvia", "value": 219219172002 },
+            { "label": "Lebanon", "value": 219219173002 },
+            { "label": "Lesotho", "value": 219219174002 },
+            { "label": "Liberia", "value": 219219175002 },
+            { "label": "Libya", "value": 219219176002 },
+            { "label": "Liechtenstein", "value": 219219177002 },
+            { "label": "Lithuania", "value": 219219178002 },
+            { "label": "Luxembourg", "value": 219219179002 },
+            { "label": "Madagascar", "value": 219219180002 },
+            { "label": "Malawi", "value": 219219181002 },
+            { "label": "Malaysia", "value": 219219182002 },
+            { "label": "Maldives", "value": 219219183002 },
+            { "label": "Mali", "value": 219219184002 },
+            { "label": "Malta", "value": 219219185002 },
+            { "label": "Marshall Islands", "value": 219219186002 },
+            { "label": "Mauritania", "value": 219219187002 },
+            { "label": "Mauritius", "value": 219219188002 },
+            { "label": "Mexico", "value": 219219189002 },
+            { "label": "Micronesia", "value": 219219190002 },
+            { "label": "Moldova", "value": 219219191002 },
+            { "label": "Monaco", "value": 219219192002 },
+            { "label": "Mongolia", "value": 219219193002 },
+            { "label": "Montenegro", "value": 219219194002 },
+            { "label": "Morocco", "value": 219219195002 },
+            { "label": "Mozambique", "value": 219219196002 },
+            { "label": "Myanmar", "value": 219219197002 },
+            { "label": "Namibia", "value": 219219198002 },
+            { "label": "Nauru", "value": 219219199002 },
+            { "label": "Nepal", "value": 219219200002 },
+            { "label": "Netherlands", "value": 219219201002 },
+            { "label": "New Zealand", "value": 219219202002 },
+            { "label": "Nicaragua", "value": 219219203002 },
+            { "label": "Niger", "value": 219219204002 },
+            { "label": "Nigeria", "value": 219219205002 },
+            { "label": "North Korea", "value": 219219206002 },
+            { "label": "North Macedonia", "value": 219219207002 },
+            { "label": "Norway", "value": 219219208002 },
+            { "label": "Oman", "value": 219219209002 },
+            { "label": "Pakistan", "value": 219219210002 },
+            { "label": "Palau", "value": 219219211002 },
+            { "label": "Palestine", "value": 219219212002 },
+            { "label": "Panama", "value": 219219213002 },
+            { "label": "Papua New Guinea", "value": 219219214002 },
+            { "label": "Paraguay", "value": 219219215002 },
+            { "label": "Peru", "value": 219219216002 },
+            { "label": "Philippines", "value": 219219217002 },
+            { "label": "Poland", "value": 219219218002 },
+            { "label": "Portugal", "value": 219219219002 },
+            { "label": "Qatar", "value": 219219220002 },
+            { "label": "Romania", "value": 219219221002 },
+            { "label": "Russia", "value": 219219222002 },
+            { "label": "Rwanda", "value": 219219223002 },
+            { "label": "Saint Kitts and Nevis", "value": 219219224002 },
+            { "label": "Saint Lucia", "value": 219219225002 },
+            {
+              "label": "Saint Vincent and the Grenadines",
+              "value": 219219226002
+            },
+            { "label": "Samoa", "value": 219219227002 },
+            { "label": "San Marino", "value": 219219228002 },
+            { "label": "Sao Tome and Principe", "value": 219219229002 },
+            { "label": "Saudi Arabia", "value": 219219230002 },
+            { "label": "Senegal", "value": 219219231002 },
+            { "label": "Serbia", "value": 219219232002 },
+            { "label": "Seychelles", "value": 219219233002 },
+            { "label": "Sierra Leone", "value": 219219234002 },
+            { "label": "Singapore", "value": 219219235002 },
+            { "label": "Slovakia", "value": 219219236002 },
+            { "label": "Slovenia", "value": 219219237002 },
+            { "label": "Solomon Islands", "value": 219219238002 },
+            { "label": "Somalia", "value": 219219239002 },
+            { "label": "South Africa", "value": 219219240002 },
+            { "label": "South Korea", "value": 219219241002 },
+            { "label": "South Sudan", "value": 219219242002 },
+            { "label": "Spain", "value": 219219243002 },
+            { "label": "Sri Lanka", "value": 219219244002 },
+            { "label": "Sudan", "value": 219219245002 },
+            { "label": "Suriname", "value": 219219246002 },
+            { "label": "Sweden", "value": 219219247002 },
+            { "label": "Switzerland", "value": 219219248002 },
+            { "label": "Syria", "value": 219219249002 },
+            { "label": "Taiwan", "value": 219219250002 },
+            { "label": "Tajikistan", "value": 219219251002 },
+            { "label": "Tanzania", "value": 219219252002 },
+            { "label": "Thailand", "value": 219219253002 },
+            { "label": "Timor-Leste", "value": 219219254002 },
+            { "label": "Togo", "value": 219219255002 },
+            { "label": "Tonga", "value": 219219256002 },
+            { "label": "Trinidad and Tobago", "value": 219219257002 },
+            { "label": "Tunisia", "value": 219219258002 },
+            { "label": "Turkey", "value": 219219259002 },
+            { "label": "Turkmenistan", "value": 219219260002 },
+            { "label": "Tuvalu", "value": 219219261002 },
+            { "label": "Uganda", "value": 219219262002 },
+            { "label": "Ukraine", "value": 219219263002 },
+            { "label": "United Arab Emirates (UAE)", "value": 219219264002 },
+            { "label": "United Kingdom (UK)", "value": 219219265002 },
+            {
+              "label": "United States of America (USA)",
+              "value": 219219266002
+            },
+            { "label": "Uruguay", "value": 219219267002 },
+            { "label": "Uzbekistan", "value": 219219268002 },
+            { "label": "Vanuatu", "value": 219219269002 },
+            { "label": "Vatican City (Holy See)", "value": 219219270002 },
+            { "label": "Venezuela", "value": 219219271002 },
+            { "label": "Vietnam", "value": 219219272002 },
+            { "label": "Yemen", "value": 219219273002 },
+            { "label": "Zambia", "value": 219219274002 },
+            { "label": "Zimbabwe", "value": 219219275002 }
+          ]
+        }
+      ]
+    },
+    {
+      "description": null,
+      "label": "Since obtaining your most recent citizenship, did you afterwards become a permanent resident in any other country/region? This does not include temporary statuses such as student visas or time-limited work permits.",
+      "required": true,
+      "fields": [
+        {
+          "name": "question_34846639002",
+          "type": "multi_value_single_select",
+          "values": [
+            { "label": "Yes", "value": 1 },
+            { "label": "No", "value": 0 }
+          ]
+        }
+      ]
+    },
+    {
+      "description": null,
+      "label": "For the sole purpose of determining export licensing requirements, please provide your country of citizenship or legal permanent residence, whichever was obtained last. ",
+      "required": true,
+      "fields": [
+        {
+          "name": "question_34846640002",
+          "type": "multi_value_single_select",
+          "values": [
+            { "label": "Afghanistan", "value": 219219276002 },
+            { "label": "Albania", "value": 219219277002 },
+            { "label": "Algeria", "value": 219219278002 },
+            { "label": "Andorra", "value": 219219279002 },
+            { "label": "Angola", "value": 219219280002 },
+            { "label": "Antigua and Barbuda", "value": 219219281002 },
+            { "label": "Argentina", "value": 219219282002 },
+            { "label": "Armenia", "value": 219219283002 },
+            { "label": "Australia", "value": 219219284002 },
+            { "label": "Austria", "value": 219219285002 },
+            { "label": "Azerbaijan", "value": 219219286002 },
+            { "label": "Bahamas", "value": 219219287002 },
+            { "label": "Bahrain", "value": 219219288002 },
+            { "label": "Bangladesh", "value": 219219289002 },
+            { "label": "Barbados", "value": 219219290002 },
+            { "label": "Belarus", "value": 219219291002 },
+            { "label": "Belgium", "value": 219219292002 },
+            { "label": "Belize", "value": 219219293002 },
+            { "label": "Benin", "value": 219219294002 },
+            { "label": "Bhutan", "value": 219219295002 },
+            { "label": "Bolivia", "value": 219219296002 },
+            { "label": "Bosnia and Herzegovina", "value": 219219297002 },
+            { "label": "Botswana", "value": 219219298002 },
+            { "label": "Brazil", "value": 219219299002 },
+            { "label": "Brunei", "value": 219219300002 },
+            { "label": "Bulgaria", "value": 219219301002 },
+            { "label": "Burkina Faso", "value": 219219302002 },
+            { "label": "Burundi", "value": 219219303002 },
+            { "label": "Cabo Verde", "value": 219219304002 },
+            { "label": "Cambodia", "value": 219219305002 },
+            { "label": "Cameroon", "value": 219219306002 },
+            { "label": "Canada", "value": 219219307002 },
+            { "label": "Central African Republic", "value": 219219308002 },
+            { "label": "Chad", "value": 219219309002 },
+            { "label": "Chile", "value": 219219310002 },
+            { "label": "China", "value": 219219311002 },
+            { "label": "Colombia", "value": 219219312002 },
+            { "label": "Comoros", "value": 219219313002 },
+            {
+              "label": "Congo, Democratic Republic of the",
+              "value": 219219314002
+            },
+            { "label": "Congo, Republic of the", "value": 219219315002 },
+            { "label": "Costa Rica", "value": 219219316002 },
+            { "label": "Cote d'Ivoire", "value": 219219317002 },
+            { "label": "Croatia", "value": 219219318002 },
+            { "label": "Cuba", "value": 219219319002 },
+            { "label": "Cyprus", "value": 219219320002 },
+            { "label": "Czechia", "value": 219219321002 },
+            { "label": "Denmark", "value": 219219322002 },
+            { "label": "Djibouti", "value": 219219323002 },
+            { "label": "Dominica", "value": 219219324002 },
+            { "label": "Dominican Republic", "value": 219219325002 },
+            { "label": "Ecuador", "value": 219219326002 },
+            { "label": "Egypt", "value": 219219327002 },
+            { "label": "El Salvador", "value": 219219328002 },
+            { "label": "Equatorial Guinea", "value": 219219329002 },
+            { "label": "Eritrea", "value": 219219330002 },
+            { "label": "Estonia", "value": 219219331002 },
+            { "label": "Eswatini", "value": 219219332002 },
+            { "label": "Ethiopia", "value": 219219333002 },
+            { "label": "Fiji", "value": 219219334002 },
+            { "label": "Finland", "value": 219219335002 },
+            { "label": "France", "value": 219219336002 },
+            { "label": "Gabon", "value": 219219337002 },
+            { "label": "Gambia", "value": 219219338002 },
+            { "label": "Georgia", "value": 219219339002 },
+            { "label": "Germany", "value": 219219340002 },
+            { "label": "Ghana", "value": 219219341002 },
+            { "label": "Greece", "value": 219219342002 },
+            { "label": "Grenada", "value": 219219343002 },
+            { "label": "Guatemala", "value": 219219344002 },
+            { "label": "Guinea", "value": 219219345002 },
+            { "label": "Guinea-Bissau", "value": 219219346002 },
+            { "label": "Guyana", "value": 219219347002 },
+            { "label": "Haiti", "value": 219219348002 },
+            { "label": "Honduras", "value": 219219349002 },
+            { "label": "Hungary", "value": 219219350002 },
+            { "label": "Iceland", "value": 219219351002 },
+            { "label": "India", "value": 219219352002 },
+            { "label": "Indonesia", "value": 219219353002 },
+            { "label": "Iran", "value": 219219354002 },
+            { "label": "Iraq", "value": 219219355002 },
+            { "label": "Ireland", "value": 219219356002 },
+            { "label": "Israel", "value": 219219357002 },
+            { "label": "Italy", "value": 219219358002 },
+            { "label": "Jamaica", "value": 219219359002 },
+            { "label": "Japan", "value": 219219360002 },
+            { "label": "Jordan", "value": 219219361002 },
+            { "label": "Kazakhstan", "value": 219219362002 },
+            { "label": "Kenya", "value": 219219363002 },
+            { "label": "Kiribati", "value": 219219364002 },
+            { "label": "Kosovo", "value": 219219365002 },
+            { "label": "Kuwait", "value": 219219366002 },
+            { "label": "Kyrgyzstan", "value": 219219367002 },
+            { "label": "Laos", "value": 219219368002 },
+            { "label": "Latvia", "value": 219219369002 },
+            { "label": "Lebanon", "value": 219219370002 },
+            { "label": "Lesotho", "value": 219219371002 },
+            { "label": "Liberia", "value": 219219372002 },
+            { "label": "Libya", "value": 219219373002 },
+            { "label": "Liechtenstein", "value": 219219374002 },
+            { "label": "Lithuania", "value": 219219375002 },
+            { "label": "Luxembourg", "value": 219219376002 },
+            { "label": "Madagascar", "value": 219219377002 },
+            { "label": "Malawi", "value": 219219378002 },
+            { "label": "Malaysia", "value": 219219379002 },
+            { "label": "Maldives", "value": 219219380002 },
+            { "label": "Mali", "value": 219219381002 },
+            { "label": "Malta", "value": 219219382002 },
+            { "label": "Marshall Islands", "value": 219219383002 },
+            { "label": "Mauritania", "value": 219219384002 },
+            { "label": "Mauritius", "value": 219219385002 },
+            { "label": "Mexico", "value": 219219386002 },
+            { "label": "Micronesia", "value": 219219387002 },
+            { "label": "Moldova", "value": 219219388002 },
+            { "label": "Monaco", "value": 219219389002 },
+            { "label": "Mongolia", "value": 219219390002 },
+            { "label": "Montenegro", "value": 219219391002 },
+            { "label": "Morocco", "value": 219219392002 },
+            { "label": "Mozambique", "value": 219219393002 },
+            { "label": "Myanmar", "value": 219219394002 },
+            { "label": "Namibia", "value": 219219395002 },
+            { "label": "Nauru", "value": 219219396002 },
+            { "label": "Nepal", "value": 219219397002 },
+            { "label": "Netherlands", "value": 219219398002 },
+            { "label": "New Zealand", "value": 219219399002 },
+            { "label": "Nicaragua", "value": 219219400002 },
+            { "label": "Niger", "value": 219219401002 },
+            { "label": "Nigeria", "value": 219219402002 },
+            { "label": "North Korea", "value": 219219403002 },
+            { "label": "North Macedonia", "value": 219219404002 },
+            { "label": "Norway", "value": 219219405002 },
+            { "label": "Oman", "value": 219219406002 },
+            { "label": "Pakistan", "value": 219219407002 },
+            { "label": "Palau", "value": 219219408002 },
+            { "label": "Palestine", "value": 219219409002 },
+            { "label": "Panama", "value": 219219410002 },
+            { "label": "Papua New Guinea", "value": 219219411002 },
+            { "label": "Paraguay", "value": 219219412002 },
+            { "label": "Peru", "value": 219219413002 },
+            { "label": "Philippines", "value": 219219414002 },
+            { "label": "Poland", "value": 219219415002 },
+            { "label": "Portugal", "value": 219219416002 },
+            { "label": "Qatar", "value": 219219417002 },
+            { "label": "Romania", "value": 219219418002 },
+            { "label": "Russia", "value": 219219419002 },
+            { "label": "Rwanda", "value": 219219420002 },
+            { "label": "Saint Kitts and Nevis", "value": 219219421002 },
+            { "label": "Saint Lucia", "value": 219219422002 },
+            {
+              "label": "Saint Vincent and the Grenadines",
+              "value": 219219423002
+            },
+            { "label": "Samoa", "value": 219219424002 },
+            { "label": "San Marino", "value": 219219425002 },
+            { "label": "Sao Tome and Principe", "value": 219219426002 },
+            { "label": "Saudi Arabia", "value": 219219427002 },
+            { "label": "Senegal", "value": 219219428002 },
+            { "label": "Serbia", "value": 219219429002 },
+            { "label": "Seychelles", "value": 219219430002 },
+            { "label": "Sierra Leone", "value": 219219431002 },
+            { "label": "Singapore", "value": 219219432002 },
+            { "label": "Slovakia", "value": 219219433002 },
+            { "label": "Slovenia", "value": 219219434002 },
+            { "label": "Solomon Islands", "value": 219219435002 },
+            { "label": "Somalia", "value": 219219436002 },
+            { "label": "South Africa", "value": 219219437002 },
+            { "label": "South Korea", "value": 219219438002 },
+            { "label": "South Sudan", "value": 219219439002 },
+            { "label": "Spain", "value": 219219440002 },
+            { "label": "Sri Lanka", "value": 219219441002 },
+            { "label": "Sudan", "value": 219219442002 },
+            { "label": "Suriname", "value": 219219443002 },
+            { "label": "Sweden", "value": 219219444002 },
+            { "label": "Switzerland", "value": 219219445002 },
+            { "label": "Syria", "value": 219219446002 },
+            { "label": "Taiwan", "value": 219219447002 },
+            { "label": "Tajikistan", "value": 219219448002 },
+            { "label": "Tanzania", "value": 219219449002 },
+            { "label": "Thailand", "value": 219219450002 },
+            { "label": "Timor-Leste", "value": 219219451002 },
+            { "label": "Togo", "value": 219219452002 },
+            { "label": "Tonga", "value": 219219453002 },
+            { "label": "Trinidad and Tobago", "value": 219219454002 },
+            { "label": "Tunisia", "value": 219219455002 },
+            { "label": "Turkey", "value": 219219456002 },
+            { "label": "Turkmenistan", "value": 219219457002 },
+            { "label": "Tuvalu", "value": 219219458002 },
+            { "label": "Uganda", "value": 219219459002 },
+            { "label": "Ukraine", "value": 219219460002 },
+            { "label": "United Arab Emirates (UAE)", "value": 219219461002 },
+            { "label": "United Kingdom (UK)", "value": 219219462002 },
+            {
+              "label": "United States of America (USA)",
+              "value": 219219463002
+            },
+            { "label": "Uruguay", "value": 219219464002 },
+            { "label": "Uzbekistan", "value": 219219465002 },
+            { "label": "Vanuatu", "value": 219219466002 },
+            { "label": "Vatican City (Holy See)", "value": 219219467002 },
+            { "label": "Venezuela", "value": 219219468002 },
+            { "label": "Vietnam", "value": 219219469002 },
+            { "label": "Yemen", "value": 219219470002 },
+            { "label": "Zambia", "value": 219219471002 },
+            { "label": "Zimbabwe", "value": 219219472002 }
+          ]
+        }
+      ]
+    },
+    {
+      "description": null,
+      "label": "What is your expected total base pay compensation for your next role. Please do not disclose current or past compensation.",
+      "required": false,
+      "fields": [
+        { "name": "question_34846641002", "type": "input_text", "values": [] }
+      ]
+    },
+    {
+      "description": null,
+      "label": "Would you like to be considered for future opportunities at Twitch when you apply?",
+      "required": true,
+      "fields": [
+        {
+          "name": "question_34846642002",
+          "type": "multi_value_single_select",
+          "values": [
+            { "label": "Yes", "value": 1 },
+            { "label": "No", "value": 0 }
+          ]
+        }
+      ]
+    }
+  ],
+  "location_questions": [
+    {
+      "description": null,
+      "label": "Longitude",
+      "required": true,
+      "fields": [{ "name": "longitude", "type": "input_hidden", "values": [] }]
+    },
+    {
+      "description": null,
+      "label": "Latitude",
+      "required": true,
+      "fields": [{ "name": "latitude", "type": "input_hidden", "values": [] }]
+    },
+    {
+      "description": null,
+      "label": "Location",
+      "required": true,
+      "fields": [{ "name": "location", "type": "input_text", "values": [] }]
+    }
+  ]
+}
