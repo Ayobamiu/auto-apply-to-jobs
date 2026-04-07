@@ -395,6 +395,7 @@ export interface JobListing {
   /** Job lifecycle state set by the lifecycle system. */
   lifecycleStatus?: 'saved' | 'in_progress' | 'submitted';
   savedAt?: string;
+  greenhouseSlug?: string;
 }
 
 export interface JobDetailJob {

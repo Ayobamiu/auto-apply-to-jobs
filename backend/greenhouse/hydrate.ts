@@ -217,11 +217,9 @@ export async function hydrateGreenhouseJob(jobId: string, userId: string, proces
 
       const data: GreenhouseJobFull = await res.json();
       education = data.education ?? null;
-      const htmlContent = data.content ?? '';
-      const plainDescription = stripHtml(htmlContent);
 
       await updateJob('greenhouse', jobId, {
-        description: plainDescription,
+        description: data.content ?? '',
         title: data.title ?? undefined,
         url: data.absolute_url ?? undefined,
         location: data.location?.name ?? undefined,

@@ -81,17 +81,11 @@ function JobCard({ listing }: { listing: JobListing }) {
       className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 hover:border-blue-200 hover:shadow-sm no-underline text-inherit transition-all group"
     >
       {/* Logo */}
-      {listing.companyLogoUrl ? (
-        <img
-          src={listing.companyLogoUrl}
-          alt=""
-          className="w-11 h-11 rounded-xl object-contain flex-shrink-0 bg-gray-50 border border-gray-100"
-        />
-      ) : (
-        <div className="w-11 h-11 rounded-xl bg-gray-100 flex-shrink-0 flex items-center justify-center">
-          <Briefcase className="w-5 h-5 text-gray-400" />
-        </div>
-      )}
+      <img
+        src={`https://img.logo.dev/name/${listing.greenhouseSlug}?token=pk_KbY3qMJCR4-UaMWRec3YVg`}
+        alt=""
+        className="w-11 h-11 rounded-xl object-contain flex-shrink-0 bg-gray-50 border border-gray-100"
+      />
 
       {/* Info */}
       <div className="min-w-0 flex-1">

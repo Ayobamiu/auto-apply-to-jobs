@@ -115,6 +115,7 @@ type LifecycleRow = {
   applied_at: string | null;
   lifecycle_status: string | null;
   saved_at: string | null;
+  greenhouse_slug: string | null;
 };
 
 export async function getJobsByLifecycle(
@@ -137,7 +138,7 @@ export async function getJobsByLifecycle(
        j.site, j.job_id, j.url, j.title, j.company, j.location,
        j.salary_employment_type, j.company_logo_url,
        ujs.application_submitted, ujs.applied_at,
-       ujs.lifecycle_status, ujs.saved_at
+       ujs.lifecycle_status, ujs.saved_at, j.greenhouse_slug
      FROM user_job_state ujs
      JOIN jobs j ON ujs.job_ref = CONCAT(j.site, ':', j.job_id)
      WHERE ujs.user_id = $1 AND ${whereClause}
@@ -158,6 +159,7 @@ export async function getJobsByLifecycle(
     appliedAt: r.applied_at ?? undefined,
     lifecycleStatus: r.lifecycle_status ?? undefined,
     savedAt: r.saved_at ?? undefined,
+    greenhouseSlug: r.greenhouse_slug ?? undefined,
   }));
 }
 

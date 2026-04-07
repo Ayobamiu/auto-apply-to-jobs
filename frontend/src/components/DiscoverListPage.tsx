@@ -284,17 +284,11 @@ export function DiscoverListPage() {
                       className="block p-5 no-underline text-inherit focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-t-2xl"
                     >
                       <div className="flex items-start gap-3">
-                        {listing.companyLogoUrl ? (
-                          <img
-                            src={listing.companyLogoUrl}
-                            alt=""
-                            className="w-11 h-11 rounded-xl object-contain flex-shrink-0 bg-gray-50 border border-gray-100"
-                          />
-                        ) : (
-                          <div className="w-11 h-11 rounded-xl bg-gray-100 flex-shrink-0 flex items-center justify-center">
-                            <Building2 className="w-5 h-5 text-gray-400" />
-                          </div>
-                        )}
+                        <img
+                          src={`https://img.logo.dev/name/${listing.greenhouseSlug}?token=pk_KbY3qMJCR4-UaMWRec3YVg`}
+                          alt=""
+                          className="w-11 h-11 rounded-xl object-contain flex-shrink-0 bg-gray-50 border border-gray-100"
+                        />
                         <div className="min-w-0 flex-1">
                           <h2 className="font-semibold text-[14px] text-gray-900 leading-snug">
                             {listing.title || "Untitled"}

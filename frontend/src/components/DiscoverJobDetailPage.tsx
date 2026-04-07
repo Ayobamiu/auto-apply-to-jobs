@@ -539,17 +539,11 @@ export function DiscoverJobDetailPage() {
             <>
               {/* Job header */}
               <div className="flex items-start gap-3">
-                {detail.job.companyLogoUrl ? (
-                  <img
-                    src={detail.job.companyLogoUrl}
-                    alt=""
-                    className="w-12 h-12 rounded-xl object-contain flex-shrink-0 bg-gray-50 border border-gray-100"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-xl bg-gray-100 flex-shrink-0 flex items-center justify-center">
-                    <Briefcase className="w-6 h-6 text-gray-400" />
-                  </div>
-                )}
+                <img
+                  src={`https://img.logo.dev/name/${detail.job.greenhouseSlug}?token=pk_KbY3qMJCR4-UaMWRec3YVg`}
+                  alt=""
+                  className="w-12 h-12 rounded-xl object-contain flex-shrink-0 bg-gray-50 border border-gray-100"
+                />
                 <div className="min-w-0 flex-1">
                   <h1 className="text-[15px] font-semibold text-gray-900 leading-snug">
                     {detail.job.title || "Untitled"}
