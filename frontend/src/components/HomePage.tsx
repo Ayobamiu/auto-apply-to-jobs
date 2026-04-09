@@ -84,17 +84,17 @@ export function HomePage() {
               strokeLinejoin="round"
             />
           </svg>
-          Built for students
+          Built for Handshake students
         </div>
 
         <h1 className="text-5xl font-semibold text-gray-950 leading-tight tracking-tight mb-4">
-          Your job applications,{" "}
-          <span className="text-blue-600">on autopilot</span>
+          Found a job on Handshake?{" "}
+          <span className="text-blue-600">Let Merit apply for you.</span>
         </h1>
 
         <p className="text-base text-gray-500 leading-relaxed mb-8 max-w-lg mx-auto">
-          Merit finds jobs you'll love, tailors your resume for each one, fills
-          every form, and submits — automatically.
+          Paste any Handshake job link. Merit tailors your resume, fills every
+          form, and submits the application — automatically.
         </p>
 
         <div className="flex items-center justify-center gap-3">
@@ -104,7 +104,6 @@ export function HomePage() {
           >
             Get started free
           </button>
-
           <a
             href="#how-it-works"
             className="text-sm text-gray-600 hover:text-gray-800 px-6 py-2.5 rounded-xl border border-gray-200 hover:border-gray-300 transition-colors"
@@ -117,7 +116,6 @@ export function HomePage() {
       {/* Demo GIF */}
       <div className="max-w-4xl mx-auto px-6 mb-24">
         <div className="border border-gray-200 rounded-2xl overflow-hidden">
-          {/* Browser chrome */}
           <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 flex items-center gap-2">
             <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
             <div className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
@@ -126,11 +124,10 @@ export function HomePage() {
               <span className="text-xs text-gray-400">merithq.io</span>
             </div>
           </div>
-          {/* GIF */}
           <div className="bg-gray-50">
             <img
               src={animation}
-              alt="Merit in action — resume tailoring and auto-submit"
+              alt="Merit in action — paste a Handshake link and auto-apply"
               className="w-full h-auto block"
             />
           </div>
@@ -143,7 +140,7 @@ export function HomePage() {
           How it works
         </p>
         <h2 className="text-3xl font-semibold text-gray-950 text-center tracking-tight mb-3">
-          Apply to more jobs in less time
+          Apply in seconds, not hours
         </h2>
         <p className="text-sm text-gray-500 text-center mb-12">
           Three steps. No copying and pasting. No repetitive forms.
@@ -153,18 +150,18 @@ export function HomePage() {
           {[
             {
               num: "1",
-              title: "Connect your account",
-              desc: "Link your job platform account and upload your resume. Merit learns your profile.",
+              title: "Upload your resume",
+              desc: "Merit learns your profile and uses it to tailor every application to the job.",
             },
             {
               num: "2",
-              title: "Find a job you want",
-              desc: "Browse jobs and click any listing to see a tailored resume generated instantly.",
+              title: "Paste a Handshake link",
+              desc: "Copy the link from any Handshake job and paste it into Merit. That's it.",
             },
             {
               num: "3",
               title: "Merit applies for you",
-              desc: "Forms are filled automatically. Review, approve, and Merit submits the application.",
+              desc: "Your resume is tailored, forms are filled, and the application is submitted automatically.",
             },
           ].map((step) => (
             <div
@@ -209,9 +206,9 @@ export function HomePage() {
             <p className="text-xs text-gray-400 mb-5">No credit card needed</p>
             <ul className="space-y-2.5 mb-6">
               {[
-                "Unlimited job search",
-                "Automatically fill out job applications for you",
-                "Tailored resume per job",
+                "Auto-fill job application forms",
+                "Generate resume and cover letter",
+                "Review and download documents",
               ].map((f) => (
                 <li
                   key={f}
@@ -244,11 +241,7 @@ export function HomePage() {
               Everything in Free, plus:
             </p>
             <ul className="space-y-2.5 mb-6">
-              {[
-                "Tailored resume per job",
-                "Auto-submit applications",
-                "Cover letter generation",
-              ].map((f) => (
+              {["Auto-submit applications"].map((f) => (
                 <li
                   key={f}
                   className="flex items-center gap-2 text-sm text-gray-600"
