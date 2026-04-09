@@ -35,18 +35,17 @@ export interface ProbeResultExtended extends ProbeResult {
 export async function probeRequiredSections(jobUrl: string, userId: string): Promise<ProbeResultExtended> {
   const normalized = toHandshakeJobDetailsUrl(jobUrl);
   const jobId = getJobIdFromUrl(normalized);
+  const site = getJobSiteFromUrl(normalized) ?? 'handshake';
 
   if (jobId) {
-    const cached = await getApplyFormSchema(jobId);
-    // If cached present sections are found, use them
+    const cached = await getApplyFormSchema(userId, site, jobId);
     if (cached && Array.isArray(cached.presentSections) && cached.presentSections.length > 0) {
       const keys = (cached.presentSections as Array<{ key: SectionKey }>).map((s) => s.key);
 
-      const cachedSite = getJobSiteFromUrl(normalized) ?? 'handshake';
-      const cachedJobRef = toJobRef(cachedSite, jobId);
+      const jobRef = toJobRef(site, jobId);
       let hasDynamicFormData = false;
-      if (cachedJobRef) {
-        const existingForm = await getApplicationForm(userId, cachedJobRef);
+      if (jobRef) {
+        const existingForm = await getApplicationForm(userId, jobRef);
         hasDynamicFormData = !!existingForm;
       }
 
@@ -90,6 +89,7 @@ export async function probeRequiredSections(jobUrl: string, userId: string): Pro
     );
 
     const presentSections = await getPresentSectionConfigs(page, applyModal);
+    console.log({ presentSections });
     const keys = presentSections.map((s) => s.key);
 
     if (jobId) {
@@ -99,12 +99,12 @@ export async function probeRequiredSections(jobUrl: string, userId: string): Pro
       } catch {
         schema = { sections: [], capturedAt: new Date().toISOString() };
       }
-      await saveApplyFormSchema(jobId, { ...schema, presentSections });
+      console.log({ presentSections, schema });
+      await saveApplyFormSchema(userId, site, jobId, { ...schema, presentSections });
     }
 
     // Run dynamic form extraction pipeline
     let dynamicForm: ProcessDynamicFormResult | undefined;
-    const site = getJobSiteFromUrl(normalized) ?? 'handshake';
     const jid = jobId ?? getJobIdFromUrl(normalized) ?? '';
     const jobRef = toJobRef(site, jid);
 

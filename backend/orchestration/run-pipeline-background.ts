@@ -104,6 +104,7 @@ export async function resumePipelineAfterApproval(jobId: string): Promise<void> 
         ? (job.artifacts as Record<string, unknown>).requiredSections
         : undefined;
     const requiredSections = Array.isArray(rawRequired) ? (rawRequired as string[]) : ['resume', 'coverLetter'];
+
     const needCover = requiredSections.includes('coverLetter');
     const needTranscript = requiredSections.includes('transcript');
 

@@ -137,23 +137,21 @@ export async function runPipelineForJob(
   }
 
   const jobHasExternalApplicationOnHandshake = isHandshake && job.applyType === 'apply_externally';
-
-
   const siteFromUrl = getJobSiteFromUrl(jobUrl);
   const jobIdFromUrl = getJobIdFromUrl(jobUrl);
+  // Hoisted so PathA's probe result persists for PathB (avoids double-probe + stale cache bug)
+  let earlyProbeResult: ProbeResultExtended | null = null;
 
   // Artifact reuse: if we already have resume (and cover when required), skip generation and go straight to awaiting_approval
-  // skipp this for handshake:apply_externally
   if (siteFromUrl && jobIdFromUrl && options.jobId && !jobHasExternalApplicationOnHandshake) {
     onPhase?.('Checking required documents...');
     try {
       let requiredSectionsForReuse: SectionKey[] = [];
-      let probeResult: ProbeResultExtended | null = null;
       let needCover: boolean = false;
 
       if (isHandshake) {
-        probeResult = await probeRequiredSections(jobUrl, userId);
-        requiredSectionsForReuse = probeResult.requiredSections;
+        earlyProbeResult = await probeRequiredSections(jobUrl, userId);
+        requiredSectionsForReuse = earlyProbeResult.requiredSections;
         const unsupported = requiredSectionsForReuse.filter((k) => !SUPPORTED_SECTION_KEYS.includes(k as SectionKey));
         if (unsupported.length > 0) {
           throw new Error(UNSUPPORTED_SECTIONS_MESSAGE);
@@ -238,7 +236,8 @@ export async function runPipelineForJob(
     console.log('Step 2: Probe required attachment sections...');
     const endProbe = startPhase('Step 2: Probe apply modal');
     try {
-      const probeResult = await probeRequiredSections(jobUrl, userId);
+      // Reuse PathA's probe result if available — avoids double-probe + stale cache
+      const probeResult = earlyProbeResult ?? await probeRequiredSections(jobUrl, userId);
       requiredSections = probeResult.requiredSections;
       const unsupported = requiredSections.filter((k) => !SUPPORTED_SECTION_KEYS.includes(k as SectionKey));
       if (unsupported.length > 0) {

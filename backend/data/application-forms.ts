@@ -46,7 +46,7 @@ export async function upsertApplicationForm(record: ApplicationFormRecord): Prom
     `INSERT INTO application_forms (user_id, job_ref, site, schema, classified_fields, answers, status)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
      ON CONFLICT (user_id, job_ref) DO UPDATE SET
-       schema = EXCLUDED.schema,
+       schema = application_forms.schema || (EXCLUDED.schema - 'presentSections'),
        classified_fields = EXCLUDED.classified_fields,
        answers = EXCLUDED.answers,
        status = EXCLUDED.status,

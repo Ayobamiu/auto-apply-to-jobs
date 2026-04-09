@@ -209,13 +209,14 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
     endModal();
 
     const jobId = getJobIdFromUrl(jobUrl);
+    const site = getJobSiteFromUrl(jobUrl) ?? 'handshake';
     let schema: Record<string, unknown>;
     try {
       schema = (await captureApplyFormSchema(page, applyModal)) as unknown as Record<string, unknown>;
     } catch (_) {
       schema = { sections: [], capturedAt: new Date().toISOString() };
     }
-    const saved = jobId ? await getApplyFormSchema(jobId) : null;
+    const saved = jobId ? await getApplyFormSchema(userId, site, jobId) : null;
 
     const doSubmit =
       options.submit !== undefined
@@ -243,7 +244,7 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
       presentSections = await getPresentSectionConfigs(page, applyModal);
     }
     if (jobId) {
-      await saveApplyFormSchema(jobId, { ...schema, presentSections });
+      await saveApplyFormSchema(userId, site, jobId, { ...schema, presentSections });
     }
 
     const endAttach = startPhase('Apply: attach transcript + resume + cover');
@@ -274,8 +275,8 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
         } else {
           if (usedCachedPresentSections && jobId) {
             const fresh = await getPresentSectionConfigs(page, applyModal);
-            const current = await getApplyFormSchema(jobId);
-            if (current) await saveApplyFormSchema(jobId, { ...current, presentSections: fresh });
+            const current = await getApplyFormSchema(userId, site, jobId);
+            if (current) await saveApplyFormSchema(userId, site, jobId, { ...current, presentSections: fresh });
             const retryConfig = fresh.find((f) => f.key === config.key);
             if (retryConfig) {
               try {
@@ -296,7 +297,6 @@ export async function runHandshakeApply(jobUrl: string, options: RunHandshakeApp
     endAttach();
 
     // ── Upload written document PDF if available ──
-    const site = getJobSiteFromUrl(jobUrl) ?? 'handshake';
     const jid = getJobIdFromUrl(jobUrl) ?? '';
     const jobRef = toJobRef(site, jid);
 
