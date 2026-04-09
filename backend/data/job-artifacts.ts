@@ -268,6 +268,11 @@ export async function saveWrittenDocumentForJob(
   const validated = validateWrittenDocumentContent(content);
   console.log('Validated written document', { validated });
   await ensureDataTables();
+  // Evict stale artifact_id from a different job (same label hash → same id across jobs)
+  await pool.query(
+    `DELETE FROM job_artifacts WHERE artifact_id = $1 AND NOT (user_id = $2 AND job_ref = $3 AND artifact_type = $4)`,
+    [artifactId, uid, jobRef, 'written_document'],
+  );
   await pool.query(
     `INSERT INTO job_artifacts (user_id, job_ref, artifact_type, artifact_id, content, updated_at)
      VALUES ($1, $2, $3, $4, $5::jsonb, now())

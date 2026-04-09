@@ -14,10 +14,10 @@ import { fileURLToPath, pathToFileURL } from 'url';
 import { dirname, resolve } from 'path';
 import { isAppError } from '../shared/errors.js';
 import { preflightForPipeline } from '../shared/preflight.js';
-import { probeRequiredSections, ProbeResultExtended } from '../shared/probe-apply-modal.js';
 import { generateCoverLetter } from '../agents/resume_generator_agent/cover-letter.js';
 import { generateWrittenDocument } from '../agents/resume_generator_agent/written-document.js';
-import { runHandshakeApply } from '../agents/auto_apply_agent/handshake-apply-real.js';
+import { extractHandshakeJobForm, runHandshakeApply } from '../handshake/apply.js';
+import type { HandshakeFormExtractionResult } from '../handshake/apply.js';
 import { getApplicationStatus } from '../agents/job_scraper_agent/index.js';
 import { startPhase, startTotal, isTimingEnabled } from '../shared/timing.js';
 import { setPipelineJobAwaitingApproval } from '../data/pipeline-jobs.js';
@@ -139,8 +139,8 @@ export async function runPipelineForJob(
   const jobHasExternalApplicationOnHandshake = isHandshake && job.applyType === 'apply_externally';
   const siteFromUrl = getJobSiteFromUrl(jobUrl);
   const jobIdFromUrl = getJobIdFromUrl(jobUrl);
-  // Hoisted so PathA's probe result persists for PathB (avoids double-probe + stale cache bug)
-  let earlyProbeResult: ProbeResultExtended | null = null;
+  // Hoisted so PathA's extraction result persists for Step 2 (avoids double-extraction)
+  let earlyExtractionResult: HandshakeFormExtractionResult | null = null;
 
   // Artifact reuse: if we already have resume (and cover when required), skip generation and go straight to awaiting_approval
   if (siteFromUrl && jobIdFromUrl && options.jobId && !jobHasExternalApplicationOnHandshake) {
@@ -150,8 +150,8 @@ export async function runPipelineForJob(
       let needCover: boolean = false;
 
       if (isHandshake) {
-        earlyProbeResult = await probeRequiredSections(jobUrl, userId);
-        requiredSectionsForReuse = earlyProbeResult.requiredSections;
+        earlyExtractionResult = await extractHandshakeJobForm(jobUrl, userId);
+        requiredSectionsForReuse = earlyExtractionResult.requiredSections;
         const unsupported = requiredSectionsForReuse.filter((k) => !SUPPORTED_SECTION_KEYS.includes(k as SectionKey));
         if (unsupported.length > 0) {
           throw new Error(UNSUPPORTED_SECTIONS_MESSAGE);
@@ -233,12 +233,11 @@ export async function runPipelineForJob(
     }
     endProbe();
   } else if (!jobHasExternalApplicationOnHandshake) {
-    console.log('Step 2: Probe required attachment sections...');
-    const endProbe = startPhase('Step 2: Probe apply modal');
+    console.log('Step 2: Determine required sections (Handshake form extraction)...');
+    const endProbe = startPhase('Step 2: Handshake form extraction');
     try {
-      // Reuse PathA's probe result if available — avoids double-probe + stale cache
-      const probeResult = earlyProbeResult ?? await probeRequiredSections(jobUrl, userId);
-      requiredSections = probeResult.requiredSections;
+      const extractionResult = earlyExtractionResult ?? await extractHandshakeJobForm(jobUrl, userId);
+      requiredSections = extractionResult.requiredSections;
       const unsupported = requiredSections.filter((k) => !SUPPORTED_SECTION_KEYS.includes(k as SectionKey));
       if (unsupported.length > 0) {
         throw new Error(

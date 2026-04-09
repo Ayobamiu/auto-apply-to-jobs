@@ -10,7 +10,7 @@ import { getJobIdFromUrl, getJobSiteFromUrl } from '../shared/job-from-url.js';
 import { setJobLifecycleStatus, toJobRef } from '../data/user-job-state.js';
 import { ensureResumePdfFromDb } from '../agents/resume_generator_agent/export-pdf.js';
 import { ensureCoverLetterPdfFromDb } from '../agents/resume_generator_agent/cover-letter.js';
-import { runHandshakeApply } from '../agents/auto_apply_agent/handshake-apply-real.js';
+import { runHandshakeApply } from '../handshake/apply.js';
 import { getJob } from '../data/jobs.js';
 import { getResumeForJob, getCoverLetterForJob } from '../data/job-artifacts.js';
 import { getTranscriptPath } from '../shared/config.js';
