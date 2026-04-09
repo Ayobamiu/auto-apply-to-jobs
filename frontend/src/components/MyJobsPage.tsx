@@ -74,6 +74,13 @@ function EmptyState({ tab }: { tab: LifecycleTab }) {
 
 function JobCard({ listing }: { listing: JobListing }) {
   const status = listing.lifecycleStatus;
+  let logoUrl: string | null = null;
+  if (listing.site === "greenhouse" && listing.greenhouseSlug) {
+    logoUrl = `https://img.logo.dev/name/${listing.greenhouseSlug}?token=pk_KbY3qMJCR4-UaMWRec3YVg`;
+  }
+  if (!logoUrl && listing.companyLogoUrl) {
+    logoUrl = listing.companyLogoUrl;
+  }
 
   return (
     <Link
@@ -81,11 +88,17 @@ function JobCard({ listing }: { listing: JobListing }) {
       className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 hover:border-blue-200 hover:shadow-sm no-underline text-inherit transition-all group"
     >
       {/* Logo */}
-      <img
-        src={`https://img.logo.dev/name/${listing.greenhouseSlug}?token=pk_KbY3qMJCR4-UaMWRec3YVg`}
-        alt=""
-        className="w-11 h-11 rounded-xl object-contain flex-shrink-0 bg-gray-50 border border-gray-100"
-      />
+      {logoUrl ? (
+        <img
+          src={logoUrl}
+          alt=""
+          className="w-12 h-12 rounded-xl object-contain flex-shrink-0 bg-gray-50 border border-gray-100"
+        />
+      ) : (
+        <div className="w-12 h-12 rounded-xl bg-gray-100 flex-shrink-0 flex items-center justify-center">
+          <Briefcase className="w-6 h-6 text-gray-400" />
+        </div>
+      )}
 
       {/* Info */}
       <div className="min-w-0 flex-1">

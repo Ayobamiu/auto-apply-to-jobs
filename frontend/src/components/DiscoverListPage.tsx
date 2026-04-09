@@ -275,6 +275,13 @@ export function DiscoverListPage() {
                 | { name: string }[]
                 | undefined;
 
+              let logoUrl: string | null = null;
+              if (listing.site === "greenhouse" && listing.greenhouseSlug) {
+                logoUrl = `https://img.logo.dev/name/${listing.greenhouseSlug}?token=pk_KbY3qMJCR4-UaMWRec3YVg`;
+              }
+              if (!logoUrl && listing.companyLogoUrl) {
+                logoUrl = listing.companyLogoUrl;
+              }
               return (
                 <li key={ref}>
                   <div className="group rounded-2xl border border-gray-100 bg-white hover:border-blue-200 hover:shadow-md transition-all duration-150">
@@ -284,11 +291,17 @@ export function DiscoverListPage() {
                       className="block p-5 no-underline text-inherit focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-t-2xl"
                     >
                       <div className="flex items-start gap-3">
-                        <img
-                          src={`https://img.logo.dev/name/${listing.greenhouseSlug}?token=pk_KbY3qMJCR4-UaMWRec3YVg`}
-                          alt=""
-                          className="w-11 h-11 rounded-xl object-contain flex-shrink-0 bg-gray-50 border border-gray-100"
-                        />
+                        {logoUrl ? (
+                          <img
+                            src={logoUrl}
+                            alt=""
+                            className="w-12 h-12 rounded-xl object-contain flex-shrink-0 bg-gray-50 border border-gray-100"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-xl bg-gray-100 flex-shrink-0 flex items-center justify-center">
+                            <Briefcase className="w-6 h-6 text-gray-400" />
+                          </div>
+                        )}
                         <div className="min-w-0 flex-1">
                           <h2 className="font-semibold text-[14px] text-gray-900 leading-snug">
                             {listing.title || "Untitled"}

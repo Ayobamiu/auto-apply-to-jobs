@@ -36,6 +36,7 @@ import { WrittenDocsReviewPanel } from "./WrittenDocsReviewPanel";
 import dayjs from "dayjs";
 import { useSubscription } from "../subscription/useSubscription";
 import { message, Spin } from "antd";
+import ReactMarkdown from "react-markdown";
 
 type DocTab = "resume" | "cover" | "form" | "written-doc" | null;
 
@@ -488,6 +489,17 @@ export function DiscoverJobDetailPage() {
     txt.innerHTML = html;
     return txt.value;
   }
+  function isHtml(str: string): boolean {
+    return /<[a-z][\s\S]*>/i.test(str);
+  }
+  // if site is greenhouse and there is greenhouseSlug, use logo.dev to get the logo, else if detail?.job?.companyLogoUrl is provided, use it, else return null
+  let logoUrl: string | null = null;
+  if (detail?.job?.site === "greenhouse" && detail?.job?.greenhouseSlug) {
+    logoUrl = `https://img.logo.dev/name/${detail.job.greenhouseSlug}?token=pk_KbY3qMJCR4-UaMWRec3YVg`;
+  }
+  if (!logoUrl && detail?.job?.companyLogoUrl) {
+    logoUrl = detail?.job?.companyLogoUrl;
+  }
 
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-56px)]">
@@ -539,11 +551,17 @@ export function DiscoverJobDetailPage() {
             <>
               {/* Job header */}
               <div className="flex items-start gap-3">
-                <img
-                  src={`https://img.logo.dev/name/${detail.job.greenhouseSlug}?token=pk_KbY3qMJCR4-UaMWRec3YVg`}
-                  alt=""
-                  className="w-12 h-12 rounded-xl object-contain flex-shrink-0 bg-gray-50 border border-gray-100"
-                />
+                {logoUrl ? (
+                  <img
+                    src={logoUrl}
+                    alt=""
+                    className="w-12 h-12 rounded-xl object-contain flex-shrink-0 bg-gray-50 border border-gray-100"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-xl bg-gray-100 flex-shrink-0 flex items-center justify-center">
+                    <Briefcase className="w-6 h-6 text-gray-400" />
+                  </div>
+                )}
                 <div className="min-w-0 flex-1">
                   <h1 className="text-[15px] font-semibold text-gray-900 leading-snug">
                     {detail.job.title || "Untitled"}
@@ -767,12 +785,20 @@ export function DiscoverJobDetailPage() {
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                     Job description
                   </p>
-                  <div
-                    className="prose prose-sm max-w-none text-gray-700"
-                    dangerouslySetInnerHTML={{
-                      __html: decodeHtml(detail.job.description),
-                    }}
-                  />
+                  <div>
+                    {isHtml(detail.job.description) ? (
+                      <div
+                        className="prose prose-sm max-w-none text-gray-700"
+                        dangerouslySetInnerHTML={{
+                          __html: decodeHtml(detail.job.description),
+                        }}
+                      />
+                    ) : (
+                      <div className="prose prose-sm max-w-none text-gray-700">
+                        <ReactMarkdown>{detail.job.description}</ReactMarkdown>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
