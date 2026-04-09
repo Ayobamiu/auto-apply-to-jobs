@@ -99,11 +99,6 @@ export function OnboardingChecklist() {
                     className={`text-sm font-medium leading-tight ${task.done ? "line-through text-gray-400" : isNext ? "text-emerald-700" : "text-gray-800"}`}
                   >
                     {task.label}
-                    {task.optional && (
-                      <span className="ml-1.5 text-[10px] font-normal text-gray-400 border border-gray-200 rounded px-1 py-0.5 align-middle">
-                        Optional
-                      </span>
-                    )}
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
                     {task.description}
