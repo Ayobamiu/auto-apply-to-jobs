@@ -151,9 +151,9 @@ export async function postUserResume(req: Request, res: Response): Promise<void>
   try {
     const json = await extractResumeJsonFromText(resumeText);
     await saveBaseResume(req.userId, json);
-    // dont update profile if it already exists
+    // dont update profile if it already exists and has a name or email
     const profile = await getProfile(req.userId);
-    if (!profile) {
+    if (!profile.name || !profile.email) {
       const profileUpdate = jsonResumeToProfile(json);
       if (profileUpdate.name || profileUpdate.email) {
         await updateProfile(profileUpdate, req.userId);
