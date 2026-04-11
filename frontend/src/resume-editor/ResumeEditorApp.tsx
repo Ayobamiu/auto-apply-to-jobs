@@ -8,6 +8,8 @@ import {
   Eye,
   Pencil,
   Download,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 import { useAiEditor } from "../hooks/useAiEditor";
 import { ReviewBar } from "../components/ReviewBar";
@@ -97,6 +99,10 @@ export function ResumeEditorApp({
     discardOne,
     discardAll,
     isSuccess,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   } = useAiEditor({ initialResume: initial, onSave: persistResume });
 
   useEffect(() => {
@@ -168,6 +174,24 @@ export function ResumeEditorApp({
   useEffect(() => {
     if (selectedNode?.type === "highlight") setAiOpen(true);
   }, [selectedNode]);
+
+  // Undo/Redo keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (isSubmitted) return;
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+      if (mod && e.key === "z" && e.shiftKey) {
+        e.preventDefault();
+        redo();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [undo, redo, isSubmitted]);
 
   const handleGenerate = async () => {
     if (!aiInput.trim()) return;
@@ -259,6 +283,26 @@ export function ResumeEditorApp({
                 </>
               )}
             </button>
+            {!isSubmitted && (
+              <>
+                <button
+                  onClick={undo}
+                  disabled={!canUndo}
+                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="Undo (Ctrl+Z)"
+                >
+                  <Undo2 size={14} />
+                </button>
+                <button
+                  onClick={redo}
+                  disabled={!canRedo}
+                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="Redo (Ctrl+Shift+Z)"
+                >
+                  <Redo2 size={14} />
+                </button>
+              </>
+            )}
             {mode === "preview" && (
               <button
                 onClick={handleDownloadResume}

@@ -607,9 +607,10 @@ export async function getHandshakeSessionStatus(): Promise<HandshakeSessionStatu
 }
 
 export interface Patch {
-  op: 'add' | 'replace' | 'remove';
+  op: 'add' | 'replace' | 'remove' | 'move' | 'copy';
   path: string;
   value?: unknown;
+  from?: string;
   reason?: string;
 }
 

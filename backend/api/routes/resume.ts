@@ -17,10 +17,11 @@ const response_format: OpenAI.Chat.Completions.ChatCompletionCreateParams['respo
                     items: {
                         type: "object",
                         additionalProperties: false,
-                        required: ["op", "path", "value"],
+                        required: ["op", "path"],
                         properties: {
-                            op: { type: "string", enum: ["replace", "add", "remove"] },
+                            op: { type: "string", enum: ["replace", "add", "remove", "move", "copy"] },
                             path: { type: "string" },
+                            from: { type: "string", description: "Source path for move/copy operations (RFC 6902)" },
                             value: {
                                 anyOf: [
                                     { type: "string" },
@@ -87,6 +88,11 @@ Array indices must be numeric.
 replace → update an existing value
 add → insert new array items or fields
 remove → delete fields or array items
+move → reorder items or relocate fields (requires "from" path, no "value" needed)
+copy → duplicate a value from one path to another (requires "from" path, no "value" needed)
+
+Example: To move work experience at index 2 to the top, use:
+{ "op": "move", "from": "/work/2", "path": "/work/0" }
 
 ### RESUME RULES
 

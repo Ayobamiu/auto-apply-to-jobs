@@ -27,7 +27,11 @@ export function ReviewBar({
       ? "Add"
       : current.op === "remove"
         ? "Remove"
-        : "Update";
+        : current.op === "move"
+          ? "Move"
+          : current.op === "copy"
+            ? "Copy"
+            : "Update";
   const label = pathToReviewLabel(current.path);
 
   const prev = () => setViewIndex((idx - 1 + total) % total);

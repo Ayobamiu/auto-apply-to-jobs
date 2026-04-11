@@ -7,10 +7,12 @@ import get from "lodash/get";
 // ---------------------------------------------------------------------------
 
 export interface ProposedPatch {
-  op: "replace" | "add" | "remove";
+  op: "replace" | "add" | "remove" | "move" | "copy";
   path: string; // JSON Pointer (RFC 6901), e.g. /work/0/highlights/0
   value: unknown;
   original: unknown; // snapshot of the current value before applying
+  from?: string; // Source path for move/copy operations
+  fromOriginal?: unknown; // snapshot of the value at "from" before applying
 }
 
 // ---------------------------------------------------------------------------
@@ -126,3 +128,46 @@ export const setResumePath = (resume: any, path: string, value: any) => {
   set(newResume, path, value);
   return newResume;
 };
+
+// ---------------------------------------------------------------------------
+// Sub-array add patches (e.g., /work/0/highlights/3)
+// ---------------------------------------------------------------------------
+
+/** Returns 'add' patches that append items to a nested array (e.g. "work.0.highlights"). */
+export function getAddPatchesForSubArray(parentPath: string, patches: ProposedPatch[]): ProposedPatch[] {
+  const norm = normalizePath(parentPath);
+  return patches.filter(p => {
+    if (p.op !== "add") return false;
+    const pNorm = jsonPointerToDot(p.path);
+    const parts = pNorm.split(".");
+    const parentParts = norm.split(".");
+    if (parts.length !== parentParts.length + 1) return false;
+    return parts.slice(0, -1).join(".") === norm && /^\d+$/.test(parts[parts.length - 1]);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Remove patch detection
+// ---------------------------------------------------------------------------
+
+/** Returns remove patches that target a specific path or items under it. */
+export function getRemovePatchForPath(path: string, patches: ProposedPatch[]): ProposedPatch | undefined {
+  const norm = normalizePath(path);
+  return patches.find(p => p.op === "remove" && jsonPointerToDot(p.path) === norm);
+}
+
+// ---------------------------------------------------------------------------
+// Move patch detection
+// ---------------------------------------------------------------------------
+
+/** Returns move patches where the given path is the source ("from"). */
+export function getMovePatchFrom(path: string, patches: ProposedPatch[]): ProposedPatch | undefined {
+  const norm = normalizePath(path);
+  return patches.find(p => p.op === "move" && p.from && jsonPointerToDot(p.from) === norm);
+}
+
+/** Returns move patches where the given path is the destination ("path"). */
+export function getMovePatchTo(path: string, patches: ProposedPatch[]): ProposedPatch | undefined {
+  const norm = normalizePath(path);
+  return patches.find(p => p.op === "move" && jsonPointerToDot(p.path) === norm);
+}
