@@ -188,37 +188,23 @@ export async function scrapeJobFromPage(page: Page): Promise<ScrapedJob> {
 
   let description = '';
 
-  // Prefer text/DOM paths first. Turndown on full job-details HTML can take minutes on small CPUs.
-  const descriptionBlock = page.locator('.cSDQep').first();
+  // Primary: find the "Job description" heading, then grab its parent's next sibling.
+  // This is stable because it relies on semantic text, not styled-components class hashes.
   try {
-    await descriptionBlock.waitFor({ state: 'attached', timeout: 3000 });
-    await descriptionBlock.scrollIntoViewIfNeeded().catch(() => { });
-    await new Promise((r) => setTimeout(r, 300));
-    const raw = await descriptionBlock.evaluate((el: Element) => el?.textContent ?? '');
-    description = (
-      raw ||
-      (await descriptionBlock.innerText({ timeout: locTimeout }).catch(() => null))?.trim() ||
-      ''
-    ).trim();
-    description = description.replace(/\s*(More|Less)\s*$/gm, '').trim();
+    const descHeading = page.locator('h3').filter({ hasText: 'Job description' }).first();
+    await descHeading.waitFor({ state: 'attached', timeout: 4000 });
+    const raw = await descHeading.evaluate((h3: Element) => {
+      const wrapper = h3.parentElement;
+      if (!wrapper) return '';
+      const contentDiv = wrapper.nextElementSibling;
+      if (!contentDiv) return '';
+      return contentDiv.textContent ?? '';
+    });
+    description = (raw || '').trim().replace(/\s*(More|Less)\s*$/gm, '').trim();
+    if (description.length > 15000) description = description.slice(0, 15000);
   } catch (_) { }
 
-  if (!description || description.length < 100) {
-    try {
-      const fromViewMore = await page.evaluate(() => {
-        const btn = document.querySelector('button.view-more-button');
-        if (!btn) return '';
-        const parent = btn.parentElement;
-        if (!parent) return '';
-        const container = parent.previousElementSibling || parent.firstElementChild;
-        if (!container) return '';
-        const text = container.textContent ?? '';
-        return text.replace(/\s*(More|Less)\s*$/gm, '').trim();
-      });
-      if (fromViewMore && fromViewMore.length > 100) description = fromViewMore.slice(0, 15000);
-    } catch (_) { }
-  }
-
+  // Fallback: try data-hook or class-based selectors
   if (!description || description.length < 100) {
     description =
       (await page
@@ -228,25 +214,6 @@ export async function scrapeJobFromPage(page: Page): Promise<ScrapedJob> {
         .catch(() => null))
         ?.trim()
         ?.slice(0, 12000) || '';
-  }
-
-  if (!description || description.length < 100) {
-    const jobDetailsPage = page.locator('[data-hook="job-details-page"]').first();
-    try {
-      await jobDetailsPage.waitFor({ state: 'attached', timeout: 4000 });
-      const htmlFromDetailsPage = await jobDetailsPage.evaluate((root: Element) => {
-        const container = root.firstElementChild;
-        if (!container) return root.innerHTML;
-        const children = Array.from(container.children);
-        if (children.length >= 2) {
-          children[children.length - 1].remove();
-          children[children.length - 2].remove();
-        }
-        return root.innerHTML;
-      });
-      description = htmlToMarkdown(htmlFromDetailsPage).replace(/\s*(More|Less)\s*$/gm, '').trim();
-      if (description.length > 500) description = description.slice(0, 20000);
-    } catch (_) { }
   }
 
   return { title, company, description, url, applyType, applicationSubmitted, jobClosed, ...(appliedAt && { appliedAt }) };
@@ -296,13 +263,14 @@ export async function getJobFromUrl(jobUrl: string, options: GetJobFromUrlOption
 
     const jobIdMatch = normalized.match(/job-search\/(\d+)/) || normalized.match(/\/jobs\/(\d+)/);
     const jid = jobIdMatch ? jobIdMatch[1] : null;
-    const hasDescriptionBlock = await page.locator('.cSDQep').first().waitFor({ state: 'attached', timeout: 8000 }).then(() => true).catch(() => false);
-    if (!hasDescriptionBlock && jid) {
-      const jobLink = page.locator(`a[href*="${jid}"]`).first();
-      if (await jobLink.count() > 0) {
-        await jobLink.click();
-        await new Promise((r) => setTimeout(r, 3000));
-      }
+    const isOnDetailPage = await page.locator('h3').filter({ hasText: 'Job description' }).first()
+      .waitFor({ state: 'attached', timeout: 8000 }).then(() => true).catch(() => false);
+
+    if (!isOnDetailPage && jid) {
+      const detailsUrl = toHandshakeJobDetailsUrl(normalized);
+      await page.goto(detailsUrl, { waitUntil: 'domcontentloaded', timeout: PAGE_GOTO_TIMEOUT_MS });
+      await page.waitForLoadState('networkidle', { timeout: NETWORK_IDLE_TIMEOUT_MS }).catch(() => { });
+      await new Promise((r) => setTimeout(r, POST_NAVIGATE_DELAY_MS));
     }
 
     await expandDescriptionSections(page);
