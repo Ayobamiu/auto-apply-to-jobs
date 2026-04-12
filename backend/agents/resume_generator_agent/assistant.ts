@@ -8,6 +8,12 @@ import type { Profile, Job } from '../../shared/types.js';
 
 const DEFAULT_MODEL = 'gpt-4o-mini';
 
+const LIST_UNIQUENESS_RULES = `
+## List uniqueness (required)
+- Every array (work, education, projects, volunteer, awards, certificates, publications, languages, skills, interests, references, basics.profiles) must list each real-world entry at most once.
+- Do not repeat identical jobs, degrees, projects, credentials, or profile links. If tailoring, merge duplicates—never copy the same block many times.
+- For skills: one object per category name; put all related keywords in that single object.`;
+
 function buildUserMessage(
   profile: Profile,
   job: Job,
@@ -21,13 +27,13 @@ function buildUserMessage(
     const resumeJson = JSON.stringify(baseResumeJson, null, 2);
     return {
       role: 'user',
-      content: `Tailor this candidate's resume (JSON Resume format) to the target job. Output a single JSON object only. Preserve all factual content; reorder, rephrase summary/highlights, and emphasize what fits the job.\n\n## Current resume (JSON)\n${resumeJson}${jobBlock}`,
+      content: `Tailor this candidate's resume (JSON Resume format) to the target job. Output a single JSON object only. Preserve all factual content; reorder, rephrase summary/highlights, and emphasize what fits the job.${LIST_UNIQUENESS_RULES}\n\n## Current resume (JSON)\n${resumeJson}${jobBlock}`,
     };
   }
   const profileJson = JSON.stringify(profile, null, 2);
   return {
     role: 'user',
-    content: `Generate a tailored resume (JSON Resume format only) from this candidate profile and target job. Output a single JSON object, no other text.\n\n## Candidate profile\n${profileJson}${jobBlock}`,
+    content: `Generate a tailored resume (JSON Resume format only) from this candidate profile and target job. Output a single JSON object, no other text.${LIST_UNIQUENESS_RULES}\n\n## Candidate profile\n${profileJson}${jobBlock}`,
   };
 }
 
@@ -76,7 +82,9 @@ export async function generateResumeWithAssistant({
   return JSON.parse(raw) as Record<string, unknown>;
 }
 
-const EDIT_SYSTEM_PROMPT = `You are a resume editor. You will receive the current resume as JSON (JSON Resume schema) and a user request. Apply the requested changes and return the complete updated resume as a single JSON object only. No markdown, no explanation. Preserve all fields not affected by the request. The JSON must remain valid JSON Resume format.`;
+const EDIT_SYSTEM_PROMPT = `You are a resume editor. You will receive the current resume as JSON (JSON Resume schema) and a user request. Apply the requested changes and return the complete updated resume as a single JSON object only. No markdown, no explanation. Preserve all fields not affected by the request. The JSON must remain valid JSON Resume format.
+
+Never duplicate list entries: work, education, projects, volunteer, awards, certificates, publications, languages, skills, interests, references, and basics.profiles must each contain at most one object per distinct real-world item. If the resume already has duplicates, remove extras and keep the best single row per item.`;
 
 export async function updateResumeFromChat(
   resumeJson: Record<string, unknown>,

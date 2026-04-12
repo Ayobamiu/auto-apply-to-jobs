@@ -5,6 +5,8 @@
 import { pool, ensureDataTables } from '../api/db.js';
 import { toJobRef } from './user-job-state.js';
 import { AppError, CODES } from '../shared/errors.js';
+import type { Resume } from '../types/resume.js';
+import { formatResume } from '../utils/format-resume.js';
 
 export const ARTIFACT_TYPES = ['resume', 'cover_letter', 'written_document'] as const;
 export type ArtifactType = (typeof ARTIFACT_TYPES)[number];
@@ -110,7 +112,7 @@ export async function saveJobArtifact(
   }
   let validated: unknown;
   if (artifactType === 'resume') {
-    validated = validateResumeContent(content);
+    validated = formatResume(validateResumeContent(content) as Partial<Resume>);
   } else if (artifactType === 'cover_letter') {
     validated = validateCoverLetterContent(content);
   } else if (artifactType === 'written_document') {

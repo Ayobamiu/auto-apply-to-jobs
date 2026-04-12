@@ -1,4 +1,5 @@
-import { Resume } from "../types/resume.js";
+import type { Resume } from "../types/resume.js";
+import { dedupeResumeListRows } from "../shared/normalize-resume-lists.js";
 
 export function formatResume(resume: Partial<Resume>): Resume {
     const r: Resume = resume as Resume;
@@ -20,6 +21,9 @@ export function formatResume(resume: Partial<Resume>): Resume {
     r.projects ??= [];
 
     r.meta ??= {};
+
+    const ext = r as unknown as Record<string, unknown>;
+    ext.certificates ??= [];
 
     // Ensure nested arrays exist
     r.work.forEach(w => {
@@ -47,6 +51,8 @@ export function formatResume(resume: Partial<Resume>): Resume {
     r.education.forEach(e => {
         e.courses ??= [];
     });
+
+    dedupeResumeListRows(r);
 
     return r;
 }
