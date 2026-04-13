@@ -1,7 +1,7 @@
-When I click "Approve & Submit", as a Pro User, I still get the modal asking me to Upgrade, until i reload the page
 show Salary
 auto-fix and populate user's profile when they correct forms
 Bug: edit hostories not saved
+x When I click "Approve & Submit", as a Pro User, I still get the modal asking me to Upgrade, until i reload the page
 x during onboarding, when user finish one task, the floating progress doesnt update. Sometimes, it doesnt show at all. Until user reload
 x reduce scope to [Submit-competitive-applicaton-on-hanshake-10x-faster]
 x save original Description

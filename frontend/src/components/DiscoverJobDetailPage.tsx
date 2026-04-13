@@ -290,6 +290,8 @@ export function DiscoverJobDetailPage() {
     loadDetail,
     hasDynamicForm,
     formAnswers,
+    isPro,
+    openUpgradeModal,
   ]);
 
   const handleCancel = useCallback(async () => {

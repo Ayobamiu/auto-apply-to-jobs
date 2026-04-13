@@ -27,6 +27,10 @@ const SubscriptionContext = createContext<SubscriptionContextValue | null>(
   null,
 );
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export function useSubscription(): SubscriptionContextValue {
   const ctx = useContext(SubscriptionContext);
   if (!ctx) {
@@ -57,30 +61,74 @@ export function SubscriptionProvider({
     setUpgradeOpen(true);
   }, []);
 
+  const applyStatus = useCallback((status: SubscriptionStatusResponse) => {
+    setIsPro(status.subscription_status === "pro");
+    setSubscriptionStatus(status.subscription_status);
+    setCurrentPeriodEnd(status.current_period_end);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
+
     async function load() {
       setLoading(true);
-      try {
-        const status: SubscriptionStatusResponse =
-          await getSubscriptionStatus();
+      const gapsMs = [400, 700, 1200];
+      let succeeded = false;
+
+      for (let attempt = 0; attempt <= gapsMs.length; attempt++) {
         if (cancelled) return;
-        setIsPro(status.subscription_status === "pro");
-        setSubscriptionStatus(status.subscription_status);
-        setCurrentPeriodEnd(status.current_period_end);
-      } catch {
+        if (attempt > 0) {
+          await sleep(gapsMs[attempt - 1]!);
+        }
         if (cancelled) return;
+
+        try {
+          const status: SubscriptionStatusResponse =
+            await getSubscriptionStatus();
+          if (cancelled) return;
+          applyStatus(status);
+          succeeded = true;
+          break;
+        } catch {
+          /* next attempt after backoff */
+        }
+      }
+
+      if (cancelled) return;
+      if (!succeeded) {
         setIsPro(false);
-      } finally {
-        if (cancelled) return;
-        setLoading(false);
       }
     }
-    load();
+
+    void load().finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [applyStatus]);
+
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      void (async () => {
+        try {
+          const status = await getSubscriptionStatus();
+          applyStatus(status);
+        } catch {
+          /* keep existing isPro — transient errors must not demote the user */
+        }
+      })();
+    };
+
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    window.addEventListener("focus", refreshWhenVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+      window.removeEventListener("focus", refreshWhenVisible);
+    };
+  }, [applyStatus]);
 
   const value = useMemo(
     () => ({
@@ -90,7 +138,7 @@ export function SubscriptionProvider({
       subscriptionStatus,
       currentPeriodEnd,
     }),
-    [isPro, loading, openUpgradeModal],
+    [isPro, loading, openUpgradeModal, subscriptionStatus, currentPeriodEnd],
   );
 
   return (
