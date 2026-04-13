@@ -8,11 +8,13 @@ import {
   Save,
 } from "lucide-react";
 import { getBaseResume, postBaseResumeFile, putBaseResume } from "../../api";
+import { useOnboarding } from "../../hooks/useOnboarding";
 import { ResumeEditorApp } from "../../resume-editor/ResumeEditorApp";
 
 type Status = "idle" | "loading" | "uploading" | "error";
 
 export function ResumeSettingsSection() {
+  const { refetch: refetchOnboarding } = useOnboarding();
   const [status, setStatus] = useState<Status>("loading");
   const [resume, setResume] = useState<Record<string, unknown> | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
@@ -53,11 +55,12 @@ export function ResumeSettingsSection() {
       setResume(data);
       lastSavedResumeRef.current = data ? JSON.stringify(data) : null;
       setStatus("idle");
+      void refetchOnboarding();
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Upload failed");
       setStatus("error");
     }
-  }, []);
+  }, [refetchOnboarding]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -88,12 +91,13 @@ export function ResumeSettingsSection() {
     try {
       await putBaseResume(resume);
       lastSavedResumeRef.current = JSON.stringify(resume);
+      void refetchOnboarding();
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setSavingResume(false);
     }
-  }, [resume, resumeDirty, savingResume]);
+  }, [resume, resumeDirty, savingResume, refetchOnboarding]);
 
   if (showPreview && resume) {
     return (

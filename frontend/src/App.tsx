@@ -15,6 +15,7 @@ import { DiscoverJobDetailPage } from "./components/DiscoverJobDetailPage";
 import { MyJobsPage } from "./components/MyJobsPage";
 import { SettingsPage } from "./components/settings/SettingsPage";
 import { FloatingProgress } from "./components/onboarding/FloatingProgress";
+import { OnboardingProvider } from "./hooks/useOnboarding";
 import { SubscriptionProvider } from "./subscription/useSubscription";
 import { HomePage } from "./components/HomePage";
 
@@ -24,7 +25,13 @@ function RequireAuth({ children }: { children: ReactNode }) {
   }
   return <>{children}</>;
 }
-function AppRoutes({ onLogout }: { onLogout: () => void }) {
+function AppRoutes({
+  onLogout,
+  onLoginSuccess,
+}: {
+  onLogout: () => void;
+  onLoginSuccess: () => void;
+}) {
   const navigate = useNavigate();
 
   return (
@@ -32,7 +39,14 @@ function AppRoutes({ onLogout }: { onLogout: () => void }) {
       <Route path="/" element={<HomePage />} />
       <Route
         path="/auth"
-        element={<Auth onSuccess={() => navigate("/discover")} />}
+        element={
+          <Auth
+            onSuccess={() => {
+              onLoginSuccess();
+              navigate("/discover");
+            }}
+          />
+        }
       />
       {/* Shell-wrapped pages */}
       <Route
@@ -107,14 +121,17 @@ export function App() {
   return (
     <BrowserRouter>
       <SubscriptionProvider>
-        <AppRoutes
-          onLogout={() => {
-            clearToken();
-            setIsLoggedIn(false);
-            window.location.href = "/";
-          }}
-        />
-        {isLoggedIn_ && <FloatingProgress />}
+        <OnboardingProvider enabled={isLoggedIn_}>
+          <AppRoutes
+            onLoginSuccess={() => setIsLoggedIn(true)}
+            onLogout={() => {
+              clearToken();
+              setIsLoggedIn(false);
+              window.location.href = "/";
+            }}
+          />
+          {isLoggedIn_ && <FloatingProgress />}
+        </OnboardingProvider>
       </SubscriptionProvider>
     </BrowserRouter>
   );

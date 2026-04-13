@@ -12,10 +12,12 @@ import {
   getTranscriptPreviewUrl,
   uploadTranscript,
 } from "../../api";
+import { useOnboarding } from "../../hooks/useOnboarding";
 
 type Status = "loading" | "idle" | "uploading" | "error";
 
 export function TranscriptSettingsSection() {
+  const { refetch: refetchOnboarding } = useOnboarding();
   const [status, setStatus] = useState<Status>("loading");
   const [hasTranscript, setHasTranscript] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -52,11 +54,12 @@ export function TranscriptSettingsSection() {
       setHasTranscript(true);
       setSuccessMsg("Transcript uploaded successfully.");
       setStatus("idle");
+      void refetchOnboarding();
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Upload failed");
       setStatus("error");
     }
-  }, []);
+  }, [refetchOnboarding]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
