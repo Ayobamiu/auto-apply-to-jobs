@@ -5,6 +5,7 @@ import type { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { createUser, getUserByEmail } from '../db.js';
+import { sendSignupNotification } from '../../shared/signup-notification.js';
 
 const SALT_ROUNDS = 10;
 const JWT_EXPIRY = '7d';
@@ -39,6 +40,7 @@ export function register(req: Request, res: Response): void {
     }
     createUser(email, passwordHash)
       .then((user) => {
+        void sendSignupNotification(user.email);
         res.status(201).json({ id: user.id, email: user.email });
       })
       .catch((e: { code?: string }) => {
