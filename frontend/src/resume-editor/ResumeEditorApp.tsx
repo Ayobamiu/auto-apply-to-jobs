@@ -90,6 +90,7 @@ export function ResumeEditorApp({
 
   const {
     resume,
+    previewResume,
     proposedPatches,
     handleAiUpdate,
     setResume,
@@ -330,14 +331,14 @@ export function ResumeEditorApp({
         className={`flex-1 overflow-auto px-4 py-4 md:max-w-3xl md:mx-auto md:px-6 md:py-5 w-full ${hasPatches ? "pb-24" : ""}`}
       >
         <ResumeDocument
-          resume={resume}
+          resume={hasPatches ? previewResume : resume}
+          baseResume={hasPatches ? resume : undefined}
           onChange={setResume}
           compact={mode === "preview"}
           readOnly={mode === "preview"}
           disableSelection={isSubmitted}
           selectedNode={selectedNode}
           setSelectedNode={setSelectedNode}
-          proposedPatches={proposedPatches}
         />
         {hasPatches && (
           <ReviewBar

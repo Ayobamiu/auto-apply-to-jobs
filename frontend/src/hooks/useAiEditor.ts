@@ -1,12 +1,11 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { cloneDeep } from "lodash";
 import { validateResumeFragment } from "../utils/ajv-setup";
-import { applyPatch, getValueByPointer } from "fast-json-patch";
+import { applyPatch, getValueByPointer, type Operation } from "fast-json-patch";
 import {
   pathToReviewLabel,
   type ProposedPatch,
   resolvePointerAppendSegment,
-  collapseArrayMovesToSingleReplace,
 } from "../resume-editor/utils";
 import type { Patch } from "../api";
 import { useResumeHistory } from "./useResumeHistory";
@@ -67,8 +66,7 @@ export const useAiEditor = ({ initialResume, onSave }: UseAiEditorOptions) => {
       }
       validated.push(proposed);
     }
-    const folded = collapseArrayMovesToSingleReplace(resume, validated);
-    if (folded.length > 0) setProposedPatches(folded);
+    if (validated.length > 0) setProposedPatches(validated);
   }, [resume]);
 
   const commitOne = useCallback((index: number) => {
@@ -111,8 +109,25 @@ export const useAiEditor = ({ initialResume, onSave }: UseAiEditorOptions) => {
 
   const discardAll = useCallback(() => setProposedPatches([]), []);
 
+  const previewResume = useMemo<Record<string, unknown>>(() => {
+    if (proposedPatches.length === 0) return resume;
+    try {
+      const clone = cloneDeep(resume);
+      const ops: Operation[] = proposedPatches.map(p => {
+        const o: Record<string, unknown> = { op: p.op, path: p.path };
+        if (p.value !== undefined) o.value = p.value;
+        if (p.from) o.from = p.from;
+        return o as unknown as Operation;
+      });
+      applyPatch(clone, ops);
+      return clone;
+    } catch {
+      return resume;
+    }
+  }, [resume, proposedPatches]);
+
   return {
-    resume, proposedPatches, handleAiUpdate, setResume, resetResume,
+    resume, previewResume, proposedPatches, handleAiUpdate, setResume, resetResume,
     commitOne, commitAll, discardOne, discardAll, isSuccess,
     undo, redo, canUndo, canRedo,
   };
