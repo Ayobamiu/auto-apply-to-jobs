@@ -2,7 +2,12 @@ import { useState, useCallback } from "react";
 import { cloneDeep } from "lodash";
 import { validateResumeFragment } from "../utils/ajv-setup";
 import { applyPatch, getValueByPointer } from "fast-json-patch";
-import { pathToReviewLabel, type ProposedPatch } from "../resume-editor/utils";
+import {
+  pathToReviewLabel,
+  type ProposedPatch,
+  resolvePointerAppendSegment,
+  collapseArrayMovesToSingleReplace,
+} from "../resume-editor/utils";
 import type { Patch } from "../api";
 import { useResumeHistory } from "./useResumeHistory";
 
@@ -27,28 +32,43 @@ export const useAiEditor = ({ initialResume, onSave }: UseAiEditorOptions) => {
     const validated: ProposedPatch[] = [];
     for (const p of aiResponse.patches) {
       let sanitizedData = p.value;
+      const pathNorm = p.path.startsWith("/") ? p.path : `/${p.path}`;
+      const pathForValidate =
+        p.op === "add" ? resolvePointerAppendSegment(resume, pathNorm) : pathNorm;
       if (p.op !== "remove" && p.op !== "move") {
-        const { isValid, sanitizedData: cleaned } = validateResumeFragment(p.path, p.value);
+        const { isValid, sanitizedData: cleaned } = validateResumeFragment(
+          pathForValidate,
+          p.value,
+        );
         if (!isValid) continue;
         sanitizedData = cleaned;
       }
       let original: unknown;
-      try { original = getValueByPointer(resume, p.path); } catch { original = undefined; }
+      try {
+        original = getValueByPointer(resume, pathNorm);
+      } catch {
+        original = undefined;
+      }
       const proposed: ProposedPatch = {
         op: p.op as ProposedPatch["op"],
-        path: p.path,
+        path: pathNorm,
         value: sanitizedData,
         original,
       };
       if ((p.op === "move" || p.op === "copy") && p.from) {
-        proposed.from = p.from;
-        try { proposed.fromOriginal = getValueByPointer(resume, p.from); } catch { proposed.fromOriginal = undefined; }
+        proposed.from = p.from.startsWith("/") ? p.from : `/${p.from}`;
+        try {
+          proposed.fromOriginal = getValueByPointer(resume, proposed.from);
+        } catch {
+          proposed.fromOriginal = undefined;
+        }
         // For move ops, the value is the thing being moved (from the source)
         if (p.op === "move") proposed.value = proposed.fromOriginal;
       }
       validated.push(proposed);
     }
-    if (validated.length > 0) setProposedPatches(validated);
+    const folded = collapseArrayMovesToSingleReplace(resume, validated);
+    if (folded.length > 0) setProposedPatches(folded);
   }, [resume]);
 
   const commitOne = useCallback((index: number) => {

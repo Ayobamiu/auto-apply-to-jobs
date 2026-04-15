@@ -1,6 +1,7 @@
 import cloneDeep from "lodash/cloneDeep";
 import set from "lodash/set";
 import get from "lodash/get";
+import { applyPatch, getValueByPointer, type Operation } from "fast-json-patch";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -48,9 +49,12 @@ export function getProposedValueForPath(
 ): { proposed: unknown; original: unknown; isExact: boolean; patchIndex: number } | undefined {
   if (!patches || patches.length === 0) return undefined;
   const normField = normalizePath(fieldPath);
+  // Prefer longer (more specific) patch paths so e.g. /work/0/highlights wins over /work/0
+  const sorted = [...patches.entries()].sort(
+    (a, b) => jsonPointerToDot(b[1].path).length - jsonPointerToDot(a[1].path).length,
+  );
 
-  for (let i = 0; i < patches.length; i++) {
-    const patch = patches[i];
+  for (const [i, patch] of sorted) {
     const normPatch = jsonPointerToDot(patch.path);
 
     if (normPatch === normField) {
@@ -142,8 +146,88 @@ export function getAddPatchesForSubArray(parentPath: string, patches: ProposedPa
     const parts = pNorm.split(".");
     const parentParts = norm.split(".");
     if (parts.length !== parentParts.length + 1) return false;
-    return parts.slice(0, -1).join(".") === norm && /^\d+$/.test(parts[parts.length - 1]);
+    const last = parts[parts.length - 1];
+    return parts.slice(0, -1).join(".") === norm && (/^\d+$/.test(last) || last === "-");
   });
+}
+
+/** JSON Pointer append segment "-" → concrete index for validation (RFC 6902). */
+export function resolvePointerAppendSegment(
+  resume: Record<string, unknown>,
+  pointer: string,
+): string {
+  if (!pointer.endsWith("/-")) return pointer;
+  const parent = pointer.slice(0, -2);
+  if (!parent) return pointer;
+  try {
+    const arr = getValueByPointer(resume, parent);
+    const len = Array.isArray(arr) ? arr.length : 0;
+    return `${parent}/${len}`;
+  } catch {
+    return `${parent}/0`;
+  }
+}
+
+const ARRAY_COLLAPSE_ROOTS = ["work", "education", "volunteer", "projects"] as const;
+
+function normPtr(s: string | undefined): string {
+  if (!s) return "";
+  return s.startsWith("/") ? s : `/${s}`;
+}
+
+function patchTouchesArrayRoot(p: ProposedPatch, root: string): boolean {
+  const prefix = `/${root}`;
+  const path = normPtr(p.path);
+  const from = normPtr(p.from);
+  if (path === prefix || path.startsWith(`${prefix}/`)) return true;
+  if (from && (from === prefix || from.startsWith(`${prefix}/`))) return true;
+  return false;
+}
+
+/**
+ * When the model emits multiple move ops on the same array (e.g. /work), indices are
+ * interpreted against the document after each move — stale indices rotate the wrong items.
+ * Simulate the full patch list and replace all patches touching that root with one replace.
+ */
+export function collapseArrayMovesToSingleReplace(
+  resume: Record<string, unknown>,
+  patches: ProposedPatch[],
+): ProposedPatch[] {
+  let out = patches;
+  for (const root of ARRAY_COLLAPSE_ROOTS) {
+    const hasMove = out.some(
+      p => p.op === "move" && p.from && patchTouchesArrayRoot(p, root),
+    );
+    if (!hasMove) continue;
+    const touches = out.some(p => patchTouchesArrayRoot(p, root));
+    if (!touches) continue;
+
+    const clone = cloneDeep(resume) as Record<string, unknown>;
+    const ops = out.map(p => {
+      const o: Record<string, unknown> = { op: p.op, path: p.path };
+      if (p.value !== undefined) o.value = p.value;
+      if (p.from) o.from = p.from;
+      return o;
+    });
+    try {
+      applyPatch(clone, ops as unknown as Operation[]);
+    } catch {
+      continue;
+    }
+    const newVal = clone[root];
+    const oldVal = resume[root];
+    const kept = out.filter(p => !patchTouchesArrayRoot(p, root));
+    out = [
+      ...kept,
+      {
+        op: "replace",
+        path: `/${root}`,
+        value: newVal,
+        original: oldVal,
+      },
+    ];
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------

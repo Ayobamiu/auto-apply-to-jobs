@@ -178,6 +178,190 @@ export function ResumeDocument({
       </span>
     );
   };
+
+  /** Preview AI changes to highlights: append, per-line replace, tail removal, or whole-list diff. */
+  const renderHighlightBulletList = (
+    section: "work" | "volunteer" | "projects",
+    i: number,
+    highlights: string[],
+    highlightLabel: string,
+    subAddPatches: ProposedPatch[],
+  ) => {
+    const blockPath = `${section}[${i}]`;
+    const blockMatch = getProposedValueForPath(blockPath, proposedPatches);
+    const rawProposed = blockMatch?.proposed;
+    const hlRaw =
+      rawProposed != null && typeof rawProposed === "object"
+        ? (rawProposed as { highlights?: unknown }).highlights
+        : undefined;
+    /** null = no highlight array on the proposed block — do not infer removals (fixes false "all crossed out"). */
+    const highlightsExplicitlyProposed = Array.isArray(hlRaw);
+    const proposedHighlights: string[] | null = highlightsExplicitlyProposed
+      ? (hlRaw as unknown[]).filter((x): x is string => typeof x === "string" && Boolean(x))
+      : null;
+
+    const proposedArr = proposedHighlights ?? [];
+    const covered = new Set(proposedArr);
+    const extraSubAdds = subAddPatches.filter((p) => {
+      const s = typeof p.value === "string" ? p.value : "";
+      return s && !covered.has(s);
+    });
+
+    const simpleAppend =
+      proposedHighlights != null &&
+      proposedArr.length >= highlights.length &&
+      highlights.every((v, idx) => proposedArr[idx] === v);
+
+    if (
+      proposedHighlights != null &&
+      proposedArr.length > 0 &&
+      proposedArr.length !== highlights.length &&
+      !simpleAppend
+    ) {
+      const joinedH = highlights.join("\n");
+      const joinedP = proposedArr.join("\n");
+      if (joinedH !== joinedP) {
+        return (
+          <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2 space-y-0.5">
+            <li className="list-none -ml-2">
+              <DiffView original={joinedH || "(none)"} proposed={joinedP} />
+            </li>
+            {extraSubAdds.map((p, k) => (
+              <li
+                key={`subadd-${k}`}
+                className="bg-emerald-50/80 text-emerald-900 border-l-2 border-emerald-300 pl-1 -ml-0.5 rounded"
+              >
+                {typeof p.value === "string" ? p.value : JSON.stringify(p.value)}
+              </li>
+            ))}
+          </ul>
+        );
+      }
+    }
+
+    const maxLen = Math.max(highlights.length, proposedArr.length);
+    if (maxLen === 0 && extraSubAdds.length === 0) return null;
+
+    const rows: React.ReactNode[] = [];
+    for (let j = 0; j < maxLen; j++) {
+      const h = highlights[j];
+      let prop = proposedHighlights != null ? proposedHighlights[j] : undefined;
+      if (prop === undefined && typeof h === "string") {
+        const leaf = getProposedValueForPath(
+          `${section}[${i}].highlights[${j}]`,
+          proposedPatches,
+        );
+        if (leaf?.proposed !== undefined && typeof leaf.proposed === "string") {
+          prop = leaf.proposed;
+        }
+      }
+      if (h === undefined && prop === undefined) continue;
+
+      // Only show "removed" when the proposal explicitly includes fewer bullets than now (tail shrink).
+      if (
+        proposedHighlights != null &&
+        typeof h === "string" &&
+        prop === undefined &&
+        proposedHighlights.length < highlights.length &&
+        j >= proposedHighlights.length
+      ) {
+        rows.push(
+          <SectionWrapper
+            key={`rm-${j}`}
+            path={`${section}[${i}].highlights[${j}]`}
+            label={highlightLabel}
+            data={h}
+            type="highlight"
+          >
+            <li className="line-through opacity-70 text-rose-900/80 bg-rose-50/40 border-l-2 border-rose-300 pl-1 -ml-0.5 rounded">
+              {h}
+            </li>
+          </SectionWrapper>,
+        );
+        continue;
+      }
+
+      if (h === undefined && typeof prop === "string") {
+        rows.push(
+          <SectionWrapper
+            key={`add-${j}`}
+            path={`${section}[${i}].highlights[${j}]`}
+            label={highlightLabel}
+            data={prop}
+            type="highlight"
+          >
+            <li className="bg-emerald-50/80 text-emerald-900 border-l-2 border-emerald-300 pl-1 -ml-0.5 rounded">
+              {prop}
+            </li>
+          </SectionWrapper>,
+        );
+        continue;
+      }
+
+      if (typeof h === "string" && typeof prop === "string" && h !== prop) {
+        rows.push(
+          <SectionWrapper
+            key={j}
+            path={`${section}[${i}].highlights[${j}]`}
+            label={highlightLabel}
+            data={h}
+            type="highlight"
+          >
+            <li>
+              <DiffView original={h} proposed={prop} />
+            </li>
+          </SectionWrapper>,
+        );
+        continue;
+      }
+
+      if (typeof h === "string") {
+        rows.push(
+          <SectionWrapper
+            key={j}
+            path={`${section}[${i}].highlights[${j}]`}
+            label={highlightLabel}
+            data={h}
+            type="highlight"
+          >
+            <li>{renderField(`${section}[${i}].highlights[${j}]`, h)}</li>
+          </SectionWrapper>,
+        );
+      }
+    }
+    extraSubAdds.forEach((p, k) => {
+      rows.push(
+        <li
+          key={`subadd-extra-${k}`}
+          className="bg-emerald-50/80 text-emerald-900 border-l-2 border-emerald-300 pl-1 -ml-0.5 rounded"
+        >
+          {typeof p.value === "string" ? p.value : JSON.stringify(p.value)}
+        </li>,
+      );
+    });
+    return (
+      <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2 space-y-0.5">
+        {rows}
+      </ul>
+    );
+  };
+
+  /** When AI changes reorder the whole section, we collapse to one replace(/work) patch — render that list so order matches preview. */
+  const displaySectionList = (
+    section: "work" | "volunteer" | "education" | "projects",
+    list: Record<string, unknown>[],
+  ): Record<string, unknown>[] => {
+    const rep = proposedPatches.find((p) => {
+      if (p.op !== "replace") return false;
+      const n = p.path.startsWith("/") ? p.path.slice(1) : p.path;
+      return n === section || p.path === `/${section}`;
+    });
+    if (rep && Array.isArray(rep.value)) {
+      return rep.value as Record<string, unknown>[];
+    }
+    return list;
+  };
+
   const sectionHeading =
     "text-xs font-semibold uppercase tracking-wide text-gray-500 mt-4 mb-1.5";
 
@@ -321,7 +505,7 @@ export function ResumeDocument({
               getAddPatchesForArray("work", proposedPatches).length > 0) && (
               <section className="resume-section">
                 <h2 className={sectionHeading}>Experience</h2>
-                {work.map((entry, i) => {
+                {displaySectionList("work", work).map((entry, i) => {
                   const loc = getStr(entry, "location");
                   const start = getStr(entry, "startDate");
                   const end = getStr(entry, "endDate");
@@ -383,82 +567,13 @@ export function ResumeDocument({
                             )}
                           </p>
                         )}
-                        {(() => {
-                          const blockMatch = getProposedValueForPath(
-                            `work[${i}]`,
-                            proposedPatches,
-                          );
-                          const proposedHighlights =
-                            blockMatch &&
-                            typeof blockMatch.proposed === "object" &&
-                            blockMatch.proposed != null &&
-                            "highlights" in blockMatch.proposed
-                              ? ((
-                                  blockMatch.proposed as {
-                                    highlights?: string[];
-                                  }
-                                ).highlights ?? [])
-                              : [];
-                          const hasHighlights =
-                            highlights.length > 0 ||
-                            proposedHighlights.length > 0 ||
-                            subAddPatches.length > 0;
-                          if (!hasHighlights) return null;
-                          const extraProposed = proposedHighlights
-                            .slice(highlights.length)
-                            .filter(Boolean);
-                          return (
-                            <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2 space-y-0.5">
-                              {highlights.map((h, j) => {
-                                const currentPath = `work[${i}].highlights[${j}]`;
-                                const match = getProposedValueForPath(
-                                  currentPath,
-                                  proposedPatches,
-                                );
-                                const proposedStr =
-                                  match && typeof match.proposed === "string"
-                                    ? match.proposed
-                                    : null;
-                                return (
-                                  <SectionWrapper
-                                    key={j}
-                                    path={`work[${i}].highlights[${j}]`}
-                                    label="Specific Achievement"
-                                    data={h}
-                                    type="highlight"
-                                  >
-                                    {proposedStr != null ? (
-                                      <li>
-                                        <DiffView
-                                          original={h}
-                                          proposed={proposedStr}
-                                        />
-                                      </li>
-                                    ) : (
-                                      <li>{h}</li>
-                                    )}
-                                  </SectionWrapper>
-                                );
-                              })}
-                              {extraProposed.map((text, k) => (
-                                <li
-                                  key={`add-${k}`}
-                                  className="bg-emerald-50/80 text-emerald-900 border-l-2 border-emerald-300 pl-1 -ml-0.5 rounded"
-                                >
-                                  {text}
-                                </li>
-                              ))}
-                              {subAddPatches.map((p, k) => (
-                                <li
-                                  key={`sub-add-${k}`}
-                                  className="bg-emerald-50/80 text-emerald-900 border-l-2 border-emerald-300 pl-1 -ml-0.5 rounded"
-                                >
-                                  {typeof p.value === "string" ? p.value : JSON.stringify(p.value)}
-                                </li>
-                              ))}
-                            </ul>
-                          );
-                        })()}
+                        {renderHighlightBulletList(
+                          "work",
+                          i,
+                          highlights,
+                          "Specific Achievement",
+                          subAddPatches,
+                        )}
                       </div>
                     </SectionWrapper>
                   );
@@ -514,7 +629,7 @@ export function ResumeDocument({
                 0) && (
               <section className="resume-section">
                 <h2 className={sectionHeading}>Volunteer</h2>
-                {volunteer.map((entry, i) => {
+                {displaySectionList("volunteer", volunteer).map((entry, i) => {
                   const removePatch = getRemovePatchForPath(`volunteer[${i}]`, proposedPatches);
                   const moveFrom = getMovePatchFrom(`volunteer[${i}]`, proposedPatches);
                   const moveTo = getMovePatchTo(`volunteer[${i}]`, proposedPatches);
@@ -555,25 +670,12 @@ export function ResumeDocument({
                           {renderField(`volunteer[${i}].summary`, getStr(entry, "summary"))}
                         </p>
                       )}
-                      {(highlights.length > 0 || subAddPatches.length > 0) && (
-                        <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2">
-                          {highlights.map((h, j) => (
-                              <SectionWrapper
-                                key={j}
-                                path={`volunteer[${i}].highlights[${j}]`}
-                                label="Volunteer Highlight"
-                                data={h}
-                                type="highlight"
-                              >
-                                <li key={j}>{renderField(`volunteer[${i}].highlights[${j}]`, h)}</li>
-                              </SectionWrapper>
-                            ))}
-                          {subAddPatches.map((p, k) => (
-                            <li key={`add-${k}`} className="bg-emerald-50/80 text-emerald-900 border-l-2 border-emerald-300 pl-1 -ml-0.5 rounded">
-                              {typeof p.value === "string" ? p.value : JSON.stringify(p.value)}
-                            </li>
-                          ))}
-                        </ul>
+                      {renderHighlightBulletList(
+                        "volunteer",
+                        i,
+                        highlights,
+                        "Volunteer Highlight",
+                        subAddPatches,
                       )}
                     </div>
                   </SectionWrapper>
@@ -601,7 +703,7 @@ export function ResumeDocument({
                 0) && (
               <section className="resume-section">
                 <h2 className={sectionHeading}>Education</h2>
-                {education.map((entry, i) => {
+                {displaySectionList("education", education).map((entry, i) => {
                   const removePatch = getRemovePatchForPath(`education[${i}]`, proposedPatches);
                   const moveFrom = getMovePatchFrom(`education[${i}]`, proposedPatches);
                   const moveTo = getMovePatchTo(`education[${i}]`, proposedPatches);
@@ -686,7 +788,7 @@ export function ResumeDocument({
                 0) && (
               <section className="resume-section">
                 <h2 className={sectionHeading}>Projects</h2>
-                {projects.map((entry, i) => {
+                {displaySectionList("projects", projects).map((entry, i) => {
                   const removePatch = getRemovePatchForPath(`projects[${i}]`, proposedPatches);
                   const moveFrom = getMovePatchFrom(`projects[${i}]`, proposedPatches);
                   const moveTo = getMovePatchTo(`projects[${i}]`, proposedPatches);
@@ -717,25 +819,12 @@ export function ResumeDocument({
                           {renderField(`projects[${i}].description`, getStr(entry, "description"))}
                         </p>
                       )}
-                      {(highlights.length > 0 || subAddPatches.length > 0) && (
-                        <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2">
-                          {highlights.map((h, j) => (
-                              <SectionWrapper
-                                key={j}
-                                path={`projects[${i}].highlights[${j}]`}
-                                label="Project Highlight"
-                                data={h}
-                                type="highlight"
-                              >
-                                <li>{renderField(`projects[${i}].highlights[${j}]`, h)}</li>
-                              </SectionWrapper>
-                            ))}
-                          {subAddPatches.map((p, k) => (
-                            <li key={`add-${k}`} className="bg-emerald-50/80 text-emerald-900 border-l-2 border-emerald-300 pl-1 -ml-0.5 rounded">
-                              {typeof p.value === "string" ? p.value : JSON.stringify(p.value)}
-                            </li>
-                          ))}
-                        </ul>
+                      {renderHighlightBulletList(
+                        "projects",
+                        i,
+                        highlights,
+                        "Project Highlight",
+                        subAddPatches,
                       )}
                     </div>
                   </SectionWrapper>

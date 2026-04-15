@@ -94,6 +94,8 @@ copy → duplicate a value from one path to another (requires "from" path, no "v
 Example: To move work experience at index 2 to the top, use:
 { "op": "move", "from": "/work/2", "path": "/work/0" }
 
+Reordering / swapping: Prefer ONE "replace" on the full array (e.g. "/work") with the complete reordered array of objects. Chaining multiple "move" ops on the same array is error-prone because array indices shift after each move (e.g. swapping #1 and #2 with two moves often rotates three items instead).
+
 ### RESUME RULES
 
 1. Use ISO-8601 (YYYY-MM-DD) for dates when present.
