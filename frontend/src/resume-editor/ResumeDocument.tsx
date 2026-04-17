@@ -165,13 +165,73 @@ export function ResumeDocument({
     return <DiffView original={baseValue} proposed={previewValue} />;
   };
 
-  /** Check if a preview item exists in the base array (structural equality). */
-  const isNewItem = (item: unknown, baseArray: unknown[]): boolean =>
-    !baseArray.some((b) => isEqual(b, item));
+  /**
+   * Identity keys per section — used to pair preview items with base items
+   * even when inner fields (like highlights) have changed. This is what makes
+   * "edit the bullets of X" show as bullet-level diffs instead of
+   * remove(X) + add(X').
+   */
+  const IDENTITY_KEYS: Record<string, string[][]> = {
+    work: [["name", "position", "startDate"], ["name", "position"], ["name"]],
+    volunteer: [["organization", "position", "startDate"], ["organization", "position"], ["organization"]],
+    education: [["institution", "studyType", "area"], ["institution", "studyType"], ["institution"]],
+    projects: [["name", "url"], ["name", "description"], ["name"]],
+    skills: [["name"]],
+    languages: [["language"]],
+    certificates: [["name", "issuer"], ["name"]],
+    awards: [["title", "awarder", "date"], ["title", "awarder"], ["title"]],
+    publications: [["name", "publisher"], ["name"]],
+    references: [["name"]],
+    interests: [["name"]],
+  };
 
-  /** Get items from baseArray that were removed (not in previewArray). */
-  const getRemovedItems = <T,>(baseArray: T[], previewArray: T[]): T[] =>
-    baseArray.filter((b) => !previewArray.some((p) => isEqual(p, b)));
+  /** Build a stable identity string for an item in a given section. */
+  const identityOf = (section: string, item: unknown): string | null => {
+    if (item == null || typeof item !== "object") return null;
+    const keySets = IDENTITY_KEYS[section];
+    if (!keySets) return null;
+    for (const keys of keySets) {
+      const parts = keys.map((k) => getStr(item, k));
+      if (parts.every((p) => p)) return parts.join("\u0000");
+    }
+    return null;
+  };
+
+  /** An item is new if no base item shares the same identity. */
+  const isNewItem = (
+    section: string,
+    item: unknown,
+    baseArray: unknown[],
+  ): boolean => {
+    const id = identityOf(section, item);
+    if (id == null) return !baseArray.some((b) => isEqual(b, item));
+    return !baseArray.some((b) => identityOf(section, b) === id);
+  };
+
+  /** Base items that have no identity match in previewArray → removed. */
+  const getRemovedItems = <T,>(
+    section: string,
+    baseArray: T[],
+    previewArray: T[],
+  ): T[] => {
+    return baseArray.filter((b) => {
+      const id = identityOf(section, b);
+      if (id == null) return !previewArray.some((p) => isEqual(p, b));
+      return !previewArray.some((p) => identityOf(section, p) === id);
+    });
+  };
+
+  /** Find base entry that shares identity with preview entry (for inline field diffs). */
+  const findBaseEntryByIdentity = (
+    section: string,
+    previewEntry: Record<string, unknown>,
+    baseArray: Record<string, unknown>[],
+  ): Record<string, unknown> | null => {
+    if (!reviewing) return null;
+    const id = identityOf(section, previewEntry);
+    if (id == null) return null;
+    return baseArray.find((b) => identityOf(section, b) === id) ?? null;
+  };
 
   /** Diff highlight bullets between preview and base arrays. */
   const diffHighlights = (
@@ -375,14 +435,16 @@ export function ResumeDocument({
       baseArray: Record<string, unknown>[],
       nameKey: string,
       labelPrefix: string,
-      highlightLabel: string,
       renderContent: (
         entry: Record<string, unknown>,
         baseEntry: Record<string, unknown> | null,
         i: number,
       ) => React.ReactNode,
     ) => {
-      const itemIsNew = reviewing && isNewItem(entry, baseArray);
+      const itemIsNew = reviewing && isNewItem(section, entry, baseArray);
+      const baseEntry = itemIsNew
+        ? null
+        : findBaseEntryByIdentity(section, entry, baseArray);
 
       return (
         <SectionWrapper
@@ -397,28 +459,10 @@ export function ResumeDocument({
             }`}
           >
             {itemIsNew && <NewBadge />}
-            {renderContent(
-              entry,
-              itemIsNew ? null : findBaseEntry(entry, baseArray, nameKey),
-              i,
-            )}
+            {renderContent(entry, baseEntry, i)}
           </div>
         </SectionWrapper>
       );
-    };
-
-    /** Find the matching base entry by a stable identity key. */
-    const findBaseEntry = (
-      previewEntry: Record<string, unknown>,
-      baseArray: Record<string, unknown>[],
-      ...keys: string[]
-    ): Record<string, unknown> | null => {
-      if (!reviewing) return null;
-      const match = baseArray.find((b) =>
-        keys.some((k) => getStr(b, k) && getStr(b, k) === getStr(previewEntry, k)),
-      );
-      if (match) return match;
-      return isEqual(previewEntry, baseArray[0]) ? baseArray[0] : null;
     };
 
     return (
@@ -495,7 +539,7 @@ export function ResumeDocument({
                 <h2 className={sectionHeading}>Experience</h2>
                 {work.map((entry, i) =>
                   renderExperienceItem(
-                    "work", entry, i, baseWork, "name", "Experience", "Specific Achievement",
+                    "work", entry, i, baseWork, "name", "Experience",
                     (entry, baseEntry, idx) => {
                       const loc = getStr(entry, "location");
                       const start = getStr(entry, "startDate");
@@ -543,7 +587,7 @@ export function ResumeDocument({
                 )}
                 {/* Removed work items */}
                 {reviewing &&
-                  getRemovedItems(baseWork, work).map((entry, k) => (
+                  getRemovedItems("work", baseWork, work).map((entry, k) => (
                     <div
                       key={`rm-work-${k}`}
                       className="mb-3 relative line-through opacity-60 bg-rose-50/50 rounded p-1"
@@ -565,7 +609,7 @@ export function ResumeDocument({
                 <h2 className={sectionHeading}>Volunteer</h2>
                 {volunteer.map((entry, i) =>
                   renderExperienceItem(
-                    "volunteer", entry, i, baseVolunteer, "organization", "Volunteer", "Volunteer Highlight",
+                    "volunteer", entry, i, baseVolunteer, "organization", "Volunteer",
                     (entry, baseEntry, idx) => {
                       const highlights = getArr<string>(entry, "highlights").filter(Boolean);
                       const baseHighlights = baseEntry
@@ -603,7 +647,7 @@ export function ResumeDocument({
                   ),
                 )}
                 {reviewing &&
-                  getRemovedItems(baseVolunteer, volunteer).map((entry, k) => (
+                  getRemovedItems("volunteer", baseVolunteer, volunteer).map((entry, k) => (
                     <div
                       key={`rm-vol-${k}`}
                       className="mb-3 relative line-through opacity-60 bg-rose-50/50 rounded p-1"
@@ -624,14 +668,10 @@ export function ResumeDocument({
               <section className="resume-section">
                 <h2 className={sectionHeading}>Education</h2>
                 {education.map((entry, i) => {
-                  const itemIsNew = reviewing && isNewItem(entry, baseEducation);
+                  const itemIsNew = reviewing && isNewItem("education", entry, baseEducation);
                   const baseEntry = itemIsNew
                     ? null
-                    : baseEducation.find(
-                        (b) =>
-                          (getStr(b, "institution") && getStr(b, "institution") === getStr(entry, "institution")) ||
-                          isEqual(b, entry),
-                      ) ?? null;
+                    : findBaseEntryByIdentity("education", entry, baseEducation);
                   const courses = getArr<string>(entry, "courses").filter(Boolean);
                   const baseCourses = baseEntry
                     ? getArr<string>(baseEntry, "courses").filter(Boolean)
@@ -686,7 +726,7 @@ export function ResumeDocument({
                   );
                 })}
                 {reviewing &&
-                  getRemovedItems(baseEducation, education).map((entry, k) => (
+                  getRemovedItems("education", baseEducation, education).map((entry, k) => (
                     <div
                       key={`rm-edu-${k}`}
                       className="mb-3 relative line-through opacity-60 bg-rose-50/50 rounded p-1"
@@ -709,7 +749,7 @@ export function ResumeDocument({
                 <h2 className={sectionHeading}>Projects</h2>
                 {projects.map((entry, i) =>
                   renderExperienceItem(
-                    "projects", entry, i, baseProjects, "name", "Project", "Project Highlight",
+                    "projects", entry, i, baseProjects, "name", "Project",
                     (entry, baseEntry, idx) => {
                       const highlights = getArr<string>(entry, "highlights").filter(Boolean);
                       const baseHighlights = baseEntry
@@ -741,7 +781,7 @@ export function ResumeDocument({
                   ),
                 )}
                 {reviewing &&
-                  getRemovedItems(baseProjects, projects).map((entry, k) => (
+                  getRemovedItems("projects", baseProjects, projects).map((entry, k) => (
                     <div
                       key={`rm-proj-${k}`}
                       className="mb-3 relative line-through opacity-60 bg-rose-50/50 rounded p-1"
@@ -768,7 +808,7 @@ export function ResumeDocument({
                   const baseKwStr = baseEntry
                     ? getArr<string>(baseEntry, "keywords").filter(Boolean).join(", ")
                     : undefined;
-                  const itemIsNew = reviewing && isNewItem(entry, baseSkills);
+                  const itemIsNew = reviewing && isNewItem("skills", entry, baseSkills);
 
                   if (compact) {
                     return (
@@ -825,7 +865,7 @@ export function ResumeDocument({
                   );
                 })}
                 {reviewing &&
-                  getRemovedItems(baseSkills, skills).map((entry, k) => (
+                  getRemovedItems("skills", baseSkills, skills).map((entry, k) => (
                     <div
                       key={`rm-skill-${k}`}
                       className="mb-1.5 relative line-through opacity-60 bg-rose-50/50 rounded p-1"

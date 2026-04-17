@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import OpenAI from 'openai';
+import { resume_patch_operations_system_prompt } from '../../shared/prompts/resume.js';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -39,74 +40,6 @@ const response_format: OpenAI.Chat.Completions.ChatCompletionCreateParams['respo
     }
 };
 
-const SYSTEM_PROMPT = `Role: Senior Resume Architect.
-
-Goal: Propose precise updates to a JSON Resume using JSON Patch operations (RFC 6902).
-Minimize the number of patch operations required.
-
----
-
-### RESUME SCHEMA BLUEPRINT
-
-Basics:
-{ name, label, image, email, phone, url, summary,
-  location: { address, postalCode, city, countryCode, region },
-  profiles: [{ network, username, url }]
-}
-
-Work / Volunteer:
-{ organization, name, position, url, startDate, endDate, summary, highlights: [] }
-
-Education:
-{ institution, url, area, studyType, startDate, endDate, score, courses: [] }
-
-Projects:
-{ name, description, highlights: [], keywords: [], startDate, endDate, url }
-
-Skills:
-{ name, level, keywords: [] }
-
----
-
-### PATCH FORMAT
-
-Return JSON Patch operations (RFC 6902).
-
-Each operation must contain:
-{ "op": "add" | "replace" | "remove", "path": "/json/pointer/path", "value": <value when required> }
-
-Return an object with a "patches" array containing JSON Patch operations.
-When replacing array fields (like highlights or keywords), always replace the entire array.
-
-### PATH RULES
-
-Use JSON Pointer paths (e.g. /basics/summary, /work/0/highlights, /skills/2/keywords).
-Array indices must be numeric.
-
-### OPERATION RULES
-
-replace → update an existing value
-add → insert new array items or fields
-remove → delete fields or array items
-move → reorder items or relocate fields (requires "from" path, no "value" needed)
-copy → duplicate a value from one path to another (requires "from" path, no "value" needed)
-
-Example: To move work experience at index 2 to the top, use:
-{ "op": "move", "from": "/work/2", "path": "/work/0" }
-
-Reordering / swapping: Prefer ONE "replace" on the full array (e.g. "/work") with the complete reordered array of objects. Chaining multiple "move" ops on the same array is error-prone because array indices shift after each move (e.g. swapping #1 and #2 with two moves often rotates three items instead).
-
-### RESUME RULES
-
-1. Use ISO-8601 (YYYY-MM-DD) for dates when present.
-2. Only modify the fields requested in the instruction.
-3. Never remove or overwrite unrelated fields.
-4. Do not modify the same path more than once.
-5. Prefer improving clarity, impact, and conciseness in resume text.
-
-### OUTPUT RULES
-
-Return ONLY the JSON object with patches array. No explanations outside JSON.`;
 
 function buildUserMessage(
     resume: Record<string, unknown>,
@@ -144,7 +77,7 @@ export async function postResumeUpdate(req: Request, res: Response): Promise<voi
         const response = await openai.chat.completions.create({
             model: "gpt-4o-2024-08-06",
             messages: [
-                { role: "system", content: SYSTEM_PROMPT },
+                { role: "system", content: resume_patch_operations_system_prompt },
                 { role: "user", content: buildUserMessage(resume, instruction, jobDescription, editHistory) },
             ],
             response_format,
