@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { getProfile, putProfile } from "../../api";
+import { useOnboarding } from "../../hooks/useOnboarding";
 import {
   Profile,
   ExperienceEntry,
@@ -859,6 +860,7 @@ function SkillsEditor({ entries, onChange }: SkillsEditorProps) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function ProfileFormSection() {
+  const { refetch: refetchOnboarding } = useOnboarding();
   const [status, setStatus] = useState<SaveStatus>("loading");
   const [errorMsg, setErrorMsg] = useState("");
   const [profile, setProfile] = useState<Profile>({});
@@ -920,12 +922,13 @@ export function ProfileFormSection() {
       await putProfile(profile);
       setStatus("saved");
       setDirty(false);
+      void refetchOnboarding();
       setTimeout(() => setStatus("idle"), 2500);
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Failed to save");
       setStatus("error");
     }
-  }, [profile]);
+  }, [profile, refetchOnboarding]);
 
   // ── Loading skeleton ───────────────────────────────────────────────────────
 

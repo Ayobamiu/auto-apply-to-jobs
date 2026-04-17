@@ -1,7 +1,9 @@
-reduce scope to [Submit-competitive-applicaton-on-hanshake-10x-faster]
 show Salary
 auto-fix and populate user's profile when they correct forms
 Bug: edit hostories not saved
+x When I click "Approve & Submit", as a Pro User, I still get the modal asking me to Upgrade, until i reload the page
+x during onboarding, when user finish one task, the floating progress doesnt update. Sometimes, it doesnt show at all. Until user reload
+x reduce scope to [Submit-competitive-applicaton-on-hanshake-10x-faster]
 x save original Description
 x resume should update/set profile only once. Subsequent resume update shouldnt update profile. User should be able to see/update full profile
 x make 'connect handshake' optional in Onboarding process

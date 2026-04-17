@@ -12,6 +12,7 @@ import {
   getHandshakeSessionStatus,
   type HandshakeSessionStatus,
 } from "../../api";
+import { useOnboarding } from "../../hooks/useOnboarding";
 
 function copyToClipboard(text: string): Promise<void> {
   return navigator.clipboard.writeText(text);
@@ -24,6 +25,7 @@ function getToken(): string {
 }
 
 export function HandshakeSettingsSection() {
+  const { refetch: refetchOnboarding } = useOnboarding();
   const [status, setStatus] = useState<HandshakeSessionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -47,8 +49,9 @@ export function HandshakeSettingsSection() {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await load();
+    await refetchOnboarding();
     setRefreshing(false);
-  }, [load]);
+  }, [load, refetchOnboarding]);
 
   const handleCopy = useCallback(async () => {
     try {

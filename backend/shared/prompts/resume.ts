@@ -7,6 +7,8 @@ export const resume_from_text_or_pdf_response_format: OpenAI.Chat.Completions.Ch
         strict: true,
         schema: {
             type: "object",
+            description:
+                "JSON Resume. Each array (work, education, projects, volunteer, awards, certificates, publications, languages, skills, interests, references) must list each real-world entry at most once—never output repeated identical rows. basics.profiles: one entry per network. skills: one object per category name with keywords merged in that object.",
             additionalProperties: false,
             required: ["basics", "work", "education", "volunteer", "awards", "certificates", "publications", "skills", "languages", "interests", "references", "projects"],
             properties: {
@@ -52,6 +54,7 @@ export const resume_from_text_or_pdf_response_format: OpenAI.Chat.Completions.Ch
                 },
                 work: {
                     type: "array",
+                    description: "Each object is one distinct employment; no duplicate same employer+role+dates.",
                     items: {
                         type: "object",
                         additionalProperties: false,
@@ -75,6 +78,7 @@ export const resume_from_text_or_pdf_response_format: OpenAI.Chat.Completions.Ch
                 },
                 education: {
                     type: "array",
+                    description: "Each object is one distinct degree/program; no duplicate same institution+field+dates.",
                     items: {
                         type: "object",
                         additionalProperties: false,
@@ -133,7 +137,7 @@ export const resume_from_text_or_pdf_response_format: OpenAI.Chat.Completions.Ch
                 },
                 certificates: {
                     type: "array",
-                    description: "Specify any certificates you have received throughout your professional career",
+                    description: "One row per distinct credential; no duplicate same name+issuer+date.",
                     items: {
                         type: "object",
                         additionalProperties: false,
@@ -223,7 +227,7 @@ export const resume_from_text_or_pdf_response_format: OpenAI.Chat.Completions.Ch
                 },
                 projects: {
                     type: "array",
-                    description: "Specify career projects",
+                    description: "One row per distinct project; no duplicates of the same name+entity+dates.",
                     items: {
                         type: "object",
                         additionalProperties: false,
@@ -266,9 +270,10 @@ RULES:
 - Preserve original wording for job titles, company names, school names, and bullet points.
 - For any field not found in the resume, use an empty string "" for string fields and an empty array [] for array fields.
 - Never use null for any field.
+- Uniqueness: never repeat the same work, education, project, volunteer role, award, certificate, publication, language, skill category, interest, reference, or social profile as multiple identical rows. Each array element must represent a distinct real-world item.
 - Dates: use ISO 8601 format where possible (e.g. "2024-01-15", "2024-01", "2024"). If only a year is present, use "2024". If a job is current, use an empty string "" for endDate.
 - basics.label should be the person's current or most recent job title or title if not present.
 - basics.summary should be extracted from a professional summary or objective section if present, otherwise leave as empty string "".
 - work[].highlights should contain bullet points or accomplishments exactly as written.
-- skills should group related technologies or competencies under a category name with keywords listing the individual skills.
-- For profiles, extract LinkedIn, GitHub, portfolio, or any other social/professional links found in the resume.`;
+- skills should group related technologies or competencies under a category name with keywords listing the individual skills; use one skills[] object per category, never duplicate the same category name.
+- For profiles, extract LinkedIn, GitHub, portfolio, or any other social/professional links found in the resume—one basics.profiles entry per network.`;

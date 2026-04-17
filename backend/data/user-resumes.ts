@@ -2,6 +2,8 @@
  * Base resume JSON per user (one row per user). Used for upload/edit and as source for job-tailoring.
  */
 import { pool, ensureDataTables } from '../api/db.js';
+import type { Resume } from '../types/resume.js';
+import { formatResume } from '../utils/format-resume.js';
 
 const USER_ID_REGEX = /^[a-zA-Z0-9_-]+$/;
 
@@ -47,7 +49,7 @@ export async function saveBaseResume(
   content: Record<string, unknown>
 ): Promise<void> {
   const uid = validateUserId(userId);
-  const validated = validateBaseResumeContent(content);
+  const validated = formatResume(validateBaseResumeContent(content) as Partial<Resume>);
   await ensureDataTables();
   await pool.query(
     `INSERT INTO user_resumes (user_id, content, updated_at)
