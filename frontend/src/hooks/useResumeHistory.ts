@@ -12,11 +12,6 @@ export function useResumeHistory(initialResume: Record<string, unknown>) {
   const [resume, setResumeRaw] = useState<Record<string, unknown>>(initialResume);
   const [past, setPast] = useState<HistoryEntry[]>([]);
   const [future, setFuture] = useState<HistoryEntry[]>([]);
-  console.log({
-    resume,
-    past,
-    future,
-  })
   const setResume = useCallback(
     (next: Record<string, unknown>, label = "Edit") => {
       setPast((prev) => {

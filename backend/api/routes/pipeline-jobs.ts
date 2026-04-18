@@ -128,6 +128,15 @@ async function getPipelineJobAndSiteJobId(
   return { job, site, jobIdFromUrl };
 }
 
+/** Allow saving resume/cover/written docs while reviewing or after terminal outcomes — not while generating, not cancelled. */
+function canEditPipelineArtifacts(job: PipelineJob): boolean {
+  return (
+    job.status === 'awaiting_approval' ||
+    job.status === 'done' ||
+    job.status === 'failed'
+  );
+}
+
 /** GET /pipeline/jobs/:jobId/artifacts — resume JSON, cover text, job title (when status is awaiting_approval). */
 export async function getPipelineJobArtifacts(req: Request, res: Response): Promise<void> {
   const ctx = await getPipelineJobAndSiteJobId(req, res);
@@ -250,8 +259,10 @@ export async function putPipelineJobArtifactsResume(req: Request, res: Response)
   const ctx = await getPipelineJobAndSiteJobId(req, res);
   if (!ctx) return;
   const { job, site, jobIdFromUrl } = ctx;
-  if (job.status !== 'awaiting_approval') {
-    res.status(400).json({ error: 'Job is not awaiting approval' });
+  if (!canEditPipelineArtifacts(job)) {
+    res.status(400).json({
+      error: `Cannot save resume while the job is ${job.status}. Save is allowed when awaiting approval, completed, or failed.`,
+    });
     return;
   }
   const userId = req.userId!;
@@ -274,8 +285,10 @@ export async function putPipelineJobArtifactsCover(req: Request, res: Response):
   const ctx = await getPipelineJobAndSiteJobId(req, res);
   if (!ctx) return;
   const { job, site, jobIdFromUrl } = ctx;
-  if (job.status !== 'awaiting_approval') {
-    res.status(400).json({ error: 'Job is not awaiting approval' });
+  if (!canEditPipelineArtifacts(job)) {
+    res.status(400).json({
+      error: `Cannot save cover letter while the job is ${job.status}. Save is allowed when awaiting approval, completed, or failed.`,
+    });
     return;
   }
   const userId = req.userId!;
@@ -332,8 +345,10 @@ export async function putPipelineJobArtifactsWrittenDoc(req: Request, res: Respo
     res.status(400).json({ error: 'Body must include artifactId (string)' });
     return;
   }
-  if (job.status !== 'awaiting_approval') {
-    res.status(400).json({ error: 'Job is not awaiting approval' });
+  if (!canEditPipelineArtifacts(job)) {
+    res.status(400).json({
+      error: `Cannot save written document while the job is ${job.status}. Save is allowed when awaiting approval, completed, or failed.`,
+    });
     return;
   }
   const userId = req.userId!;
