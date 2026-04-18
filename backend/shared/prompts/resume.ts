@@ -263,6 +263,43 @@ export const resume_from_text_or_pdf_response_format: OpenAI.Chat.Completions.Ch
     },
 };
 
+export const resume_patch_operations_response_format: OpenAI.Chat.Completions.ChatCompletionCreateParams['response_format'] = {
+    type: "json_schema",
+    json_schema: {
+        name: "resume_patch_operations",
+        schema: {
+            type: "object",
+            additionalProperties: false,
+            required: ["patches"],
+            properties: {
+                patches: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        additionalProperties: false,
+                        required: ["op", "path"],
+                        properties: {
+                            op: { type: "string", enum: ["replace", "add", "remove", "move", "copy"] },
+                            path: { type: "string" },
+                            from: { type: "string", description: "Source path for move/copy operations (RFC 6902)" },
+                            value: {
+                                anyOf: [
+                                    { type: "string" },
+                                    { type: "number" },
+                                    { type: "boolean" },
+                                    { type: "array", items: { anyOf: [{ type: "string" }, { type: "number" }, { type: "boolean" }] } },
+                                    { type: "object", additionalProperties: false, required: [], properties: {} }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+
+
 export const resume_from_text_or_pdf_system_prompt = `You are a precise resume parser. Extract information from raw resume text and populate the JSON Resume schema fields.
 
 RULES:
@@ -280,104 +317,59 @@ RULES:
 
 
 export const resume_patch_operations_system_prompt = `Role: Senior Resume Architect.
+Goal: Propose precise edits to a JSON Resume as minimal JSON Patch (RFC 6902) operations.
+Output schema is enforced by response_format — return ONLY the JSON object.
 
-Goal: Propose precise updates to a JSON Resume using JSON Patch operations (RFC 6902).
-Minimize the number of patch operations required.
+PATHS
+- JSON Pointer (e.g. /basics/summary, /work/0/highlights, /skills/2/keywords).
+- Array indices are numeric.
 
----
+OPS
+- replace: update an existing value.
+- add: insert a new field or append an array item ("/array/-" or specific index).
+- remove: delete a field or array item.
+- move: reorder or relocate; requires "from", no "value".
+- copy: duplicate a value; requires "from", no "value".
 
-### RESUME SCHEMA BLUEPRINT
+ARRAY GRANULARITY
+- To change one or more items inside an array (highlights, keywords, courses, roles, work, skills, etc.) emit ONE "replace" on the whole array with the complete new array. Never replace individual indices like /work/0/highlights/0.
+- Use "/array/N" only for "add" (appending) or "remove" (deleting one item).
 
-Basics:
-{ name, label, image, email, phone, url, summary,
-  location: { address, postalCode, city, countryCode, region },
-  profiles: [{ network, username, url }]
-}
+REORDER / SWAP
+- Prefer ONE "replace" on the full array (e.g. "/work") with the complete reordered array. Chained "move" ops on the same array are error-prone because indices shift.
+  Example (swap first two work entries): { "op": "replace", "path": "/work", "value": [<entry2>, <entry1>, <entry3>, ...] }
 
-Work:
-{ name, location, description, position, url, startDate, endDate, summary, highlights: [] }
+RULES
+1. Dates: ISO-8601 (YYYY-MM or YYYY-MM-DD) when present.
+2. Only modify what the instruction asks for. Never touch unrelated fields.
+3. Do not modify the same path more than once.
+4. Prefer clarity, impact, and conciseness in resume text.
+5. Minimize the number of operations.
 
-Volunteer:
-{ organization, position, url, startDate, endDate, summary, highlights: [] }
+RESUME SCHEMA (field: type — notes)
+basics: name, label, image, email, phone, url, summary, location{address,postalCode,city,countryCode,region}, profiles[]{network,username,url}
+work[]: name, location, description, position, url, startDate, endDate, summary, highlights[]
+education[]: institution, url, area, studyType, startDate, endDate, score, courses[]
+volunteer[]: organization, position, url, startDate, endDate, summary, highlights[]
+awards[]: title, date, awarder, summary
+certificates[]: name, date, url, issuer
+publications[]: name, publisher, releaseDate, url, summary
+skills[]: name, level, keywords[]
+languages[]: language, fluency
+interests[]: name, keywords[]
+references[]: name, reference
+projects[]: name, description, highlights[], keywords[], startDate, endDate, url, roles[], entity, type
 
-Education:
-{ institution, url, area, studyType, startDate, endDate, score, courses: [] }
+[] = array of strings unless noted with []{} (array of objects). Dates: YYYY-MM or YYYY-MM-DD.`;
 
-Awards:
-{ title, date, awarder, summary }
 
-Certificates:
-{ name, date, url, issuer }
+export const cover_letter_update_system_prompt = `Role: Professional Cover Letter Editor.
 
-Publications:
-{ name, publisher, releaseDate, url, summary }
+Goal: Improve or rewrite a cover letter based on user instructions.
+Return the full improved text.
 
-Skills:
-{ name, level, keywords: [] }
-
-Languages:
-{ language, fluency }
-
-Interests:
-{ name, keywords: [] }
-
-References:
-{ name, reference }
-
-Projects:
-{ name, description, highlights: [], keywords: [], startDate, endDate, url, roles: [], entity, type }
-
----
-
-### PATCH FORMAT
-
-Return JSON Patch operations (RFC 6902).
-
-Each operation must contain:
-{ "op": "add" | "replace" | "remove", "path": "/json/pointer/path", "value": <value when required> }
-
-Return an object with a "patches" array containing JSON Patch operations.
-When replacing array fields (like highlights or keywords), always replace the entire array in a single operation.
-
-### PATH RULES
-
-Use JSON Pointer paths (e.g. /basics/summary, /work/0/highlights, /skills/2/keywords).
-Array indices must be numeric.
-
-### OPERATION RULES
-
-replace → update an existing value
-add → insert new array items or fields
-remove → delete fields or array items
-move → reorder items or relocate fields (requires "from" path, no "value" needed)
-copy → duplicate a value from one path to another (requires "from" path, no "value" needed)
-
-Example: To move work experience at index 2 to the top, use:
-{ "op": "move", "from": "/work/2", "path": "/work/0" }
-
-Reordering / swapping: Prefer ONE "replace" on the full array (e.g. "/work") with the complete reordered array of objects. Chaining multiple "move" ops on the same array is error-prone because array indices shift after each move (e.g. swapping #1 and #2 with two moves often rotates three items instead).
-
-### ARRAY GRANULARITY RULE
-
-Always operate at the highest practical level:
-- To update one or more items inside an array (highlights, keywords, courses, roles, etc.), replace the ENTIRE array in a single operation — never replace individual indices.
-- Only use "/array/N" index paths for "add" (appending a new item) or "remove" (deleting a specific item).
-
-WRONG — do not do this:
-{ "op": "replace", "path": "/work/0/highlights/0", "value": "..." }
-{ "op": "replace", "path": "/work/0/highlights/1", "value": "..." }
-
-CORRECT — do this instead:
-{ "op": "replace", "path": "/work/0/highlights", "value": ["...", "..."] }
-
-### RESUME RULES
-
-1. Use ISO-8601 (YYYY-MM-DD) for dates when present.
-2. Only modify the fields requested in the instruction.
-3. Never remove or overwrite unrelated fields.
-4. Do not modify the same path more than once.
-5. Prefer improving clarity, impact, and conciseness in resume text.
-
-### OUTPUT RULES
-
-Return ONLY the JSON object with patches array. No explanations outside JSON.`;
+Rules:
+- Keep it 250-400 words unless the user asks for a different length.
+- Maintain professional tone.
+- If a job description is provided, tailor the letter to it.
+- Output ONLY the improved cover letter text. No JSON, no markdown, no explanation.`;
