@@ -16,7 +16,7 @@ const STEP_LABELS: Record<Step, string> = {
   fetching: "Fetching job details…",
   generating: "Generating resume and cover letter…",
   preparing: "Preparing your application…",
-  done: "Ready! Taking you to the job…",
+  done: "Ready — you can open the job when it appears in your queue.",
   error: "",
 };
 
@@ -55,7 +55,6 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
   const [pipelineJobId, setPipelineJobId] = useState<string | null>(null);
   const pollingRef = useRef<boolean>(false);
   const pollingTimerRef = useRef<number | null>(null);
-  const redirectTimerRef = useRef<number | null>(null);
 
   const resetState = useCallback(() => {
     setUrl("");
@@ -68,16 +67,25 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
       window.clearTimeout(pollingTimerRef.current);
       pollingTimerRef.current = null;
     }
-    if (redirectTimerRef.current != null) {
-      window.clearTimeout(redirectTimerRef.current);
-      redirectTimerRef.current = null;
-    }
   }, []);
 
   const handleClose = useCallback(() => {
     resetState();
     onClose();
   }, [resetState, onClose]);
+
+  const backToForm = useCallback(() => {
+    pollingRef.current = false;
+    if (pollingTimerRef.current != null) {
+      window.clearTimeout(pollingTimerRef.current);
+      pollingTimerRef.current = null;
+    }
+    setStep("idle");
+    setErrorMsg("");
+    setJobRef(null);
+    setPipelineJobId(null);
+    setUrl("");
+  }, []);
 
   // Poll pipeline status to advance steps
   useEffect(() => {
@@ -99,13 +107,7 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
 
         if (nextStep === "done") {
           pollingRef.current = false;
-          const refToUse = jobRef;
-          // Use separate ref for redirect timer so effect cleanup doesn't clear it
-          redirectTimerRef.current = window.setTimeout(() => {
-            if (refToUse)
-              navigate(`/discover/job/${encodeURIComponent(refToUse)}`);
-            handleClose();
-          }, 1200);
+          void queue?.refresh();
           return;
         }
         if (nextStep === "error") {
@@ -127,7 +129,7 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
       if (pollingTimerRef.current != null)
         window.clearTimeout(pollingTimerRef.current);
     };
-  }, [pipelineJobId, jobRef, handleClose, navigate, step]);
+  }, [pipelineJobId, queue]);
 
   // Reset when modal closes
   useEffect(() => {
@@ -160,13 +162,8 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
       setJobRef(ref);
 
       try {
-        const { jobId, reused } = await postPipeline(trimmed, { submit: false });
+        const { jobId } = await postPipeline(trimmed, { submit: false });
         setPipelineJobId(jobId);
-        if (reused) {
-          navigate(`/discover/job/${encodeURIComponent(ref)}`);
-          handleClose();
-          return;
-        }
         await queue?.refresh();
       } catch (err) {
         setStep("error");
@@ -183,7 +180,7 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
         }
       }
     },
-    [url, queueFull, queue, navigate, handleClose],
+    [url, queueFull, queue],
   );
 
   if (!open) return null;
@@ -198,15 +195,15 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
       aria-modal="true"
       aria-label="Start application from Handshake link"
     >
-      {/* Backdrop */}
+      {/* Backdrop — always closeable */}
       <div
         className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-        onClick={isRunning ? undefined : handleClose}
+        onClick={handleClose}
       />
 
       {/* Panel */}
       <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
-        {/* Header */}
+        {/* Header — close always visible */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
           <div>
             <h2 className="text-[17px] font-semibold text-gray-900">
@@ -216,15 +213,14 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
               We'll generate a tailored resume and cover letter for you.
             </p>
           </div>
-          {!isRunning && (
-            <button
-              type="button"
-              onClick={handleClose}
-              className="ml-4 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors bg-transparent border-0 cursor-pointer flex-shrink-0"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleClose}
+            className="ml-4 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors bg-transparent border-0 cursor-pointer flex-shrink-0"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Body */}
@@ -290,7 +286,6 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
 
           {isRunning && (
             <div className="flex flex-col gap-5">
-              {/* Progress steps */}
               <div className="flex flex-col gap-3">
                 {STEP_ORDER.filter((s) => s !== "done" || step === "done").map(
                   (s, idx) => {
@@ -331,6 +326,37 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
                   },
                 )}
               </div>
+
+              {step === "done" && jobRef && (
+                <div className="flex flex-col gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(`/discover/job/${encodeURIComponent(jobRef)}`)
+                    }
+                    className="w-full py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 border-0 cursor-pointer"
+                  >
+                    Open job page
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void backToForm()}
+                    className="w-full py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-xl hover:bg-blue-100 border-0 cursor-pointer"
+                  >
+                    Paste another job
+                  </button>
+                </div>
+              )}
+
+              {step !== "done" && (
+                <button
+                  type="button"
+                  onClick={() => void backToForm()}
+                  className="text-sm font-medium text-gray-600 hover:text-gray-900 bg-transparent border-0 cursor-pointer self-start"
+                >
+                  Paste another job instead
+                </button>
+              )}
             </div>
           )}
 
@@ -349,7 +375,7 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
               </div>
               <button
                 type="button"
-                onClick={resetState}
+                onClick={() => void backToForm()}
                 className="w-full py-2.5 text-sm font-semibold text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 border-0 cursor-pointer transition-colors"
               >
                 Try again
