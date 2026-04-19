@@ -4,6 +4,7 @@ import {
   Navigate,
   Route,
   Routes,
+  useLocation,
   useNavigate,
 } from "react-router-dom";
 import { clearToken, isLoggedIn, setOnUnauthorized } from "./api";
@@ -18,6 +19,13 @@ import { FloatingProgress } from "./components/onboarding/FloatingProgress";
 import { OnboardingProvider } from "./hooks/useOnboarding";
 import { PipelineQueueProvider } from "./hooks/usePipelineQueue";
 import { PipelineTray } from "./components/PipelineTray";
+
+/** Floating tray only off the Discover list page (queue is inline there). */
+function PipelineFloatingTray() {
+  const { pathname } = useLocation();
+  if (pathname === "/discover") return null;
+  return <PipelineTray variant="floating" />;
+}
 import { SubscriptionProvider } from "./subscription/useSubscription";
 import { HomePage } from "./components/HomePage";
 
@@ -134,7 +142,7 @@ export function App() {
               }}
             />
             {isLoggedIn_ && <FloatingProgress />}
-            {isLoggedIn_ && <PipelineTray />}
+            {isLoggedIn_ && <PipelineFloatingTray />}
           </OnboardingProvider>
         </PipelineQueueProvider>
       </SubscriptionProvider>

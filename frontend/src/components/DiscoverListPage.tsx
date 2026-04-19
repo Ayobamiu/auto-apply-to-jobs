@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link2, Loader2 } from "lucide-react";
 import { HandshakeLinkModal } from "./HandshakeLinkModal";
+import { PipelineTray } from "./PipelineTray";
 import { useOnboarding } from "../hooks/useOnboarding";
 import { OnboardingChecklist } from "./onboarding/OnboardingChecklist";
 
@@ -156,6 +157,8 @@ export function DiscoverListPage() {
           Paste link
         </button>
       </div>
+
+      <PipelineTray variant="inline" />
 
       <HandshakeLinkModal
         open={handshakeModalOpen}

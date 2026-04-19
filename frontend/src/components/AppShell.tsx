@@ -55,7 +55,9 @@ export function AppShell({ children, onLogout }: AppShellProps) {
       onClick: () => onLogout(),
     },
   ];
-  const showQueueSummary = Boolean(queue && queue.jobs.length > 0);
+  const isDiscoverListHome = pathname === "/discover";
+  const showQueueSummary =
+    Boolean(queue && queue.jobs.length > 0) && !isDiscoverListHome;
   const queueSummaryLabel = queue?.hasAwaitingApproval
     ? "Review ready"
     : queue?.runningCount

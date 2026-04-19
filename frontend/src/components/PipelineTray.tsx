@@ -6,11 +6,12 @@ import {
   CheckCircle2,
   Clock,
   Loader2,
-  Sparkles,
   X,
 } from "lucide-react";
 import type { ActivePipelineJob } from "../api";
 import { usePipelineQueue } from "../hooks/usePipelineQueue";
+
+export type PipelineTrayVariant = "floating" | "inline";
 
 function statusLabel(job: ActivePipelineJob, position: number | null): string {
   switch (job.status) {
@@ -42,7 +43,7 @@ function StatusIcon({ status }: { status: ActivePipelineJob["status"] }) {
         <Loader2 className="w-4 h-4 text-blue-600 animate-spin" aria-hidden />
       );
     case "awaiting_approval":
-      return <Sparkles className="w-4 h-4 text-blue-600" aria-hidden />;
+      return <Clock className="w-4 h-4 text-blue-600" aria-hidden />;
     case "done":
       return <CheckCircle2 className="w-4 h-4 text-green-600" aria-hidden />;
     case "failed":
@@ -60,7 +61,12 @@ function detailHref(job: ActivePipelineJob): string | null {
   return `/discover/job/${encodeURIComponent(`${job.site}:${match[1]}`)}`;
 }
 
-export function PipelineTray() {
+interface PipelineTrayProps {
+  /** `floating`: fixed bottom-right elsewhere in the app. `inline`: section under Discover hero. */
+  variant?: PipelineTrayVariant;
+}
+
+export function PipelineTray({ variant = "floating" }: PipelineTrayProps) {
   const navigate = useNavigate();
   const {
     jobs,
@@ -86,18 +92,27 @@ export function PipelineTray() {
     return positions;
   }, [jobs]);
 
-  if (jobs.length === 0 || isTrayMinimized) return null;
+  const isFloating = variant === "floating";
+  const hiddenByMinimize = isFloating && isTrayMinimized;
+  const showInline = !isFloating && jobs.length > 0;
+  const showFloating = isFloating && jobs.length > 0 && !hiddenByMinimize;
+
+  if (!showInline && !showFloating) return null;
+
+  const outerClassName = isFloating
+    ? "fixed right-4 z-40 w-[min(22rem,calc(100vw-2rem))] bottom-20 md:bottom-4"
+    : "w-full max-w-xl mx-auto mt-6";
+
+  const panelClassName = isFloating
+    ? "bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden"
+    : "bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden";
 
   return (
-    <div
-      className="fixed right-4 z-40 w-[min(22rem,calc(100vw-2rem))] bottom-20 md:bottom-4"
-      role="region"
-      aria-label="Pipeline queue"
-    >
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden">
+    <div className={outerClassName} role="region" aria-label="Pipeline queue">
+      <div className={panelClassName}>
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 bg-gray-50">
           <div className="flex items-center gap-2 text-[13px] font-semibold text-gray-800">
-            <Sparkles className="w-4 h-4 text-blue-600" aria-hidden />
+            <Clock className="w-4 h-4 text-blue-600" aria-hidden />
             <span>Queue</span>
             <span className="text-[11px] font-normal text-gray-500">
               {inFlightCount}/{cap}
@@ -109,15 +124,17 @@ export function PipelineTray() {
                 Review ready
               </span>
             )}
-            <button
-              type="button"
-              onClick={minimizeTray}
-              className="inline-flex items-center justify-center rounded-md border-0 bg-transparent p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 cursor-pointer transition-colors"
-              aria-label="Minimize queue tray"
-              title="Minimize"
-            >
-              <ChevronDown className="w-4 h-4" />
-            </button>
+            {isFloating && (
+              <button
+                type="button"
+                onClick={minimizeTray}
+                className="inline-flex items-center justify-center rounded-md border-0 bg-transparent p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 cursor-pointer transition-colors"
+                aria-label="Minimize queue tray"
+                title="Minimize"
+              >
+                <ChevronDown className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
 
