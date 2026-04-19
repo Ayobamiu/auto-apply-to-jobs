@@ -263,6 +263,43 @@ export const resume_from_text_or_pdf_response_format: OpenAI.Chat.Completions.Ch
     },
 };
 
+export const resume_patch_operations_response_format: OpenAI.Chat.Completions.ChatCompletionCreateParams['response_format'] = {
+    type: "json_schema",
+    json_schema: {
+        name: "resume_patch_operations",
+        schema: {
+            type: "object",
+            additionalProperties: false,
+            required: ["patches"],
+            properties: {
+                patches: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        additionalProperties: false,
+                        required: ["op", "path"],
+                        properties: {
+                            op: { type: "string", enum: ["replace", "add", "remove", "move", "copy"] },
+                            path: { type: "string" },
+                            from: { type: "string", description: "Source path for move/copy operations (RFC 6902)" },
+                            value: {
+                                anyOf: [
+                                    { type: "string" },
+                                    { type: "number" },
+                                    { type: "boolean" },
+                                    { type: "array", items: { anyOf: [{ type: "string" }, { type: "number" }, { type: "boolean" }] } },
+                                    { type: "object", additionalProperties: false, required: [], properties: {} }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+
+
 export const resume_from_text_or_pdf_system_prompt = `You are a precise resume parser. Extract information from raw resume text and populate the JSON Resume schema fields.
 
 RULES:
@@ -277,3 +314,62 @@ RULES:
 - work[].highlights should contain bullet points or accomplishments exactly as written.
 - skills should group related technologies or competencies under a category name with keywords listing the individual skills; use one skills[] object per category, never duplicate the same category name.
 - For profiles, extract LinkedIn, GitHub, portfolio, or any other social/professional links found in the resume—one basics.profiles entry per network.`;
+
+
+export const resume_patch_operations_system_prompt = `Role: Senior Resume Architect.
+Goal: Propose precise edits to a JSON Resume as minimal JSON Patch (RFC 6902) operations.
+Output schema is enforced by response_format — return ONLY the JSON object.
+
+PATHS
+- JSON Pointer (e.g. /basics/summary, /work/0/highlights, /skills/2/keywords).
+- Array indices are numeric.
+
+OPS
+- replace: update an existing value.
+- add: insert a new field or append an array item ("/array/-" or specific index).
+- remove: delete a field or array item.
+- move: reorder or relocate; requires "from", no "value".
+- copy: duplicate a value; requires "from", no "value".
+
+ARRAY GRANULARITY
+- To change one or more items inside an array (highlights, keywords, courses, roles, work, skills, etc.) emit ONE "replace" on the whole array with the complete new array. Never replace individual indices like /work/0/highlights/0.
+- Use "/array/N" only for "add" (appending) or "remove" (deleting one item).
+
+REORDER / SWAP
+- Prefer ONE "replace" on the full array (e.g. "/work") with the complete reordered array. Chained "move" ops on the same array are error-prone because indices shift.
+  Example (swap first two work entries): { "op": "replace", "path": "/work", "value": [<entry2>, <entry1>, <entry3>, ...] }
+
+RULES
+1. Dates: ISO-8601 (YYYY-MM or YYYY-MM-DD) when present.
+2. Only modify what the instruction asks for. Never touch unrelated fields.
+3. Do not modify the same path more than once.
+4. Prefer clarity, impact, and conciseness in resume text.
+5. Minimize the number of operations.
+
+RESUME SCHEMA (field: type — notes)
+basics: name, label, image, email, phone, url, summary, location{address,postalCode,city,countryCode,region}, profiles[]{network,username,url}
+work[]: name, location, description, position, url, startDate, endDate, summary, highlights[]
+education[]: institution, url, area, studyType, startDate, endDate, score, courses[]
+volunteer[]: organization, position, url, startDate, endDate, summary, highlights[]
+awards[]: title, date, awarder, summary
+certificates[]: name, date, url, issuer
+publications[]: name, publisher, releaseDate, url, summary
+skills[]: name, level, keywords[]
+languages[]: language, fluency
+interests[]: name, keywords[]
+references[]: name, reference
+projects[]: name, description, highlights[], keywords[], startDate, endDate, url, roles[], entity, type
+
+[] = array of strings unless noted with []{} (array of objects). Dates: YYYY-MM or YYYY-MM-DD.`;
+
+
+export const cover_letter_update_system_prompt = `Role: Professional Cover Letter Editor.
+
+Goal: Improve or rewrite a cover letter based on user instructions.
+Return the full improved text.
+
+Rules:
+- Keep it 250-400 words unless the user asks for a different length.
+- Maintain professional tone.
+- If a job description is provided, tailor the letter to it.
+- Output ONLY the improved cover letter text. No JSON, no markdown, no explanation.`;

@@ -1,14 +1,7 @@
-import { useState } from "react";
-import { EditableText } from "./EditableText";
-import {
-  setResumePath,
-  getProposedValueForPath,
-  isPathUnderPatch,
-  getAddPatchesForArray,
-  type ProposedPatch,
-} from "./utils";
+import { isEqual } from "lodash";
 import { Sparkles } from "lucide-react";
 import { DiffView } from "../components/DiffView";
+import { ResumeEditForm } from "./forms/ResumeEditForm";
 
 function getStr(obj: unknown, key: string): string {
   if (obj == null || typeof obj !== "object") return "";
@@ -30,79 +23,11 @@ function getObj(obj: unknown, key: string): Record<string, unknown> | null {
     : null;
 }
 
-function hasAnyOptionalBasicsContent(
-  basics: Record<string, unknown>,
-  location: Record<string, unknown>,
-  profiles: Record<string, unknown>[],
-): boolean {
-  if (
-    getStr(basics, "label") ||
-    getStr(basics, "image") ||
-    getStr(basics, "url")
-  )
-    return true;
-  if (
-    getStr(location, "city") ||
-    getStr(location, "region") ||
-    getStr(location, "countryCode") ||
-    getStr(location, "address") ||
-    getStr(location, "postalCode")
-  )
-    return true;
-  return profiles.length > 0;
-}
-
-function hasAnyOptionalWorkContent(entry: Record<string, unknown>): boolean {
-  return !!(
-    getStr(entry, "location") ||
-    getStr(entry, "url") ||
-    getStr(entry, "description") ||
-    getStr(entry, "summary")
-  );
-}
-
-function hasAnyOptionalEducationContent(
-  entry: Record<string, unknown>,
-): boolean {
-  return !!(
-    getStr(entry, "url") ||
-    getStr(entry, "studyType") ||
-    getStr(entry, "score") ||
-    getArr<string>(entry, "courses").length > 0
-  );
-}
-
-function hasAnyOptionalProjectContent(entry: Record<string, unknown>): boolean {
-  return !!(
-    getStr(entry, "description") ||
-    getStr(entry, "startDate") ||
-    getStr(entry, "endDate") ||
-    getStr(entry, "url") ||
-    getStr(entry, "entity") ||
-    getStr(entry, "type") ||
-    getArr<string>(entry, "keywords").length > 0 ||
-    getArr<string>(entry, "roles").length > 0
-  );
-}
-
-/** Renders value as plain text when present; nothing when empty. Used in Preview mode. */
-function DisplayText({
-  value,
-  className = "",
-}: {
-  value: string;
-  className?: string;
-}) {
-  if (value === "") return null;
-  return <span className={className}>{value}</span>;
-}
-
 export interface ResumeDocumentProps {
   resume: Record<string, unknown>;
   onChange: (resume: Record<string, unknown>) => void;
   compact?: boolean;
   readOnly?: boolean;
-  /** When true, disables click-to-select blocks/highlights (used post-submission). */
   disableSelection?: boolean;
   selectedNode?:
     | {
@@ -124,7 +49,8 @@ export interface ResumeDocumentProps {
       | null
       | undefined,
   ) => void;
-  proposedPatches?: ProposedPatch[];
+  /** The committed resume before patches — when provided, diff mode is active. */
+  baseResume?: Record<string, unknown>;
 }
 
 export function ResumeDocument({
@@ -135,11 +61,9 @@ export function ResumeDocument({
   disableSelection = false,
   selectedNode,
   setSelectedNode,
-  proposedPatches = [], // From useAiEditor hook
+  baseResume,
 }: ResumeDocumentProps) {
-  const onCommit = (path: string, value: string) => {
-    onChange(setResumePath(resume, path, value));
-  };
+  const reviewing = !!baseResume;
 
   const basics = (resume.basics as Record<string, unknown>) ?? {};
   const location = getObj(basics, "location") ?? {};
@@ -156,23 +80,10 @@ export function ResumeDocument({
   const interests = getArr<Record<string, unknown>>(resume, "interests");
   const references = getArr<Record<string, unknown>>(resume, "references");
 
-  const [basicsOptionalExpanded, setBasicsOptionalExpanded] = useState(false);
-  const [basicsExtraRevealed, setBasicsExtraRevealed] = useState<Set<string>>(
-    new Set(),
-  );
-  const [contactLocationRevealed, setContactLocationRevealed] = useState(false);
-  const [workOptionalExpanded, setWorkOptionalExpanded] = useState<Set<number>>(
-    new Set(),
-  );
-  const [educationOptionalExpanded, setEducationOptionalExpanded] = useState<
-    Set<number>
-  >(new Set());
-  const [projectsOptionalExpanded, setProjectsOptionalExpanded] = useState<
-    Set<number>
-  >(new Set());
-  const [skillLevelExpanded, setSkillLevelExpanded] = useState<Set<number>>(
-    new Set(),
-  );
+  const baseBasics = baseResume
+    ? ((baseResume.basics as Record<string, unknown>) ?? {})
+    : null;
+  const baseLocation = baseBasics ? (getObj(baseBasics, "location") ?? {}) : null;
 
   const SectionWrapper = ({
     path,
@@ -188,15 +99,11 @@ export function ResumeDocument({
     type?: "block" | "highlight";
   }) => {
     const isSelected = selectedNode?.path === path;
-    const isBlockLevelProposed = isPathUnderPatch(path, proposedPatches);
 
     const handleSelect = (e: React.MouseEvent<HTMLDivElement>) => {
-      // Prevent a highlight click from triggering a parent experience block click
       e.stopPropagation();
-
       if (disableSelection) return;
       if (isSelected) {
-        // Toggle off: if clicked again, reset focus to null or a general state
         setSelectedNode?.(null);
       } else {
         setSelectedNode?.({ path, label, data, type });
@@ -213,23 +120,19 @@ export function ResumeDocument({
               ? "border-slate-900 bg-slate-50/80 shadow-sm ring-1 ring-slate-900/10"
               : "border-transparent hover:border-slate-200"
           }
-          ${isBlockLevelProposed ? "ring-2 ring-emerald-400/80 bg-emerald-50/30 shadow-[0_0_0_1px_rgba(52,211,153,0.3)]" : ""}
         `}
       >
-        {/* Label Badge: Only show for larger blocks, not individual highlights */}
         {isSelected && type === "block" && (
           <span className="absolute -top-3 left-4 z-20 bg-slate-900 text-white text-[10px]  py-0.5 rounded-full uppercase tracking-widest font-bold animate-in fade-in zoom-in duration-200">
             AI FOCUS: {label}
           </span>
         )}
 
-        {/* Indicator for individual highlight selection */}
         {isSelected && type === "highlight" && (
           <div className="absolute -left-6 top-1/2 -translate-y-1/2 z-30">
             <div className="flex items-center justify-center w-5 h-5 bg-slate-600 text-amber-300 rounded-full shadow-lg animate-in zoom-in spin-in-90 duration-300">
               <Sparkles size={12} fill="currentColor" />
             </div>
-            {/* Connecting line to the text */}
             <div className="absolute left-5 top-1/2 -translate-y-1/2 w-2 h-[2px] bg-slate-900/20" />
           </div>
         )}
@@ -239,272 +142,209 @@ export function ResumeDocument({
     );
   };
 
-  /** Renders a field with optional diff when this path (or a parent) has a proposed change. Supports recursive drill: if proposedChange is at work[1], work[1].position gets proposed from proposedChange.proposed.position. */
-  const renderField = (path: string, defaultValue: string) => {
-    const match = getProposedValueForPath(path, proposedPatches);
-    // If no AI change applies to this field, render normal text
-    if (!match) return <span>{defaultValue}</span>;
+  // ── Two-resume diff helpers ──
 
-    const { proposed, isExact } = match;
+  /** Compare a string field between preview and base, rendering a diff when they differ. */
+  const diffField = (previewValue: string, baseValue: string | undefined): React.ReactNode => {
+    if (!reviewing || baseValue === undefined) return <span>{previewValue}</span>;
+    if (previewValue === baseValue) return <span>{previewValue}</span>;
+    if (!baseValue && previewValue) {
+      return (
+        <span className="bg-emerald-100 text-emerald-900 px-0.5 rounded shadow-sm border-b-2 border-emerald-400">
+          {previewValue}
+        </span>
+      );
+    }
+    if (baseValue && !previewValue) {
+      return (
+        <span className="bg-rose-100 text-rose-800 line-through opacity-70 px-0.5">
+          {baseValue}
+        </span>
+      );
+    }
+    return <DiffView original={baseValue} proposed={previewValue} />;
+  };
 
-    // If the AI is proposing an object (block update), the section component
-    // handles the background aura; we just show the original text here
-    // unless we want to drill down.
-    if (typeof proposed !== "string") return <span>{defaultValue}</span>;
+  /**
+   * Identity keys per section — used to pair preview items with base items
+   * even when inner fields (like highlights) have changed. This is what makes
+   * "edit the bullets of X" show as bullet-level diffs instead of
+   * remove(X) + add(X').
+   */
+  const IDENTITY_KEYS: Record<string, string[][]> = {
+    work: [["name", "position", "startDate"], ["name", "position"], ["name"]],
+    volunteer: [["organization", "position", "startDate"], ["organization", "position"], ["organization"]],
+    education: [["institution", "studyType", "area"], ["institution", "studyType"], ["institution"]],
+    projects: [["name", "url"], ["name", "description"], ["name"]],
+    skills: [["name"]],
+    languages: [["language"]],
+    certificates: [["name", "issuer"], ["name"]],
+    awards: [["title", "awarder", "date"], ["title", "awarder"], ["title"]],
+    publications: [["name", "publisher"], ["name"]],
+    references: [["name"]],
+    interests: [["name"]],
+  };
 
-    // The 'Emerald Aura' highlights the specific text being changed
+  /** Build a stable identity string for an item in a given section. */
+  const identityOf = (section: string, item: unknown): string | null => {
+    if (item == null || typeof item !== "object") return null;
+    const keySets = IDENTITY_KEYS[section];
+    if (!keySets) return null;
+    for (const keys of keySets) {
+      const parts = keys.map((k) => getStr(item, k));
+      if (parts.every((p) => p)) return parts.join("\u0000");
+    }
+    return null;
+  };
+
+  /** An item is new if no base item shares the same identity. */
+  const isNewItem = (
+    section: string,
+    item: unknown,
+    baseArray: unknown[],
+  ): boolean => {
+    const id = identityOf(section, item);
+    if (id == null) return !baseArray.some((b) => isEqual(b, item));
+    return !baseArray.some((b) => identityOf(section, b) === id);
+  };
+
+  /** Base items that have no identity match in previewArray → removed. */
+  const getRemovedItems = <T,>(
+    section: string,
+    baseArray: T[],
+    previewArray: T[],
+  ): T[] => {
+    return baseArray.filter((b) => {
+      const id = identityOf(section, b);
+      if (id == null) return !previewArray.some((p) => isEqual(p, b));
+      return !previewArray.some((p) => identityOf(section, p) === id);
+    });
+  };
+
+  /** Find base entry that shares identity with preview entry (for inline field diffs). */
+  const findBaseEntryByIdentity = (
+    section: string,
+    previewEntry: Record<string, unknown>,
+    baseArray: Record<string, unknown>[],
+  ): Record<string, unknown> | null => {
+    if (!reviewing) return null;
+    const id = identityOf(section, previewEntry);
+    if (id == null) return null;
+    return baseArray.find((b) => identityOf(section, b) === id) ?? null;
+  };
+
+  /** Diff highlight bullets between preview and base arrays. */
+  const diffHighlights = (
+    section: string,
+    i: number,
+    previewHighlights: string[],
+    baseHighlights: string[],
+    highlightLabel: string,
+  ): React.ReactNode => {
+    if (previewHighlights.length === 0 && baseHighlights.length === 0) return null;
+
+    if (!reviewing || isEqual(previewHighlights, baseHighlights)) {
+      if (previewHighlights.length === 0) return null;
+      return (
+        <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2 space-y-0.5">
+          {previewHighlights.map((h, j) => (
+            <SectionWrapper
+              key={j}
+              path={`${section}[${i}].highlights[${j}]`}
+              label={highlightLabel}
+              data={h}
+              type="highlight"
+            >
+              <li>{h}</li>
+            </SectionWrapper>
+          ))}
+        </ul>
+      );
+    }
+
+    const rows: React.ReactNode[] = [];
+    const maxLen = Math.max(previewHighlights.length, baseHighlights.length);
+    for (let j = 0; j < maxLen; j++) {
+      const prev = previewHighlights[j];
+      const base = baseHighlights[j];
+
+      if (prev !== undefined && base === undefined) {
+        rows.push(
+          <SectionWrapper
+            key={`add-${j}`}
+            path={`${section}[${i}].highlights[${j}]`}
+            label={highlightLabel}
+            data={prev}
+            type="highlight"
+          >
+            <li className="bg-emerald-50/80 text-emerald-900 border-l-2 border-emerald-300 pl-1 -ml-0.5 rounded">
+              {prev}
+            </li>
+          </SectionWrapper>,
+        );
+      } else if (prev === undefined && base !== undefined) {
+        rows.push(
+          <SectionWrapper
+            key={`rm-${j}`}
+            path={`${section}[${i}].highlights[${j}]`}
+            label={highlightLabel}
+            data={base}
+            type="highlight"
+          >
+            <li className="line-through opacity-70 text-rose-900/80 bg-rose-50/40 border-l-2 border-rose-300 pl-1 -ml-0.5 rounded">
+              {base}
+            </li>
+          </SectionWrapper>,
+        );
+      } else if (prev !== undefined && base !== undefined && prev !== base) {
+        rows.push(
+          <SectionWrapper
+            key={j}
+            path={`${section}[${i}].highlights[${j}]`}
+            label={highlightLabel}
+            data={base}
+            type="highlight"
+          >
+            <li>
+              <DiffView original={base} proposed={prev} />
+            </li>
+          </SectionWrapper>,
+        );
+      } else if (prev !== undefined) {
+        rows.push(
+          <SectionWrapper
+            key={j}
+            path={`${section}[${i}].highlights[${j}]`}
+            label={highlightLabel}
+            data={prev}
+            type="highlight"
+          >
+            <li>{prev}</li>
+          </SectionWrapper>,
+        );
+      }
+    }
+
     return (
-      <span className="relative inline">
-        {isExact && (
-          <span
-            className="absolute -inset-1 bg-emerald-50/60 border border-emerald-200 border-dashed rounded -z-10 animate-pulse"
-            aria-hidden
-          />
-        )}
-        <DiffView original={defaultValue} proposed={proposed} />
-      </span>
+      <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2 space-y-0.5">
+        {rows}
+      </ul>
     );
   };
-  const showBasicsOptional =
-    basicsOptionalExpanded ||
-    hasAnyOptionalBasicsContent(basics, location, profiles);
-  const showRegion =
-    getStr(location, "region") !== "" || basicsExtraRevealed.has("region");
-  const showAddress =
-    getStr(location, "address") !== "" || basicsExtraRevealed.has("address");
-  const showImage =
-    getStr(basics, "image") !== "" || basicsExtraRevealed.has("image");
 
-  const addProfile = () => {
-    onChange({
-      ...resume,
-      basics: {
-        ...basics,
-        profiles: [...profiles, { network: "", username: "", url: "" }],
-      },
-    });
-  };
-
-  const removeProfile = (index: number) => {
-    onChange({
-      ...resume,
-      basics: { ...basics, profiles: profiles.filter((_, i) => i !== index) },
-    });
-  };
-
-  const addWork = () => {
-    onChange({
-      ...resume,
-      work: [
-        ...work,
-        {
-          name: "",
-          location: "",
-          description: "",
-          position: "",
-          url: "",
-          startDate: "",
-          endDate: "",
-          summary: "",
-          highlights: [],
-        },
-      ],
-    });
-  };
-
-  const removeWork = (index: number) => {
-    onChange({
-      ...resume,
-      work: work.filter((_, i) => i !== index),
-    });
-  };
-
-  const addVolunteer = () => {
-    onChange({
-      ...resume,
-      volunteer: [
-        ...volunteer,
-        {
-          organization: "",
-          position: "",
-          url: "",
-          startDate: "",
-          endDate: "",
-          summary: "",
-          highlights: [],
-        },
-      ],
-    });
-  };
-
-  const removeVolunteer = (index: number) => {
-    onChange({
-      ...resume,
-      volunteer: volunteer.filter((_, i) => i !== index),
-    });
-  };
-
-  const addEducation = () => {
-    onChange({
-      ...resume,
-      education: [
-        ...education,
-        {
-          institution: "",
-          url: "",
-          area: "",
-          studyType: "",
-          startDate: "",
-          endDate: "",
-          score: "",
-          courses: [],
-        },
-      ],
-    });
-  };
-
-  const removeEducation = (index: number) => {
-    onChange({
-      ...resume,
-      education: education.filter((_, i) => i !== index),
-    });
-  };
-
-  const addSkillCategory = () => {
-    onChange({
-      ...resume,
-      skills: [...skills, { name: "", level: "", keywords: [] }],
-    });
-  };
-
-  const removeSkillCategory = (index: number) => {
-    onChange({
-      ...resume,
-      skills: skills.filter((_, i) => i !== index),
-    });
-  };
-
-  const addProject = () => {
-    onChange({
-      ...resume,
-      projects: [
-        ...projects,
-        {
-          name: "",
-          description: "",
-          highlights: [],
-          keywords: [],
-          startDate: "",
-          endDate: "",
-          url: "",
-          roles: [],
-          entity: "",
-          type: "",
-        },
-      ],
-    });
-  };
-
-  const removeProject = (index: number) => {
-    onChange({
-      ...resume,
-      projects: projects.filter((_, i) => i !== index),
-    });
-  };
-
-  const addLanguage = () =>
-    onChange({
-      ...resume,
-      languages: [...languages, { language: "", fluency: "" }],
-    });
-  const removeLanguage = (index: number) =>
-    onChange({ ...resume, languages: languages.filter((_, i) => i !== index) });
-
-  const addCertificate = () =>
-    onChange({
-      ...resume,
-      certificates: [
-        ...certificates,
-        { name: "", date: "", url: "", issuer: "" },
-      ],
-    });
-  const removeCertificate = (index: number) =>
-    onChange({
-      ...resume,
-      certificates: certificates.filter((_, i) => i !== index),
-    });
-
-  const addAward = () =>
-    onChange({
-      ...resume,
-      awards: [...awards, { title: "", date: "", awarder: "", summary: "" }],
-    });
-  const removeAward = (index: number) =>
-    onChange({ ...resume, awards: awards.filter((_, i) => i !== index) });
-
-  const addPublication = () =>
-    onChange({
-      ...resume,
-      publications: [
-        ...publications,
-        { name: "", publisher: "", releaseDate: "", url: "", summary: "" },
-      ],
-    });
-  const removePublication = (index: number) =>
-    onChange({
-      ...resume,
-      publications: publications.filter((_, i) => i !== index),
-    });
-
-  const addInterest = () =>
-    onChange({
-      ...resume,
-      interests: [...interests, { name: "", keywords: [] }],
-    });
-  const removeInterest = (index: number) =>
-    onChange({ ...resume, interests: interests.filter((_, i) => i !== index) });
-
-  const addReference = () =>
-    onChange({
-      ...resume,
-      references: [...references, { name: "", reference: "" }],
-    });
-  const removeReference = (index: number) =>
-    onChange({
-      ...resume,
-      references: references.filter((_, i) => i !== index),
-    });
-
-  const addHighlight = (pathPrefix: string, current: string[]) => {
-    onChange(setResumePath(resume, pathPrefix, [...current, ""]));
-  };
-
-  const removeHighlight = (
-    pathPrefix: string,
-    current: string[],
-    index: number,
-  ) => {
-    onChange(
-      setResumePath(
-        resume,
-        pathPrefix,
-        current.filter((_, i) => i !== index),
-      ),
-    );
-  };
+  const NewBadge = () => (
+    <span className="absolute -top-2.5 left-3 text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+      New
+    </span>
+  );
+  const RemovingBadge = () => (
+    <span className="absolute -top-2.5 left-3 text-[10px] bg-rose-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+      Removing
+    </span>
+  );
 
   const sectionHeading =
     "text-xs font-semibold uppercase tracking-wide text-gray-500 mt-4 mb-1.5";
-  const removeBtn =
-    "text-red-600 hover:text-red-700 text-sm min-h-[44px] inline-flex items-center px-2 touch-manipulation";
-  const addBtn =
-    "mt-1.5 text-blue-600 hover:text-blue-700 text-sm font-medium min-h-[44px] inline-flex items-center px-0 touch-manipulation";
-
-  const sep = () => (
-    <span className="text-gray-400 select-none mx-0.5" aria-hidden>
-      |
-    </span>
-  );
 
   if (readOnly) {
     const sepP = () => (
@@ -516,24 +356,30 @@ export function ResumeDocument({
     const region = getStr(location, "region");
     const phone = getStr(basics, "phone");
     const email = getStr(basics, "email");
+
+    const baseCity = baseLocation ? getStr(baseLocation, "city") : undefined;
+    const baseRegion = baseLocation ? getStr(baseLocation, "region") : undefined;
+    const basePhone = baseBasics ? getStr(baseBasics, "phone") : undefined;
+    const baseEmail = baseBasics ? getStr(baseBasics, "email") : undefined;
+
     const contactSegments: JSX.Element[] = [];
     if (city || region) {
       contactSegments.push(
         <span key="city-region">
-          {renderField("basics.location.city", city)}
+          {diffField(city, baseCity)}
           {city && region ? ", " : ""}
-          {renderField("basics.location.region", region)}
+          {diffField(region, baseRegion)}
         </span>,
       );
     }
     if (phone) {
       contactSegments.push(
-        <span key="phone">{renderField("basics.phone", phone)}</span>,
+        <span key="phone">{diffField(phone, basePhone)}</span>,
       );
     }
     if (email) {
       contactSegments.push(
-        <span key="email">{renderField("basics.email", email)}</span>,
+        <span key="email">{diffField(email, baseEmail)}</span>,
       );
     }
     if (profiles.length > 0) {
@@ -549,12 +395,9 @@ export function ResumeDocument({
               rel="noopener noreferrer"
               className="text-blue-600 hover:underline"
             >
-              {renderField(
-                `basics.profiles[${index}].url`,
-                network
-                  ? `${network}: ${profileUrl.replace(/^https?:\/\//, "")}`
-                  : profileUrl.replace(/^https?:\/\//, ""),
-              )}
+              {network
+                ? `${network}: ${profileUrl.replace(/^https?:\/\//, "")}`
+                : profileUrl.replace(/^https?:\/\//, "")}
             </a>,
           );
       });
@@ -563,7 +406,7 @@ export function ResumeDocument({
     if (url) {
       contactSegments.push(
         <span key="url">
-          Website: {renderField("basics.url", url.replace(/^https?:\/\//, ""))}
+          Website: {diffField(url.replace(/^https?:\/\//, ""), baseBasics ? getStr(baseBasics, "url").replace(/^https?:\/\//, "") : undefined)}
         </span>,
       );
     }
@@ -575,6 +418,53 @@ export function ResumeDocument({
           )
         : null;
     const summary = getStr(getObj(resume, "basics"), "summary");
+    const baseSummary = baseBasics ? getStr(baseBasics, "summary") : undefined;
+
+    // Base arrays for diff detection
+    const baseWork = baseResume ? getArr<Record<string, unknown>>(baseResume, "work") : work;
+    const baseVolunteer = baseResume ? getArr<Record<string, unknown>>(baseResume, "volunteer") : volunteer;
+    const baseEducation = baseResume ? getArr<Record<string, unknown>>(baseResume, "education") : education;
+    const baseProjects = baseResume ? getArr<Record<string, unknown>>(baseResume, "projects") : projects;
+    const baseSkills = baseResume ? getArr<Record<string, unknown>>(baseResume, "skills") : skills;
+
+    /** Render a work/volunteer/project-like entry with diff awareness. */
+    const renderExperienceItem = (
+      section: string,
+      entry: Record<string, unknown>,
+      i: number,
+      baseArray: Record<string, unknown>[],
+      nameKey: string,
+      labelPrefix: string,
+      renderContent: (
+        entry: Record<string, unknown>,
+        baseEntry: Record<string, unknown> | null,
+        i: number,
+      ) => React.ReactNode,
+    ) => {
+      const itemIsNew = reviewing && isNewItem(section, entry, baseArray);
+      const baseEntry = itemIsNew
+        ? null
+        : findBaseEntryByIdentity(section, entry, baseArray);
+
+      return (
+        <SectionWrapper
+          key={i}
+          path={`${section}[${i}]`}
+          label={`${labelPrefix}: ${getStr(entry, nameKey).slice(0, 10)}...`}
+          data={JSON.stringify(entry)}
+        >
+          <div
+            className={`${compact ? "mb-2" : "mb-3"} relative ${
+              itemIsNew ? "ring-2 ring-emerald-400/80 bg-emerald-50/30 rounded-xl p-2" : ""
+            }`}
+          >
+            {itemIsNew && <NewBadge />}
+            {renderContent(entry, baseEntry, i)}
+          </div>
+        </SectionWrapper>
+      );
+    };
+
     return (
       <div className="flex justify-center">
         <div className="resume-page ">
@@ -588,11 +478,11 @@ export function ResumeDocument({
                 data={getStr(basics, "name")}
               >
                 <h1 className="text-lg md:text-xl font-semibold text-gray-900">
-                  {getStr(basics, "name") || "\u00A0"}
+                  {diffField(getStr(basics, "name") || "\u00A0", baseBasics ? (getStr(baseBasics, "name") || "\u00A0") : undefined)}
                 </h1>
                 {getStr(basics, "label") && !summary ? (
                   <p className="text-sm font-semibold text-gray-900">
-                    {getStr(basics, "label")}
+                    {diffField(getStr(basics, "label"), baseBasics ? getStr(baseBasics, "label") : undefined)}
                   </p>
                 ) : null}
               </SectionWrapper>
@@ -625,422 +515,300 @@ export function ResumeDocument({
                 >
                   {getStr(basics, "label") && summary ? (
                     <p className="text-sm font-semibold text-gray-900">
-                      {getStr(basics, "label")}
+                      {diffField(getStr(basics, "label"), baseBasics ? getStr(baseBasics, "label") : undefined)}
                     </p>
                   ) : null}
                 </SectionWrapper>
                 <SectionWrapper
                   path="basics.summary"
                   label="Professional Summary"
-                  data={getStr(basics, "summary")}
+                  data={summary}
                 >
-                  {renderField("basics.summary", summary) ? (
+                  {(summary || baseSummary) ? (
                     <div className="mt-0.5 text-sm">
-                      {renderField("basics.summary", summary)}
+                      {diffField(summary, baseSummary)}
                     </div>
                   ) : null}
                 </SectionWrapper>
               </div>
             </header>
-            {(work.length > 0 ||
-              getAddPatchesForArray("work", proposedPatches).length > 0) && (
+
+            {/* ── Experience ── */}
+            {work.length > 0 && (
               <section className="resume-section">
                 <h2 className={sectionHeading}>Experience</h2>
-                {work.map((entry, i) => {
-                  const loc = getStr(entry, "location");
-                  const start = getStr(entry, "startDate");
-                  const end = getStr(entry, "endDate");
-                  const highlights = getArr<string>(entry, "highlights").filter(
-                    Boolean,
-                  );
-                  const hasMeta = loc || start || end;
+                {work.map((entry, i) =>
+                  renderExperienceItem(
+                    "work", entry, i, baseWork, "name", "Experience",
+                    (entry, baseEntry, idx) => {
+                      const loc = getStr(entry, "location");
+                      const start = getStr(entry, "startDate");
+                      const end = getStr(entry, "endDate");
+                      const highlights = getArr<string>(entry, "highlights").filter(Boolean);
+                      const hasMeta = loc || start || end;
+                      const baseHighlights = baseEntry
+                        ? getArr<string>(baseEntry, "highlights").filter(Boolean)
+                        : highlights;
+                      return (
+                        <>
+                          <p className="text-sm">
+                            <span className="text-gray-700">
+                              {diffField(getStr(entry, "position"), baseEntry ? getStr(baseEntry, "position") : undefined)}
+                            </span>
+                            {getStr(entry, "position") && getStr(entry, "name") ? sepP() : null}
+                            <span className="font-semibold">
+                              {diffField(getStr(entry, "name"), baseEntry ? getStr(baseEntry, "name") : undefined)}
+                            </span>
+                            {hasMeta ? sepP() : null}
+                            <span className="text-gray-500">
+                              {diffField(loc, baseEntry ? getStr(baseEntry, "location") : undefined)}
+                            </span>
+                            {loc && (start || end) ? sepP() : null}
+                            <span className="text-gray-500">
+                              {diffField(start, baseEntry ? getStr(baseEntry, "startDate") : undefined)}
+                              {start && end ? " – " : start ? " – " : ""}
+                              {end
+                                ? diffField(end, baseEntry ? getStr(baseEntry, "endDate") : undefined)
+                                : start
+                                  ? "Present"
+                                  : ""}
+                            </span>
+                          </p>
+                          {(getStr(entry, "summary") || (baseEntry && getStr(baseEntry, "summary"))) && (
+                            <p className="text-sm text-gray-700 mt-0.5">
+                              {diffField(getStr(entry, "summary"), baseEntry ? getStr(baseEntry, "summary") : undefined)}
+                            </p>
+                          )}
+                          {diffHighlights("work", idx, highlights, baseHighlights, "Specific Achievement")}
+                        </>
+                      );
+                    },
+                  ),
+                )}
+                {/* Removed work items */}
+                {reviewing &&
+                  getRemovedItems("work", baseWork, work).map((entry, k) => (
+                    <div
+                      key={`rm-work-${k}`}
+                      className="mb-3 relative line-through opacity-60 bg-rose-50/50 rounded p-1"
+                    >
+                      <RemovingBadge />
+                      <p className="text-sm mt-1">
+                        <span className="text-gray-700">{getStr(entry, "position")}</span>
+                        {getStr(entry, "position") && getStr(entry, "name") ? sepP() : null}
+                        <span className="font-semibold">{getStr(entry, "name")}</span>
+                      </p>
+                    </div>
+                  ))}
+              </section>
+            )}
+
+            {/* ── Volunteer ── */}
+            {volunteer.length > 0 && (
+              <section className="resume-section">
+                <h2 className={sectionHeading}>Volunteer</h2>
+                {volunteer.map((entry, i) =>
+                  renderExperienceItem(
+                    "volunteer", entry, i, baseVolunteer, "organization", "Volunteer",
+                    (entry, baseEntry, idx) => {
+                      const highlights = getArr<string>(entry, "highlights").filter(Boolean);
+                      const baseHighlights = baseEntry
+                        ? getArr<string>(baseEntry, "highlights").filter(Boolean)
+                        : highlights;
+                      return (
+                        <>
+                          <p className="text-sm">
+                            <span className="text-gray-700">
+                              {diffField(getStr(entry, "position"), baseEntry ? getStr(baseEntry, "position") : undefined)}
+                            </span>
+                            {getStr(entry, "position") && getStr(entry, "organization") ? sepP() : null}
+                            <span className="font-semibold">
+                              {diffField(getStr(entry, "organization"), baseEntry ? getStr(baseEntry, "organization") : undefined)}
+                            </span>
+                          </p>
+                          <p className="text-gray-500 text-sm mt-0.5">
+                            {diffField(getStr(entry, "startDate"), baseEntry ? getStr(baseEntry, "startDate") : undefined)}
+                            {getStr(entry, "startDate") ? " – " : ""}
+                            {getStr(entry, "endDate")
+                              ? diffField(getStr(entry, "endDate"), baseEntry ? getStr(baseEntry, "endDate") : undefined)
+                              : getStr(entry, "startDate")
+                                ? "Present"
+                                : ""}
+                          </p>
+                          {(getStr(entry, "summary") || (baseEntry && getStr(baseEntry, "summary"))) && (
+                            <p className="text-sm text-gray-700 mt-0.5">
+                              {diffField(getStr(entry, "summary"), baseEntry ? getStr(baseEntry, "summary") : undefined)}
+                            </p>
+                          )}
+                          {diffHighlights("volunteer", idx, highlights, baseHighlights, "Volunteer Highlight")}
+                        </>
+                      );
+                    },
+                  ),
+                )}
+                {reviewing &&
+                  getRemovedItems("volunteer", baseVolunteer, volunteer).map((entry, k) => (
+                    <div
+                      key={`rm-vol-${k}`}
+                      className="mb-3 relative line-through opacity-60 bg-rose-50/50 rounded p-1"
+                    >
+                      <RemovingBadge />
+                      <p className="text-sm mt-1">
+                        <span className="text-gray-700">{getStr(entry, "position")}</span>
+                        {getStr(entry, "position") && getStr(entry, "organization") ? sepP() : null}
+                        <span className="font-semibold">{getStr(entry, "organization")}</span>
+                      </p>
+                    </div>
+                  ))}
+              </section>
+            )}
+
+            {/* ── Education ── */}
+            {education.length > 0 && (
+              <section className="resume-section">
+                <h2 className={sectionHeading}>Education</h2>
+                {education.map((entry, i) => {
+                  const itemIsNew = reviewing && isNewItem("education", entry, baseEducation);
+                  const baseEntry = itemIsNew
+                    ? null
+                    : findBaseEntryByIdentity("education", entry, baseEducation);
+                  const courses = getArr<string>(entry, "courses").filter(Boolean);
+                  const baseCourses = baseEntry
+                    ? getArr<string>(baseEntry, "courses").filter(Boolean)
+                    : courses;
+
                   return (
                     <SectionWrapper
                       key={i}
-                      path={`work[${i}]`}
-                      label={`Experience: ${getStr(entry, "name").slice(0, 10)}...`}
+                      path={`education[${i}]`}
+                      label={`Education: ${getStr(entry, "institution").slice(0, 10)}...`}
                       data={JSON.stringify(entry)}
                     >
-                      <div className={compact ? "mb-2" : "mb-3"}>
-                        <p className="text-sm">
-                          <span className="text-gray-700">
-                            {renderField(
-                              `work[${i}].position`,
-                              getStr(entry, "position"),
-                            )}
-                          </span>
-                          {getStr(entry, "position") && getStr(entry, "name")
-                            ? sepP()
-                            : null}
-                          <span className="font-semibold">
-                            {renderField(
-                              `work[${i}].name`,
-                              getStr(entry, "name"),
-                            )}
-                          </span>
-                          {hasMeta ? sepP() : null}
-                          <span className="text-gray-500">
-                            {renderField(`work[${i}].location`, loc)}
-                          </span>
-                          {loc && (start || end) ? sepP() : null}
-                          <span className="text-gray-500">
-                            {renderField(`work[${i}].startDate`, start)}
-                            {start && end ? " – " : start ? " – " : ""}
-                            {end
-                              ? renderField(`work[${i}].endDate`, end)
-                              : start
-                                ? "Present"
-                                : ""}
-                          </span>
+                      <div
+                        className={`${compact ? "mb-2" : "mb-3"} relative ${
+                          itemIsNew ? "ring-2 ring-emerald-400/80 bg-emerald-50/30 rounded-xl p-2" : ""
+                        }`}
+                      >
+                        {itemIsNew && <NewBadge />}
+                        <p className="font-semibold text-sm">
+                          {diffField(getStr(entry, "institution"), baseEntry ? getStr(baseEntry, "institution") : undefined)}
                         </p>
-                        {getStr(entry, "summary") && (
-                          <p className="text-sm text-gray-700 mt-0.5">
-                            {renderField(
-                              `work[${i}].summary`,
-                              getStr(entry, "summary"),
-                            )}
+                        <p className="text-gray-600 text-sm mt-0.5">
+                          {diffField(getStr(entry, "studyType"), baseEntry ? getStr(baseEntry, "studyType") : undefined)}
+                          {getStr(entry, "studyType") && getStr(entry, "area") ? ", " : null}
+                          {diffField(getStr(entry, "area"), baseEntry ? getStr(baseEntry, "area") : undefined)}
+                          {(getStr(entry, "area") || getStr(entry, "studyType")) &&
+                          (getStr(entry, "startDate") || getStr(entry, "endDate"))
+                            ? " · "
+                            : null}
+                          {diffField(getStr(entry, "startDate"), baseEntry ? getStr(baseEntry, "startDate") : undefined)}
+                          {getStr(entry, "startDate") ? " – " : ""}
+                          {getStr(entry, "endDate")
+                            ? diffField(getStr(entry, "endDate"), baseEntry ? getStr(baseEntry, "endDate") : undefined)
+                            : getStr(entry, "startDate")
+                              ? "Present"
+                              : ""}
+                          {getStr(entry, "score") ? (
+                            <>
+                              {" · GPA: "}
+                              {diffField(getStr(entry, "score"), baseEntry ? getStr(baseEntry, "score") : undefined)}
+                            </>
+                          ) : null}
+                        </p>
+                        {(courses.length > 0 || baseCourses.length > 0) && (
+                          <p className="text-gray-500 text-sm mt-0.5">
+                            Courses:{" "}
+                            {diffField(courses.join(", "), reviewing ? baseCourses.join(", ") : undefined)}
                           </p>
                         )}
-                        {(() => {
-                          const blockMatch = getProposedValueForPath(
-                            `work[${i}]`,
-                            proposedPatches,
-                          );
-                          const proposedHighlights =
-                            blockMatch &&
-                            typeof blockMatch.proposed === "object" &&
-                            blockMatch.proposed != null &&
-                            "highlights" in blockMatch.proposed
-                              ? ((
-                                  blockMatch.proposed as {
-                                    highlights?: string[];
-                                  }
-                                ).highlights ?? [])
-                              : [];
-                          const hasHighlights =
-                            highlights.length > 0 ||
-                            proposedHighlights.length > 0;
-                          if (!hasHighlights) return null;
-                          const extraProposed = proposedHighlights
-                            .slice(highlights.length)
-                            .filter(Boolean);
-                          return (
-                            <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2 space-y-0.5">
-                              {highlights.map((h, j) => {
-                                const currentPath = `work[${i}].highlights[${j}]`;
-                                const match = getProposedValueForPath(
-                                  currentPath,
-                                  proposedPatches,
-                                );
-                                const proposedStr =
-                                  match && typeof match.proposed === "string"
-                                    ? match.proposed
-                                    : null;
-                                return (
-                                  <SectionWrapper
-                                    key={j}
-                                    path={`work[${i}].highlights[${j}]`}
-                                    label="Specific Achievement"
-                                    data={h}
-                                    type="highlight"
-                                  >
-                                    {proposedStr != null ? (
-                                      <li>
-                                        <DiffView
-                                          original={h}
-                                          proposed={proposedStr}
-                                        />
-                                      </li>
-                                    ) : (
-                                      <li>{h}</li>
-                                    )}
-                                  </SectionWrapper>
-                                );
-                              })}
-                              {extraProposed.map((text, k) => (
-                                <li
-                                  key={`add-${k}`}
-                                  className="bg-emerald-50/80 text-emerald-900 border-l-2 border-emerald-300 pl-1 -ml-0.5 rounded"
-                                >
-                                  {text}
-                                </li>
-                              ))}
-                            </ul>
-                          );
-                        })()}
                       </div>
                     </SectionWrapper>
                   );
                 })}
-                {getAddPatchesForArray("work", proposedPatches).map(
-                  (patch, k) => {
-                    const v = patch.value as Record<string, unknown>;
-                    const hl = Array.isArray(v?.highlights)
-                      ? (v.highlights as string[])
-                      : [];
-                    return (
-                      <div
-                        key={`add-work-${k}`}
-                        className="mb-3 relative ring-2 ring-emerald-400/80 bg-emerald-50/30 rounded-xl p-2"
-                      >
-                        <span className="absolute -top-2.5 left-3 text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                          New
-                        </span>
-                        <p className="text-sm mt-1">
-                          <span className="text-gray-700">
-                            {(v?.position as string) ?? ""}
-                          </span>
-                          {v?.position && v?.name ? (
-                            <span className="text-gray-400 mx-1">|</span>
-                          ) : null}
-                          <span className="font-semibold">
-                            {(v?.name as string) ?? ""}
-                          </span>
-                          {v?.startDate ? (
-                            <span className="text-gray-400 mx-1">|</span>
-                          ) : null}
-                          <span className="text-gray-500">
-                            {(v?.startDate as string) ?? ""}
-                            {v?.startDate && v?.endDate ? " – " : ""}
-                            {(v?.endDate as string) ?? ""}
-                          </span>
-                        </p>
-                        {hl.length > 0 && (
-                          <ul className="list-disc list-inside text-sm text-emerald-900 mt-0.5 ml-2 space-y-0.5">
-                            {hl.map((h, j) => (
-                              <li key={j}>{h}</li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    );
-                  },
-                )}
-              </section>
-            )}
-            {(volunteer.length > 0 ||
-              getAddPatchesForArray("volunteer", proposedPatches).length >
-                0) && (
-              <section className="resume-section">
-                <h2 className={sectionHeading}>Volunteer</h2>
-                {volunteer.map((entry, i) => (
-                  <SectionWrapper
-                    key={i}
-                    path={`volunteer[${i}]`}
-                    label={`Volunteer: ${getStr(entry, "organization").slice(0, 10)}...`}
-                    data={JSON.stringify(entry)}
-                  >
-                    <div className={compact ? "mb-2" : "mb-3"}>
-                      <p className="text-sm">
-                        <DisplayText
-                          value={getStr(entry, "position")}
-                          className="text-gray-700"
-                        />
-                        {getStr(entry, "position") &&
-                        getStr(entry, "organization")
-                          ? sepP()
-                          : null}
-                        <DisplayText
-                          value={getStr(entry, "organization")}
-                          className="font-semibold"
-                        />
+                {reviewing &&
+                  getRemovedItems("education", baseEducation, education).map((entry, k) => (
+                    <div
+                      key={`rm-edu-${k}`}
+                      className="mb-3 relative line-through opacity-60 bg-rose-50/50 rounded p-1"
+                    >
+                      <RemovingBadge />
+                      <p className="font-semibold text-sm mt-1">{getStr(entry, "institution")}</p>
+                      <p className="text-gray-600 text-sm">
+                        {getStr(entry, "studyType")}
+                        {getStr(entry, "studyType") && getStr(entry, "area") ? ", " : ""}
+                        {getStr(entry, "area")}
                       </p>
-                      <p className="text-gray-500 text-sm mt-0.5">
-                        {getStr(entry, "startDate")}
-                        {getStr(entry, "startDate") ? " – " : ""}
-                        {getStr(entry, "endDate") ||
-                          (getStr(entry, "startDate") ? "Present" : "")}
-                      </p>
-                      {getArr<string>(entry, "highlights").filter(Boolean)
-                        .length > 0 && (
-                        <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2">
-                          {getArr<string>(entry, "highlights")
-                            .filter(Boolean)
-                            .map((h, j) => (
-                              <SectionWrapper
-                                key={j}
-                                path={`volunteer[${i}].highlights[${j}]`}
-                                label="Volunteer Highlight"
-                                data={h}
-                                type="highlight"
-                              >
-                                <li key={j}>{h}</li>
-                              </SectionWrapper>
-                            ))}
-                        </ul>
-                      )}
                     </div>
-                  </SectionWrapper>
-                ))}
+                  ))}
               </section>
             )}
-            {(education.length > 0 ||
-              getAddPatchesForArray("education", proposedPatches).length >
-                0) && (
-              <section className="resume-section">
-                <h2 className={sectionHeading}>Education</h2>
-                {education.map((entry, i) => (
-                  <SectionWrapper
-                    path={`education[${i}]`}
-                    label={`Education: ${getStr(entry, "institution").slice(0, 10)}...`}
-                    data={JSON.stringify(entry)}
-                  >
-                    <div key={i} className={compact ? "mb-2" : "mb-3"}>
-                      <p className="font-semibold text-sm">
-                        <DisplayText value={getStr(entry, "institution")} />
-                      </p>
-                      <p className="text-gray-600 text-sm mt-0.5">
-                        <DisplayText value={getStr(entry, "studyType")} />
-                        {getStr(entry, "studyType") && getStr(entry, "area")
-                          ? ", "
-                          : null}
-                        <DisplayText value={getStr(entry, "area")} />
-                        {(getStr(entry, "area") ||
-                          getStr(entry, "studyType")) &&
-                        (getStr(entry, "startDate") || getStr(entry, "endDate"))
-                          ? " · "
-                          : null}
-                        {getStr(entry, "startDate")}
-                        {getStr(entry, "startDate") ? " – " : ""}
-                        {getStr(entry, "endDate") ||
-                          (getStr(entry, "startDate") ? "Present" : "")}
-                        {getStr(entry, "score")
-                          ? ` · GPA: ${getStr(entry, "score")}`
-                          : null}
-                      </p>
-                      {getArr<string>(entry, "courses").filter(Boolean).length >
-                        0 && (
-                        <p className="text-gray-500 text-sm mt-0.5">
-                          Courses:{" "}
-                          {getArr<string>(entry, "courses")
-                            .filter(Boolean)
-                            .join(", ")}
-                        </p>
-                      )}
-                    </div>
-                  </SectionWrapper>
-                ))}
-                {getAddPatchesForArray("education", proposedPatches).map(
-                  (patch, k) => {
-                    const v = patch.value as Record<string, unknown>;
-                    return (
-                      <div
-                        key={`add-edu-${k}`}
-                        className="mb-3 relative ring-2 ring-emerald-400/80 bg-emerald-50/30 rounded-xl p-2"
-                      >
-                        <span className="absolute -top-2.5 left-3 text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                          New
-                        </span>
-                        <p className="font-semibold text-sm mt-1">
-                          <DisplayText
-                            value={(v?.institution as string) ?? ""}
-                          />
-                        </p>
-                        <p className="text-gray-600 text-sm">
-                          {(v?.studyType as string) ?? ""}
-                          {v?.studyType && v?.area ? ", " : ""}
-                          {(v?.area as string) ?? ""}
-                        </p>
-                      </div>
-                    );
-                  },
-                )}
-              </section>
-            )}
-            {(projects.length > 0 ||
-              getAddPatchesForArray("projects", proposedPatches).length >
-                0) && (
+
+            {/* ── Projects ── */}
+            {projects.length > 0 && (
               <section className="resume-section">
                 <h2 className={sectionHeading}>Projects</h2>
-                {projects.map((entry, i) => (
-                  <SectionWrapper
-                    key={i}
-                    path={`projects[${i}]`}
-                    label={`Project: ${getStr(entry, "name").slice(0, 10)}...`}
-                    data={JSON.stringify(entry)}
-                  >
-                    <div key={i} className={compact ? "mb-2" : "mb-3"}>
-                      <p className="font-semibold text-sm">
-                        <DisplayText value={getStr(entry, "name")} />
-                        {getStr(entry, "url") && (
-                          <span className="font-normal text-gray-500">
-                            {" — "}
-                            {getStr(entry, "url").replace(/^https?:\/\//, "")}
-                          </span>
-                        )}
-                      </p>
-                      {getStr(entry, "description") && (
-                        <p className="text-gray-600 text-sm mt-0.5">
-                          {getStr(entry, "description")}
-                        </p>
-                      )}
-                      {getArr<string>(entry, "highlights").filter(Boolean)
-                        .length > 0 && (
-                        <ul className="list-disc list-inside text-sm text-gray-700 mt-0.5 ml-2">
-                          {getArr<string>(entry, "highlights")
-                            .filter(Boolean)
-                            .map((h, j) => (
-                              <SectionWrapper
-                                key={j}
-                                path={`projects[${i}].highlights[${j}]`}
-                                label="Project Highlight"
-                                data={h}
-                                type="highlight"
-                              >
-                                <li>{h}</li>
-                              </SectionWrapper>
-                            ))}
-                        </ul>
-                      )}
-                    </div>
-                  </SectionWrapper>
-                ))}
-                {getAddPatchesForArray("projects", proposedPatches).map(
-                  (patch, k) => {
-                    const v = patch.value as Record<string, unknown>;
-                    const hl = Array.isArray(v?.highlights)
-                      ? (v.highlights as string[])
-                      : [];
-                    return (
-                      <div
-                        key={`add-proj-${k}`}
-                        className="mb-3 relative ring-2 ring-emerald-400/80 bg-emerald-50/30 rounded-xl p-2"
-                      >
-                        <span className="absolute -top-2.5 left-3 text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                          New
-                        </span>
-                        <p className="font-semibold text-sm mt-1">
-                          <DisplayText value={(v?.name as string) ?? ""} />
-                        </p>
-                        {hl.length > 0 && (
-                          <ul className="list-disc list-inside text-sm text-emerald-900 mt-0.5 ml-2">
-                            {hl.map((h, j) => (
-                              <li key={j}>{h}</li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    );
-                  },
+                {projects.map((entry, i) =>
+                  renderExperienceItem(
+                    "projects", entry, i, baseProjects, "name", "Project",
+                    (entry, baseEntry, idx) => {
+                      const highlights = getArr<string>(entry, "highlights").filter(Boolean);
+                      const baseHighlights = baseEntry
+                        ? getArr<string>(baseEntry, "highlights").filter(Boolean)
+                        : highlights;
+                      return (
+                        <>
+                          <p className="font-semibold text-sm">
+                            {diffField(getStr(entry, "name"), baseEntry ? getStr(baseEntry, "name") : undefined)}
+                            {getStr(entry, "url") && (
+                              <span className="font-normal text-gray-500">
+                                {" — "}
+                                {diffField(
+                                  getStr(entry, "url").replace(/^https?:\/\//, ""),
+                                  baseEntry ? getStr(baseEntry, "url").replace(/^https?:\/\//, "") : undefined,
+                                )}
+                              </span>
+                            )}
+                          </p>
+                          {(getStr(entry, "description") || (baseEntry && getStr(baseEntry, "description"))) && (
+                            <p className="text-gray-600 text-sm mt-0.5">
+                              {diffField(getStr(entry, "description"), baseEntry ? getStr(baseEntry, "description") : undefined)}
+                            </p>
+                          )}
+                          {diffHighlights("projects", idx, highlights, baseHighlights, "Project Highlight")}
+                        </>
+                      );
+                    },
+                  ),
                 )}
+                {reviewing &&
+                  getRemovedItems("projects", baseProjects, projects).map((entry, k) => (
+                    <div
+                      key={`rm-proj-${k}`}
+                      className="mb-3 relative line-through opacity-60 bg-rose-50/50 rounded p-1"
+                    >
+                      <RemovingBadge />
+                      <p className="font-semibold text-sm mt-1">{getStr(entry, "name")}</p>
+                    </div>
+                  ))}
               </section>
             )}
-            {(skills.length > 0 ||
-              getAddPatchesForArray("skills", proposedPatches).length > 0) && (
+
+            {/* ── Skills ── */}
+            {skills.length > 0 && (
               <section className="resume-section">
                 <h2 className={sectionHeading}>Skills</h2>
                 {skills.map((entry, i) => {
                   const kws = getArr<string>(entry, "keywords").filter(Boolean);
                   const kwStr = kws.join(", ");
-                  const currentPath = `skills[${i}].keywords`;
-                  const match = getProposedValueForPath(
-                    currentPath,
-                    proposedPatches,
-                  );
-                  const proposedKeywords =
-                    match && Array.isArray(match.proposed)
-                      ? (match.proposed as string[]).join(", ")
-                      : null;
+                  const baseEntry = reviewing
+                    ? baseSkills.find(
+                        (b) => getStr(b, "name") && getStr(b, "name") === getStr(entry, "name"),
+                      ) ?? null
+                    : null;
+                  const baseKwStr = baseEntry
+                    ? getArr<string>(baseEntry, "keywords").filter(Boolean).join(", ")
+                    : undefined;
+                  const itemIsNew = reviewing && isNewItem("skills", entry, baseSkills);
 
                   if (compact) {
                     return (
@@ -1050,17 +818,18 @@ export function ResumeDocument({
                         label={`Skill: ${getStr(entry, "name").slice(0, 10)}...`}
                         data={JSON.stringify(entry)}
                       >
-                        <div className="mb-1.5 text-sm">
-                          <DisplayText
-                            value={getStr(entry, "name")}
-                            className="font-semibold"
-                          />
+                        <div
+                          className={`mb-1.5 text-sm ${
+                            itemIsNew ? "ring-2 ring-emerald-400/80 bg-emerald-50/30 rounded p-1 relative" : ""
+                          }`}
+                        >
+                          {itemIsNew && <NewBadge />}
+                          <span className="font-semibold">
+                            {diffField(getStr(entry, "name"), baseEntry ? getStr(baseEntry, "name") : undefined)}
+                          </span>
                           {getStr(entry, "name") && kwStr ? ": " : null}
-                          {proposedKeywords != null ? (
-                            <DiffView
-                              original={kwStr}
-                              proposed={proposedKeywords}
-                            />
+                          {reviewing && baseKwStr !== undefined && kwStr !== baseKwStr ? (
+                            <DiffView original={baseKwStr} proposed={kwStr} />
                           ) : (
                             kwStr || null
                           )}
@@ -1075,132 +844,185 @@ export function ResumeDocument({
                       label={`Skill: ${getStr(entry, "name").slice(0, 10)}...`}
                       data={JSON.stringify(entry)}
                     >
-                      <div className="mb-3">
+                      <div
+                        className={`mb-3 ${
+                          itemIsNew ? "ring-2 ring-emerald-400/80 bg-emerald-50/30 rounded p-1 relative" : ""
+                        }`}
+                      >
+                        {itemIsNew && <NewBadge />}
                         <p className="font-semibold text-sm">
-                          <DisplayText value={getStr(entry, "name")} />
+                          {diffField(getStr(entry, "name"), baseEntry ? getStr(baseEntry, "name") : undefined)}
                         </p>
                         <p className="text-gray-700 text-sm mt-0.5">
-                          {kwStr || "\u00A0"}
+                          {reviewing && baseKwStr !== undefined && kwStr !== baseKwStr ? (
+                            <DiffView original={baseKwStr} proposed={kwStr} />
+                          ) : (
+                            kwStr || "\u00A0"
+                          )}
                         </p>
+                      </div>
+                    </SectionWrapper>
+                  );
+                })}
+                {reviewing &&
+                  getRemovedItems("skills", baseSkills, skills).map((entry, k) => (
+                    <div
+                      key={`rm-skill-${k}`}
+                      className="mb-1.5 relative line-through opacity-60 bg-rose-50/50 rounded p-1"
+                    >
+                      <RemovingBadge />
+                      <span className="font-semibold text-sm">{getStr(entry, "name")}</span>
+                      {getStr(entry, "name") &&
+                      getArr<string>(entry, "keywords").filter(Boolean).length > 0
+                        ? ": "
+                        : null}
+                      <span className="text-sm">
+                        {getArr<string>(entry, "keywords").filter(Boolean).join(", ")}
+                      </span>
+                    </div>
+                  ))}
+              </section>
+            )}
+
+            {/* ── Languages ── */}
+            {languages.length > 0 && (
+              <section className="resume-section">
+                <h2 className={sectionHeading}>Languages</h2>
+                {languages.map((entry, i) => {
+                  const baseArr = baseResume ? getArr<Record<string, unknown>>(baseResume, "languages") : languages;
+                  const baseEntry = reviewing
+                    ? baseArr.find(
+                        (b) => getStr(b, "language") && getStr(b, "language") === getStr(entry, "language"),
+                      ) ?? null
+                    : null;
+                  return (
+                    <SectionWrapper
+                      key={i}
+                      path={`languages[${i}]`}
+                      label={`Language: ${getStr(entry, "language").slice(0, 10)}...`}
+                      data={JSON.stringify(entry)}
+                    >
+                      <div className={`${compact ? "mb-1.5" : "mb-3"} text-sm`}>
+                        {diffField(getStr(entry, "language"), baseEntry ? getStr(baseEntry, "language") : undefined)}
+                        {" — "}
+                        {diffField(getStr(entry, "fluency"), baseEntry ? getStr(baseEntry, "fluency") : undefined)}
                       </div>
                     </SectionWrapper>
                   );
                 })}
               </section>
             )}
-            {languages.length > 0 && (
-              <section className="resume-section">
-                <h2 className={sectionHeading}>Languages</h2>
-                {languages.map((entry, i) => (
-                  <SectionWrapper
-                    key={i}
-                    path={`languages[${i}]`}
-                    label={`Language: ${getStr(entry, "language").slice(0, 10)}...`}
-                    data={JSON.stringify(entry)}
-                  >
-                    <div className={`${compact ? "mb-1.5" : "mb-3"} text-sm`}>
-                      <DisplayText value={getStr(entry, "language")} /> —{" "}
-                      <DisplayText value={getStr(entry, "fluency")} />
-                    </div>
-                  </SectionWrapper>
-                ))}
-              </section>
-            )}
+
+            {/* ── Certificates ── */}
             {certificates.length > 0 && (
               <section className="resume-section">
                 <h2 className={sectionHeading}>Certificates</h2>
-                {certificates.map((entry, i) => (
-                  <SectionWrapper
-                    key={i}
-                    path={`certificates[${i}]`}
-                    label={`Certificate: ${getStr(entry, "name").slice(0, 10)}...`}
-                    data={JSON.stringify(entry)}
-                  >
-                    <div className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}>
-                      <DisplayText
-                        value={getStr(entry, "name")}
-                        className="font-semibold"
-                      />
-                      {getStr(entry, "name") && getStr(entry, "issuer")
-                        ? " – "
-                        : null}
-                      <DisplayText value={getStr(entry, "issuer")} />
-                      {getStr(entry, "issuer") && getStr(entry, "date")
-                        ? ", "
-                        : null}
-                      <DisplayText value={getStr(entry, "date")} />
-                    </div>
-                  </SectionWrapper>
-                ))}
+                {certificates.map((entry, i) => {
+                  const baseArr = baseResume ? getArr<Record<string, unknown>>(baseResume, "certificates") : certificates;
+                  const baseEntry = reviewing
+                    ? baseArr.find(
+                        (b) => getStr(b, "name") && getStr(b, "name") === getStr(entry, "name"),
+                      ) ?? null
+                    : null;
+                  return (
+                    <SectionWrapper
+                      key={i}
+                      path={`certificates[${i}]`}
+                      label={`Certificate: ${getStr(entry, "name").slice(0, 10)}...`}
+                      data={JSON.stringify(entry)}
+                    >
+                      <div className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}>
+                        <span className="font-semibold">
+                          {diffField(getStr(entry, "name"), baseEntry ? getStr(baseEntry, "name") : undefined)}
+                        </span>
+                        {getStr(entry, "name") && getStr(entry, "issuer") ? " – " : null}
+                        {diffField(getStr(entry, "issuer"), baseEntry ? getStr(baseEntry, "issuer") : undefined)}
+                        {getStr(entry, "issuer") && getStr(entry, "date") ? ", " : null}
+                        {diffField(getStr(entry, "date"), baseEntry ? getStr(baseEntry, "date") : undefined)}
+                      </div>
+                    </SectionWrapper>
+                  );
+                })}
               </section>
             )}
+
+            {/* ── Awards ── */}
             {awards.length > 0 && (
               <section className="resume-section">
                 <h2 className={sectionHeading}>Awards</h2>
-                {awards.map((entry, i) => (
-                  <SectionWrapper
-                    key={i}
-                    path={`awards[${i}]`}
-                    label={`Award: ${getStr(entry, "title").slice(0, 10)}...`}
-                    data={JSON.stringify(entry)}
-                  >
-                    <div className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}>
-                      <DisplayText
-                        value={getStr(entry, "title")}
-                        className="font-semibold"
-                      />
-                      {getStr(entry, "title") && getStr(entry, "awarder")
-                        ? " – "
-                        : null}
-                      <DisplayText value={getStr(entry, "awarder")} />
-                      {getStr(entry, "awarder") && getStr(entry, "date")
-                        ? ", "
-                        : null}
-                      <DisplayText value={getStr(entry, "date")} />
-                      {getStr(entry, "summary") ? (
-                        <p className="text-gray-700 mt-0.5">
-                          {getStr(entry, "summary")}
-                        </p>
-                      ) : null}
-                    </div>
-                  </SectionWrapper>
-                ))}
+                {awards.map((entry, i) => {
+                  const baseArr = baseResume ? getArr<Record<string, unknown>>(baseResume, "awards") : awards;
+                  const baseEntry = reviewing
+                    ? baseArr.find(
+                        (b) => getStr(b, "title") && getStr(b, "title") === getStr(entry, "title"),
+                      ) ?? null
+                    : null;
+                  return (
+                    <SectionWrapper
+                      key={i}
+                      path={`awards[${i}]`}
+                      label={`Award: ${getStr(entry, "title").slice(0, 10)}...`}
+                      data={JSON.stringify(entry)}
+                    >
+                      <div className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}>
+                        <span className="font-semibold">
+                          {diffField(getStr(entry, "title"), baseEntry ? getStr(baseEntry, "title") : undefined)}
+                        </span>
+                        {getStr(entry, "title") && getStr(entry, "awarder") ? " – " : null}
+                        {diffField(getStr(entry, "awarder"), baseEntry ? getStr(baseEntry, "awarder") : undefined)}
+                        {getStr(entry, "awarder") && getStr(entry, "date") ? ", " : null}
+                        {diffField(getStr(entry, "date"), baseEntry ? getStr(baseEntry, "date") : undefined)}
+                        {getStr(entry, "summary") ? (
+                          <p className="text-gray-700 mt-0.5">
+                            {diffField(getStr(entry, "summary"), baseEntry ? getStr(baseEntry, "summary") : undefined)}
+                          </p>
+                        ) : null}
+                      </div>
+                    </SectionWrapper>
+                  );
+                })}
               </section>
             )}
+
+            {/* ── Publications ── */}
             {publications.length > 0 && (
               <section className="resume-section">
                 <h2 className={sectionHeading}>Publications</h2>
-                {publications.map((entry, i) => (
-                  <SectionWrapper
-                    key={i}
-                    path={`publications[${i}]`}
-                    label={`Publication: ${getStr(entry, "name").slice(0, 10)}...`}
-                    data={JSON.stringify(entry)}
-                  >
-                    <div className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}>
-                      <DisplayText
-                        value={getStr(entry, "name")}
-                        className="font-semibold"
-                      />
-                      {getStr(entry, "name") && getStr(entry, "publisher")
-                        ? " – "
-                        : null}
-                      <DisplayText value={getStr(entry, "publisher")} />
-                      {getStr(entry, "publisher") &&
-                      getStr(entry, "releaseDate")
-                        ? ", "
-                        : null}
-                      <DisplayText value={getStr(entry, "releaseDate")} />
-                      {getStr(entry, "summary") ? (
-                        <p className="text-gray-700 mt-0.5">
-                          {getStr(entry, "summary")}
-                        </p>
-                      ) : null}
-                    </div>
-                  </SectionWrapper>
-                ))}
+                {publications.map((entry, i) => {
+                  const baseArr = baseResume ? getArr<Record<string, unknown>>(baseResume, "publications") : publications;
+                  const baseEntry = reviewing
+                    ? baseArr.find(
+                        (b) => getStr(b, "name") && getStr(b, "name") === getStr(entry, "name"),
+                      ) ?? null
+                    : null;
+                  return (
+                    <SectionWrapper
+                      key={i}
+                      path={`publications[${i}]`}
+                      label={`Publication: ${getStr(entry, "name").slice(0, 10)}...`}
+                      data={JSON.stringify(entry)}
+                    >
+                      <div className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}>
+                        <span className="font-semibold">
+                          {diffField(getStr(entry, "name"), baseEntry ? getStr(baseEntry, "name") : undefined)}
+                        </span>
+                        {getStr(entry, "name") && getStr(entry, "publisher") ? " – " : null}
+                        {diffField(getStr(entry, "publisher"), baseEntry ? getStr(baseEntry, "publisher") : undefined)}
+                        {getStr(entry, "publisher") && getStr(entry, "releaseDate") ? ", " : null}
+                        {diffField(getStr(entry, "releaseDate"), baseEntry ? getStr(baseEntry, "releaseDate") : undefined)}
+                        {getStr(entry, "summary") ? (
+                          <p className="text-gray-700 mt-0.5">
+                            {diffField(getStr(entry, "summary"), baseEntry ? getStr(baseEntry, "summary") : undefined)}
+                          </p>
+                        ) : null}
+                      </div>
+                    </SectionWrapper>
+                  );
+                })}
               </section>
             )}
+
+            {/* ── Interests ── */}
             {interests.length > 0 && (
               <section className="resume-section">
                 <h2 className={sectionHeading}>Interests</h2>
@@ -1216,10 +1038,9 @@ export function ResumeDocument({
                       data={JSON.stringify(entry)}
                     >
                       <div className={`text-sm ${compact ? "mb-1.5" : "mb-3"}`}>
-                        <DisplayText
-                          value={getStr(entry, "name")}
-                          className="font-semibold"
-                        />
+                        <span className="font-semibold">
+                          {getStr(entry, "name")}
+                        </span>
                         {getStr(entry, "name") && kw ? ": " : null}
                         {kw || null}
                       </div>
@@ -1228,28 +1049,38 @@ export function ResumeDocument({
                 })}
               </section>
             )}
+
+            {/* ── References ── */}
             {references.length > 0 && (
               <section className="resume-section">
                 <h2 className={sectionHeading}>References</h2>
-                {references.map((entry, i) => (
-                  <SectionWrapper
-                    key={i}
-                    path={`references[${i}]`}
-                    label={`Reference: ${getStr(entry, "name").slice(0, 10)}...`}
-                    data={JSON.stringify(entry)}
-                  >
-                    <div className={compact ? "mb-1.5" : "mb-3"}>
-                      <p className="font-semibold text-sm">
-                        <DisplayText value={getStr(entry, "name")} />
-                      </p>
-                      {getStr(entry, "reference") ? (
-                        <p className="text-sm text-gray-700 mt-0.5">
-                          {getStr(entry, "reference")}
+                {references.map((entry, i) => {
+                  const baseArr = baseResume ? getArr<Record<string, unknown>>(baseResume, "references") : references;
+                  const baseEntry = reviewing
+                    ? baseArr.find(
+                        (b) => getStr(b, "name") && getStr(b, "name") === getStr(entry, "name"),
+                      ) ?? null
+                    : null;
+                  return (
+                    <SectionWrapper
+                      key={i}
+                      path={`references[${i}]`}
+                      label={`Reference: ${getStr(entry, "name").slice(0, 10)}...`}
+                      data={JSON.stringify(entry)}
+                    >
+                      <div className={compact ? "mb-1.5" : "mb-3"}>
+                        <p className="font-semibold text-sm">
+                          {diffField(getStr(entry, "name"), baseEntry ? getStr(baseEntry, "name") : undefined)}
                         </p>
-                      ) : null}
-                    </div>
-                  </SectionWrapper>
-                ))}
+                        {getStr(entry, "reference") ? (
+                          <p className="text-sm text-gray-700 mt-0.5">
+                            {diffField(getStr(entry, "reference"), baseEntry ? getStr(baseEntry, "reference") : undefined)}
+                          </p>
+                        ) : null}
+                      </div>
+                    </SectionWrapper>
+                  );
+                })}
               </section>
             )}
           </div>
@@ -1258,1495 +1089,5 @@ export function ResumeDocument({
     );
   }
 
-  return (
-    <div className="flex justify-center">
-      <div className="resume-page ">
-        <div
-          className={`flex flex-col text-gray-900 ${compact ? "gap-2" : "gap-3"}`}
-        >
-          {/* Basics — centered, two lines, single contact line */}
-          <header className="text-center">
-            <h1 className="text-lg md:text-xl font-semibold text-gray-900">
-              <EditableText
-                value={getStr(basics, "name")}
-                path="basics.name"
-                onCommit={onCommit}
-                className="font-semibold"
-              />
-            </h1>
-            <div className="flex flex-wrap justify-center items-baseline gap-x-0 mt-0.5 text-sm text-gray-600">
-              {getStr(location, "city") !== "" ||
-              getStr(location, "region") !== "" ||
-              contactLocationRevealed ? (
-                <>
-                  <EditableText
-                    value={getStr(location, "city")}
-                    path="basics.location.city"
-                    onCommit={onCommit}
-                    placeholder="City"
-                  />
-                  {getStr(location, "city") && getStr(location, "region") ? (
-                    <span className="text-gray-400">, </span>
-                  ) : null}
-                  <EditableText
-                    value={getStr(location, "region")}
-                    path="basics.location.region"
-                    onCommit={onCommit}
-                    placeholder="Region"
-                  />
-                  {sep()}
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className={addBtn}
-                    onClick={() => setContactLocationRevealed(true)}
-                  >
-                    + Add location
-                  </button>
-                  {sep()}
-                </>
-              )}
-              <EditableText
-                value={getStr(basics, "phone")}
-                path="basics.phone"
-                onCommit={onCommit}
-                placeholder="Phone"
-              />
-              {sep()}
-              <EditableText
-                value={getStr(basics, "email")}
-                path="basics.email"
-                onCommit={onCommit}
-                placeholder="Email"
-              />
-              {profiles.length > 0
-                ? profiles.map((pro, pi) => (
-                    <span key={pi} className="contents">
-                      {sep()}
-                      <EditableText
-                        value={getStr(pro, "url")}
-                        path={`basics.profiles.${pi}.url`}
-                        onCommit={onCommit}
-                        placeholder="URL"
-                      />
-                    </span>
-                  ))
-                : [
-                    sep(),
-                    <EditableText
-                      key="website"
-                      value={getStr(basics, "url")}
-                      path="basics.url"
-                      onCommit={onCommit}
-                      placeholder="Website"
-                    />,
-                  ]}
-            </div>
-            {!showBasicsOptional && (
-              <div className="mt-1 flex justify-center">
-                <button
-                  type="button"
-                  className={addBtn}
-                  onClick={() => setBasicsOptionalExpanded(true)}
-                >
-                  + Add address, photo or social links
-                </button>
-              </div>
-            )}
-            {showBasicsOptional && (
-              <>
-                {/* City, region, website are only on the contact line above — no duplicate here */}
-                {showAddress ? (
-                  <div className="mt-0.5 text-sm text-gray-600">
-                    <EditableText
-                      value={getStr(location, "address")}
-                      path="basics.location.address"
-                      onCommit={onCommit}
-                      placeholder="Address"
-                      className="block"
-                    />
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    className={addBtn}
-                    onClick={() =>
-                      setBasicsExtraRevealed((s) => new Set(s).add("address"))
-                    }
-                  >
-                    + Add address
-                  </button>
-                )}
-                {/* {showImage ? (
-              <p className="mt-0.5 text-sm text-gray-600">
-                <EditableText
-                  value={getStr(basics, "image")}
-                  path="basics.image"
-                  onCommit={onCommit}
-                  placeholder="Image URL"
-                />
-              </p>
-            ) : (
-              <button
-                type="button"
-                className={addBtn}
-                onClick={() =>
-                  setBasicsExtraRevealed((s) => new Set(s).add("image"))
-                }
-              >
-                + Add photo
-              </button>
-            )} */}
-                <div className="mt-2">
-                  {profiles.map((pro, pi) => (
-                    <div
-                      key={pi}
-                      className="flex flex-wrap items-center gap-2 mb-1"
-                    >
-                      <EditableText
-                        value={getStr(pro, "network")}
-                        path={`basics.profiles.${pi}.network`}
-                        onCommit={onCommit}
-                        placeholder="Network"
-                        className="text-sm"
-                      />
-                      <EditableText
-                        value={getStr(pro, "username")}
-                        path={`basics.profiles.${pi}.username`}
-                        onCommit={onCommit}
-                        placeholder="Username"
-                        className="text-sm"
-                      />
-                      <EditableText
-                        value={getStr(pro, "url")}
-                        path={`basics.profiles.${pi}.url`}
-                        onCommit={onCommit}
-                        placeholder="URL"
-                        className="text-sm"
-                      />
-                      <button
-                        type="button"
-                        className={removeBtn}
-                        onClick={() => removeProfile(pi)}
-                        aria-label="Remove profile"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <button type="button" className={addBtn} onClick={addProfile}>
-                  + Add social media profile
-                </button>
-              </>
-            )}
-            {/* Label is the title of the summary section (e.g. "Software Engineer"); left-aligned */}
-            <div className="mt-1.5 text-left">
-              <p className="text-sm font-semibold text-gray-900">
-                <EditableText
-                  value={getStr(basics, "label")}
-                  path="basics.label"
-                  onCommit={onCommit}
-                  placeholder="Label (e.g. Software Engineer)"
-                  className="font-semibold"
-                />
-              </p>
-              <div className="mt-0.5 text-sm">
-                <EditableText
-                  value={getStr(basics, "summary")}
-                  path="basics.summary"
-                  onCommit={onCommit}
-                  multiline
-                  placeholder="Summary"
-                  className="block w-full"
-                />
-              </div>
-            </div>
-          </header>
-
-          {/* Work — denser: Position | Company, then Location | Start – End */}
-          <section className="resume-section">
-            <h2 className={sectionHeading}>Experience</h2>
-            {work.map((entry, i) => {
-              const showWorkOptional =
-                workOptionalExpanded.has(i) || hasAnyOptionalWorkContent(entry);
-              const workEntryClass = compact ? "mb-2" : "mb-3";
-              return (
-                <div key={i} className={workEntryClass}>
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <div className="flex flex-wrap items-baseline gap-x-1.5 text-sm">
-                      <span className="text-gray-700">
-                        <EditableText
-                          value={getStr(entry, "position")}
-                          path={`work.${i}.position`}
-                          onCommit={onCommit}
-                          placeholder="Position"
-                        />
-                      </span>
-                      <span
-                        className="text-gray-400 select-none mx-0.5"
-                        aria-hidden
-                      >
-                        |
-                      </span>
-                      <span className="font-semibold">
-                        <EditableText
-                          value={getStr(entry, "name")}
-                          path={`work.${i}.name`}
-                          onCommit={onCommit}
-                          placeholder="Company"
-                        />
-                      </span>
-                      <span
-                        className="text-gray-400 select-none mx-0.5"
-                        aria-hidden
-                      >
-                        |
-                      </span>
-                      <span className="text-gray-500">
-                        <EditableText
-                          value={getStr(entry, "location")}
-                          path={`work.${i}.location`}
-                          onCommit={onCommit}
-                          placeholder="Location"
-                        />
-                      </span>
-                      <span
-                        className="text-gray-400 select-none mx-0.5"
-                        aria-hidden
-                      >
-                        |
-                      </span>
-                      <span className="text-gray-500">
-                        <EditableText
-                          value={getStr(entry, "startDate")}
-                          path={`work.${i}.startDate`}
-                          onCommit={onCommit}
-                          className="text-sm"
-                        />
-                        {" – "}
-                        <EditableText
-                          value={getStr(entry, "endDate")}
-                          path={`work.${i}.endDate`}
-                          onCommit={onCommit}
-                          className="text-sm"
-                        />
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      className={removeBtn}
-                      onClick={() => removeWork(i)}
-                      aria-label="Remove experience"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                  {!showWorkOptional && (
-                    <button
-                      type="button"
-                      className={addBtn}
-                      onClick={() =>
-                        setWorkOptionalExpanded((s) => new Set(s).add(i))
-                      }
-                    >
-                      + Add location, company link or summary
-                    </button>
-                  )}
-                  {showWorkOptional && (
-                    <>
-                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-gray-600">
-                        <EditableText
-                          value={getStr(entry, "location")}
-                          path={`work.${i}.location`}
-                          onCommit={onCommit}
-                          placeholder="Location"
-                        />
-                        <EditableText
-                          value={getStr(entry, "url")}
-                          path={`work.${i}.url`}
-                          onCommit={onCommit}
-                          placeholder="Company URL"
-                        />
-                      </div>
-                      <p className="text-sm text-gray-600 mt-0.5">
-                        <EditableText
-                          value={getStr(entry, "description")}
-                          path={`work.${i}.description`}
-                          onCommit={onCommit}
-                          placeholder="Company description"
-                        />
-                      </p>
-                      <p className="text-sm text-gray-700 mt-0.5">
-                        <EditableText
-                          value={getStr(entry, "summary")}
-                          path={`work.${i}.summary`}
-                          onCommit={onCommit}
-                          multiline
-                          placeholder="Role summary"
-                          className="block"
-                        />
-                      </p>
-                    </>
-                  )}
-                  <ul className="list-disc list-inside space-y-0.5 mt-0.5 text-sm text-gray-700 ml-2">
-                    {getArr<string>(entry, "highlights").map((bullet, j) => (
-                      <li key={j} className="flex items-start gap-1">
-                        <EditableText
-                          value={bullet}
-                          path={`work.${i}.highlights.${j}`}
-                          onCommit={onCommit}
-                          className="flex-1"
-                        />
-                        <button
-                          type="button"
-                          className="shrink-0 text-red-600 hover:text-red-700 text-xs min-h-[44px] inline-flex items-center touch-manipulation"
-                          onClick={() =>
-                            removeHighlight(
-                              `work.${i}.highlights`,
-                              getArr<string>(entry, "highlights"),
-                              j,
-                            )
-                          }
-                          aria-label="Remove bullet"
-                        >
-                          ×
-                        </button>
-                      </li>
-                    ))}
-                    <li className="list-none">
-                      <button
-                        type="button"
-                        className={addBtn}
-                        onClick={() =>
-                          addHighlight(
-                            `work.${i}.highlights`,
-                            getArr<string>(entry, "highlights"),
-                          )
-                        }
-                      >
-                        + Add bullet
-                      </button>
-                    </li>
-                  </ul>
-                </div>
-              );
-            })}
-            <button type="button" className={addBtn} onClick={addWork}>
-              + Add experience
-            </button>
-          </section>
-
-          {/* Volunteer — same density as Work: Position at Organization, then Location | Start – End */}
-          <section className="resume-section">
-            <h2 className={sectionHeading}>Volunteer</h2>
-            {volunteer.map((entry, i) => (
-              <div key={i} className={compact ? "mb-2" : "mb-3"}>
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <div className="flex flex-wrap items-baseline gap-x-1.5">
-                    <span className="text-sm text-gray-700">
-                      <EditableText
-                        value={getStr(entry, "position")}
-                        path={`volunteer.${i}.position`}
-                        onCommit={onCommit}
-                        placeholder="Role"
-                      />
-                    </span>
-                    <span
-                      className="text-gray-400 select-none mx-0.5"
-                      aria-hidden
-                    >
-                      |
-                    </span>
-                    <span className="font-semibold text-sm">
-                      <EditableText
-                        value={getStr(entry, "organization")}
-                        path={`volunteer.${i}.organization`}
-                        onCommit={onCommit}
-                        placeholder="Organization"
-                      />
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    className={removeBtn}
-                    onClick={() => removeVolunteer(i)}
-                    aria-label="Remove volunteer"
-                  >
-                    Remove
-                  </button>
-                </div>
-                <p className="text-gray-500 text-sm mt-0.5">
-                  <EditableText
-                    value={getStr(entry, "startDate")}
-                    path={`volunteer.${i}.startDate`}
-                    onCommit={onCommit}
-                    className="text-sm"
-                  />
-                  {" – "}
-                  <EditableText
-                    value={getStr(entry, "endDate")}
-                    path={`volunteer.${i}.endDate`}
-                    onCommit={onCommit}
-                    className="text-sm"
-                  />
-                </p>
-                <p className="text-sm text-gray-600 mt-0.5">
-                  <EditableText
-                    value={getStr(entry, "url")}
-                    path={`volunteer.${i}.url`}
-                    onCommit={onCommit}
-                    placeholder="URL"
-                  />
-                </p>
-                <p className="text-sm text-gray-700 mt-0.5">
-                  <EditableText
-                    value={getStr(entry, "summary")}
-                    path={`volunteer.${i}.summary`}
-                    onCommit={onCommit}
-                    multiline
-                    placeholder="Summary"
-                    className="block"
-                  />
-                </p>
-                <ul className="list-disc list-inside space-y-0.5 mt-0.5 text-sm text-gray-700 ml-2">
-                  {getArr<string>(entry, "highlights").map((bullet, j) => (
-                    <li key={j} className="flex items-start gap-1">
-                      <EditableText
-                        value={bullet}
-                        path={`volunteer.${i}.highlights.${j}`}
-                        onCommit={onCommit}
-                        className="flex-1"
-                      />
-                      <button
-                        type="button"
-                        className="shrink-0 text-red-600 hover:text-red-700 text-xs min-h-[44px] inline-flex items-center touch-manipulation"
-                        onClick={() =>
-                          removeHighlight(
-                            `volunteer.${i}.highlights`,
-                            getArr<string>(entry, "highlights"),
-                            j,
-                          )
-                        }
-                        aria-label="Remove bullet"
-                      >
-                        ×
-                      </button>
-                    </li>
-                  ))}
-                  <li className="list-none">
-                    <button
-                      type="button"
-                      className={addBtn}
-                      onClick={() =>
-                        addHighlight(
-                          `volunteer.${i}.highlights`,
-                          getArr<string>(entry, "highlights"),
-                        )
-                      }
-                    >
-                      + Add bullet
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            ))}
-            <button type="button" className={addBtn} onClick={addVolunteer}>
-              + Add volunteer experience
-            </button>
-          </section>
-
-          {/* Education — denser: institution · area, then dates (or studyType, area · dates when expanded) */}
-          <section className="resume-section">
-            <h2 className={sectionHeading}>Education</h2>
-            {education.map((entry, i) => {
-              const showEducationOptional =
-                educationOptionalExpanded.has(i) ||
-                hasAnyOptionalEducationContent(entry);
-              const entryClass = compact ? "mb-2" : "mb-3";
-              return (
-                <div
-                  key={i}
-                  className={`${entryClass} flex flex-wrap items-start justify-between gap-2`}
-                >
-                  <div>
-                    <span className="font-semibold text-sm">
-                      <EditableText
-                        value={getStr(entry, "institution")}
-                        path={`education.${i}.institution`}
-                        onCommit={onCommit}
-                      />
-                    </span>
-                    {!showEducationOptional && (
-                      <span className="text-gray-600 text-sm ml-1">
-                        <EditableText
-                          value={getStr(entry, "area")}
-                          path={`education.${i}.area`}
-                          onCommit={onCommit}
-                          placeholder="Area"
-                        />
-                      </span>
-                    )}
-                    {showEducationOptional ? (
-                      <span className="text-gray-600 text-sm ml-1">
-                        <EditableText
-                          value={getStr(entry, "studyType")}
-                          path={`education.${i}.studyType`}
-                          onCommit={onCommit}
-                          placeholder="Study type"
-                        />
-                        {", "}
-                        <EditableText
-                          value={getStr(entry, "area")}
-                          path={`education.${i}.area`}
-                          onCommit={onCommit}
-                          placeholder="Area"
-                        />
-                        {" · "}
-                        <EditableText
-                          value={getStr(entry, "startDate")}
-                          path={`education.${i}.startDate`}
-                          onCommit={onCommit}
-                          className="text-sm"
-                        />
-                        {" – "}
-                        <EditableText
-                          value={getStr(entry, "endDate")}
-                          path={`education.${i}.endDate`}
-                          onCommit={onCommit}
-                          className="text-sm"
-                        />
-                      </span>
-                    ) : (
-                      <span className="text-gray-500 text-sm block mt-0.5">
-                        <EditableText
-                          value={getStr(entry, "startDate")}
-                          path={`education.${i}.startDate`}
-                          onCommit={onCommit}
-                          className="text-sm"
-                        />
-                        {" – "}
-                        <EditableText
-                          value={getStr(entry, "endDate")}
-                          path={`education.${i}.endDate`}
-                          onCommit={onCommit}
-                          className="text-sm"
-                        />
-                      </span>
-                    )}
-                    {!showEducationOptional && (
-                      <button
-                        type="button"
-                        className={addBtn}
-                        onClick={() =>
-                          setEducationOptionalExpanded((s) => new Set(s).add(i))
-                        }
-                      >
-                        + Add URL, degree type, GPA or courses
-                      </button>
-                    )}
-                    {showEducationOptional && (
-                      <>
-                        <p className="text-sm text-gray-500 mt-0.5">
-                          <EditableText
-                            value={getStr(entry, "score")}
-                            path={`education.${i}.score`}
-                            onCommit={onCommit}
-                            placeholder="Score (e.g. GPA)"
-                          />
-                        </p>
-                        <p className="text-sm text-gray-600 mt-0.5">
-                          <EditableText
-                            value={getStr(entry, "url")}
-                            path={`education.${i}.url`}
-                            onCommit={onCommit}
-                            placeholder="Institution URL"
-                          />
-                        </p>
-                        <div className="text-sm text-gray-600 mt-0.5">
-                          {getArr<string>(entry, "courses").map((c, ci) => (
-                            <span
-                              key={ci}
-                              className="inline-flex items-center gap-1 mr-2"
-                            >
-                              <EditableText
-                                value={c}
-                                path={`education.${i}.courses.${ci}`}
-                                onCommit={onCommit}
-                                className="text-sm"
-                              />
-                              <button
-                                type="button"
-                                className="text-red-600 hover:text-red-700 text-xs"
-                                onClick={() =>
-                                  onChange(
-                                    setResumePath(
-                                      resume,
-                                      `education.${i}.courses`,
-                                      getArr<string>(entry, "courses").filter(
-                                        (_, idx) => idx !== ci,
-                                      ),
-                                    ),
-                                  )
-                                }
-                                aria-label="Remove course"
-                              >
-                                ×
-                              </button>
-                            </span>
-                          ))}
-                          <button
-                            type="button"
-                            className={addBtn}
-                            onClick={() =>
-                              addHighlight(
-                                `education.${i}.courses`,
-                                getArr<string>(entry, "courses"),
-                              )
-                            }
-                          >
-                            + Add course
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    className={removeBtn}
-                    onClick={() => removeEducation(i)}
-                    aria-label="Remove education"
-                  >
-                    Remove
-                  </button>
-                </div>
-              );
-            })}
-            <button type="button" className={addBtn} onClick={addEducation}>
-              + Add education
-            </button>
-          </section>
-
-          {/* Projects */}
-          <section className="resume-section">
-            <h2 className={sectionHeading}>Projects</h2>
-            {projects.map((entry, i) => {
-              const showProjectsOptional =
-                projectsOptionalExpanded.has(i) ||
-                hasAnyOptionalProjectContent(entry);
-              return (
-                <div key={i} className="mb-3">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <span className="font-semibold text-sm">
-                      <EditableText
-                        value={getStr(entry, "name")}
-                        path={`projects.${i}.name`}
-                        onCommit={onCommit}
-                      />
-                    </span>
-                    <button
-                      type="button"
-                      className={removeBtn}
-                      onClick={() => removeProject(i)}
-                      aria-label="Remove project"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                  {!showProjectsOptional && (
-                    <button
-                      type="button"
-                      className={addBtn}
-                      onClick={() =>
-                        setProjectsOptionalExpanded((s) => new Set(s).add(i))
-                      }
-                    >
-                      + Add description, dates, link or roles
-                    </button>
-                  )}
-                  {showProjectsOptional && (
-                    <>
-                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-gray-600 mt-0.5">
-                        <EditableText
-                          value={getStr(entry, "startDate")}
-                          path={`projects.${i}.startDate`}
-                          onCommit={onCommit}
-                          placeholder="Start"
-                        />
-                        <EditableText
-                          value={getStr(entry, "endDate")}
-                          path={`projects.${i}.endDate`}
-                          onCommit={onCommit}
-                          placeholder="End"
-                        />
-                        <EditableText
-                          value={getStr(entry, "url")}
-                          path={`projects.${i}.url`}
-                          onCommit={onCommit}
-                          placeholder="URL"
-                        />
-                        <EditableText
-                          value={getStr(entry, "entity")}
-                          path={`projects.${i}.entity`}
-                          onCommit={onCommit}
-                          placeholder="Entity"
-                        />
-                        <EditableText
-                          value={getStr(entry, "type")}
-                          path={`projects.${i}.type`}
-                          onCommit={onCommit}
-                          placeholder="Type"
-                        />
-                      </div>
-                      <p className="text-sm text-gray-600 mt-0.5">
-                        <EditableText
-                          value={getStr(entry, "description")}
-                          path={`projects.${i}.description`}
-                          onCommit={onCommit}
-                          placeholder="Description"
-                        />
-                      </p>
-                      <div className="text-sm text-gray-600 mt-0.5 flex flex-wrap gap-1.5">
-                        {getArr<string>(entry, "keywords").map((kw, ki) => (
-                          <span
-                            key={ki}
-                            className="inline-flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded"
-                          >
-                            <EditableText
-                              value={kw}
-                              path={`projects.${i}.keywords.${ki}`}
-                              onCommit={onCommit}
-                              className="text-sm"
-                            />
-                            <button
-                              type="button"
-                              className="text-red-600 hover:text-red-700"
-                              onClick={() =>
-                                onChange(
-                                  setResumePath(
-                                    resume,
-                                    `projects.${i}.keywords`,
-                                    getArr<string>(entry, "keywords").filter(
-                                      (_, idx) => idx !== ki,
-                                    ),
-                                  ),
-                                )
-                              }
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
-                        <button
-                          type="button"
-                          className={addBtn}
-                          onClick={() =>
-                            addHighlight(
-                              `projects.${i}.keywords`,
-                              getArr<string>(entry, "keywords"),
-                            )
-                          }
-                        >
-                          + keyword
-                        </button>
-                      </div>
-                      <div className="text-sm text-gray-600 mt-0.5 flex flex-wrap gap-1.5">
-                        {getArr<string>(entry, "roles").map((r, ri) => (
-                          <span
-                            key={ri}
-                            className="inline-flex items-center gap-1"
-                          >
-                            <EditableText
-                              value={r}
-                              path={`projects.${i}.roles.${ri}`}
-                              onCommit={onCommit}
-                              className="text-sm"
-                            />
-                            <button
-                              type="button"
-                              className="text-red-600 hover:text-red-700"
-                              onClick={() =>
-                                onChange(
-                                  setResumePath(
-                                    resume,
-                                    `projects.${i}.roles`,
-                                    getArr<string>(entry, "roles").filter(
-                                      (_, idx) => idx !== ri,
-                                    ),
-                                  ),
-                                )
-                              }
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
-                        <button
-                          type="button"
-                          className={addBtn}
-                          onClick={() =>
-                            addHighlight(
-                              `projects.${i}.roles`,
-                              getArr<string>(entry, "roles"),
-                            )
-                          }
-                        >
-                          + role
-                        </button>
-                      </div>
-                    </>
-                  )}
-                  <ul className="list-disc list-inside space-y-0.5 mt-0.5 text-sm text-gray-700 ml-2">
-                    {getArr<string>(entry, "highlights").map((bullet, j) => (
-                      <li key={j} className="flex items-start gap-1">
-                        <EditableText
-                          value={bullet}
-                          path={`projects.${i}.highlights.${j}`}
-                          onCommit={onCommit}
-                          className="flex-1"
-                        />
-                        <button
-                          type="button"
-                          className="shrink-0 text-red-600 hover:text-red-700 text-xs min-h-[44px] inline-flex items-center touch-manipulation"
-                          onClick={() =>
-                            removeHighlight(
-                              `projects.${i}.highlights`,
-                              getArr<string>(entry, "highlights"),
-                              j,
-                            )
-                          }
-                          aria-label="Remove bullet"
-                        >
-                          ×
-                        </button>
-                      </li>
-                    ))}
-                    <li className="list-none">
-                      <button
-                        type="button"
-                        className={addBtn}
-                        onClick={() =>
-                          addHighlight(
-                            `projects.${i}.highlights`,
-                            getArr<string>(entry, "highlights"),
-                          )
-                        }
-                      >
-                        + Add bullet
-                      </button>
-                    </li>
-                  </ul>
-                </div>
-              );
-            })}
-            <button type="button" className={addBtn} onClick={addProject}>
-              + Add project
-            </button>
-          </section>
-
-          {/* Skills — tags (default) or inline one line per category when compact */}
-          <section className="resume-section">
-            <h2 className={sectionHeading}>Skills</h2>
-            {skills.map((entry, i) => {
-              const keywords = getArr<string>(entry, "keywords");
-              const showLevel =
-                getStr(entry, "level") !== "" || skillLevelExpanded.has(i);
-              const keywordsInline = keywords.join(", ");
-              const onKeywordsCommit = (path: string, value: string) => {
-                const next = value
-                  .split(",")
-                  .map((s) => s.trim())
-                  .filter(Boolean);
-                onChange(setResumePath(resume, `skills.${i}.keywords`, next));
-              };
-              if (compact) {
-                return (
-                  <div
-                    key={i}
-                    className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2"
-                  >
-                    <span className="text-sm">
-                      <span className="font-semibold">
-                        <EditableText
-                          value={getStr(entry, "name")}
-                          path={`skills.${i}.name`}
-                          onCommit={onCommit}
-                          placeholder="Category"
-                        />
-                      </span>
-                      <span className="text-gray-500 mx-1">: </span>
-                      <EditableText
-                        value={keywordsInline}
-                        path={`skills.${i}.keywords`}
-                        onCommit={onKeywordsCommit}
-                        placeholder="keyword1, keyword2"
-                        className="text-gray-700"
-                      />
-                    </span>
-                    <button
-                      type="button"
-                      className={removeBtn}
-                      onClick={() => removeSkillCategory(i)}
-                      aria-label="Remove skill category"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                );
-              }
-              return (
-                <div key={i} className="mb-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-semibold text-sm">
-                      <EditableText
-                        value={getStr(entry, "name")}
-                        path={`skills.${i}.name`}
-                        onCommit={onCommit}
-                        placeholder="Category name"
-                      />
-                    </span>
-                    {showLevel && (
-                      <span className="text-gray-500 text-sm">
-                        <EditableText
-                          value={getStr(entry, "level")}
-                          path={`skills.${i}.level`}
-                          onCommit={onCommit}
-                          placeholder="Level"
-                        />
-                      </span>
-                    )}
-                    {!showLevel && (
-                      <button
-                        type="button"
-                        className={addBtn}
-                        onClick={() =>
-                          setSkillLevelExpanded((s) => new Set(s).add(i))
-                        }
-                      >
-                        + Add level
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className={removeBtn}
-                      onClick={() => removeSkillCategory(i)}
-                      aria-label="Remove skill category"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 mt-0.5">
-                    {keywords.map((kw, j) => (
-                      <span
-                        key={j}
-                        className="inline-flex items-center gap-1 bg-gray-100 px-2 py-1 rounded text-sm min-h-[44px]"
-                      >
-                        <EditableText
-                          value={kw}
-                          path={`skills.${i}.keywords.${j}`}
-                          onCommit={onCommit}
-                          className="text-sm py-1"
-                        />
-                        <button
-                          type="button"
-                          className="text-red-600 hover:text-red-700 touch-manipulation"
-                          onClick={() =>
-                            removeHighlight(`skills.${i}.keywords`, keywords, j)
-                          }
-                          aria-label="Remove keyword"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                    <button
-                      type="button"
-                      className={addBtn}
-                      onClick={() =>
-                        addHighlight(`skills.${i}.keywords`, keywords)
-                      }
-                    >
-                      + keyword
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-            <button type="button" className={addBtn} onClick={addSkillCategory}>
-              + Add skill category
-            </button>
-          </section>
-
-          {/* Languages — already one line; tighter when compact */}
-          <section className="resume-section">
-            <h2 className={sectionHeading}>Languages</h2>
-            {languages.map((entry, i) => (
-              <div
-                key={i}
-                className={`${compact ? "mb-1.5" : "mb-3"} flex flex-wrap items-center justify-between gap-2`}
-              >
-                <span className="text-sm">
-                  <EditableText
-                    value={getStr(entry, "language")}
-                    path={`languages.${i}.language`}
-                    onCommit={onCommit}
-                    placeholder="Language"
-                  />
-                  {" — "}
-                  <EditableText
-                    value={getStr(entry, "fluency")}
-                    path={`languages.${i}.fluency`}
-                    onCommit={onCommit}
-                    placeholder="Fluency"
-                  />
-                </span>
-                <button
-                  type="button"
-                  className={removeBtn}
-                  onClick={() => removeLanguage(i)}
-                  aria-label="Remove language"
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-            <button type="button" className={addBtn} onClick={addLanguage}>
-              + Add language
-            </button>
-          </section>
-
-          {/* Certificates — one line when compact: Name – Issuer, Date */}
-          <section className="resume-section">
-            <h2 className={sectionHeading}>Certificates</h2>
-            {certificates.map((entry, i) => (
-              <div key={i} className={compact ? "mb-1.5" : "mb-3"}>
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="text-sm">
-                    <span className="font-semibold">
-                      <EditableText
-                        value={getStr(entry, "name")}
-                        path={`certificates.${i}.name`}
-                        onCommit={onCommit}
-                        placeholder="Certificate name"
-                      />
-                    </span>
-                    {compact && (
-                      <>
-                        <span className="text-gray-500 mx-1">–</span>
-                        <EditableText
-                          value={getStr(entry, "issuer")}
-                          path={`certificates.${i}.issuer`}
-                          onCommit={onCommit}
-                          placeholder="Issuer"
-                          className="text-gray-600"
-                        />
-                        <span className="text-gray-500 mx-1">,</span>
-                        <EditableText
-                          value={getStr(entry, "date")}
-                          path={`certificates.${i}.date`}
-                          onCommit={onCommit}
-                          placeholder="Date"
-                          className="text-gray-600"
-                        />
-                      </>
-                    )}
-                  </span>
-                  <button
-                    type="button"
-                    className={removeBtn}
-                    onClick={() => removeCertificate(i)}
-                    aria-label="Remove certificate"
-                  >
-                    Remove
-                  </button>
-                </div>
-                {!compact && (
-                  <p className="text-sm text-gray-600 mt-0.5">
-                    <EditableText
-                      value={getStr(entry, "issuer")}
-                      path={`certificates.${i}.issuer`}
-                      onCommit={onCommit}
-                      placeholder="Issuer"
-                    />
-                    {" · "}
-                    <EditableText
-                      value={getStr(entry, "date")}
-                      path={`certificates.${i}.date`}
-                      onCommit={onCommit}
-                      placeholder="Date"
-                    />
-                    {" · "}
-                    <EditableText
-                      value={getStr(entry, "url")}
-                      path={`certificates.${i}.url`}
-                      onCommit={onCommit}
-                      placeholder="URL"
-                    />
-                  </p>
-                )}
-              </div>
-            ))}
-            <button type="button" className={addBtn} onClick={addCertificate}>
-              + Add certificate
-            </button>
-          </section>
-
-          {/* Awards — one line when compact: Title – Awarder, Date */}
-          <section className="resume-section">
-            <h2 className={sectionHeading}>Awards</h2>
-            {awards.map((entry, i) => (
-              <div key={i} className={compact ? "mb-1.5" : "mb-3"}>
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="text-sm">
-                    <span className="font-semibold">
-                      <EditableText
-                        value={getStr(entry, "title")}
-                        path={`awards.${i}.title`}
-                        onCommit={onCommit}
-                        placeholder="Award title"
-                      />
-                    </span>
-                    {compact ? (
-                      <>
-                        <span className="text-gray-500 mx-1">–</span>
-                        <EditableText
-                          value={getStr(entry, "awarder")}
-                          path={`awards.${i}.awarder`}
-                          onCommit={onCommit}
-                          placeholder="Awarder"
-                          className="text-gray-600"
-                        />
-                        <span className="text-gray-500 mx-1">,</span>
-                        <EditableText
-                          value={getStr(entry, "date")}
-                          path={`awards.${i}.date`}
-                          onCommit={onCommit}
-                          placeholder="Date"
-                          className="text-gray-600"
-                        />
-                      </>
-                    ) : null}
-                  </span>
-                  <button
-                    type="button"
-                    className={removeBtn}
-                    onClick={() => removeAward(i)}
-                    aria-label="Remove award"
-                  >
-                    Remove
-                  </button>
-                </div>
-                {!compact && (
-                  <>
-                    <p className="text-sm text-gray-600 mt-0.5">
-                      <EditableText
-                        value={getStr(entry, "awarder")}
-                        path={`awards.${i}.awarder`}
-                        onCommit={onCommit}
-                        placeholder="Awarder"
-                      />
-                      {" · "}
-                      <EditableText
-                        value={getStr(entry, "date")}
-                        path={`awards.${i}.date`}
-                        onCommit={onCommit}
-                        placeholder="Date"
-                      />
-                    </p>
-                    <p className="text-sm text-gray-700 mt-0.5">
-                      <EditableText
-                        value={getStr(entry, "summary")}
-                        path={`awards.${i}.summary`}
-                        onCommit={onCommit}
-                        multiline
-                        placeholder="Summary"
-                        className="block"
-                      />
-                    </p>
-                  </>
-                )}
-                {compact && getStr(entry, "summary") && (
-                  <p className="text-sm text-gray-700 mt-0.5">
-                    <EditableText
-                      value={getStr(entry, "summary")}
-                      path={`awards.${i}.summary`}
-                      onCommit={onCommit}
-                      multiline
-                      placeholder="Summary"
-                      className="block"
-                    />
-                  </p>
-                )}
-              </div>
-            ))}
-            <button type="button" className={addBtn} onClick={addAward}>
-              + Add award
-            </button>
-          </section>
-
-          {/* Publications — one line when compact: Name – Publisher, Date */}
-          <section className="resume-section">
-            <h2 className={sectionHeading}>Publications</h2>
-            {publications.map((entry, i) => (
-              <div key={i} className={compact ? "mb-1.5" : "mb-3"}>
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="text-sm">
-                    <span className="font-semibold">
-                      <EditableText
-                        value={getStr(entry, "name")}
-                        path={`publications.${i}.name`}
-                        onCommit={onCommit}
-                        placeholder="Publication name"
-                      />
-                    </span>
-                    {compact ? (
-                      <>
-                        <span className="text-gray-500 mx-1">–</span>
-                        <EditableText
-                          value={getStr(entry, "publisher")}
-                          path={`publications.${i}.publisher`}
-                          onCommit={onCommit}
-                          placeholder="Publisher"
-                          className="text-gray-600"
-                        />
-                        <span className="text-gray-500 mx-1">,</span>
-                        <EditableText
-                          value={getStr(entry, "releaseDate")}
-                          path={`publications.${i}.releaseDate`}
-                          onCommit={onCommit}
-                          placeholder="Date"
-                          className="text-gray-600"
-                        />
-                      </>
-                    ) : null}
-                  </span>
-                  <button
-                    type="button"
-                    className={removeBtn}
-                    onClick={() => removePublication(i)}
-                    aria-label="Remove publication"
-                  >
-                    Remove
-                  </button>
-                </div>
-                {!compact && (
-                  <>
-                    <p className="text-sm text-gray-600 mt-0.5">
-                      <EditableText
-                        value={getStr(entry, "publisher")}
-                        path={`publications.${i}.publisher`}
-                        onCommit={onCommit}
-                        placeholder="Publisher"
-                      />
-                      {" · "}
-                      <EditableText
-                        value={getStr(entry, "releaseDate")}
-                        path={`publications.${i}.releaseDate`}
-                        onCommit={onCommit}
-                        placeholder="Date"
-                      />
-                      {" · "}
-                      <EditableText
-                        value={getStr(entry, "url")}
-                        path={`publications.${i}.url`}
-                        onCommit={onCommit}
-                        placeholder="URL"
-                      />
-                    </p>
-                    <p className="text-sm text-gray-700 mt-0.5">
-                      <EditableText
-                        value={getStr(entry, "summary")}
-                        path={`publications.${i}.summary`}
-                        onCommit={onCommit}
-                        multiline
-                        placeholder="Summary"
-                        className="block"
-                      />
-                    </p>
-                  </>
-                )}
-                {compact && getStr(entry, "summary") && (
-                  <p className="text-sm text-gray-700 mt-0.5">
-                    <EditableText
-                      value={getStr(entry, "summary")}
-                      path={`publications.${i}.summary`}
-                      onCommit={onCommit}
-                      multiline
-                      placeholder="Summary"
-                      className="block"
-                    />
-                  </p>
-                )}
-              </div>
-            ))}
-            <button type="button" className={addBtn} onClick={addPublication}>
-              + Add publication
-            </button>
-          </section>
-
-          {/* Interests — one line when compact: Name: kw1, kw2 */}
-          <section className="resume-section">
-            <h2 className={sectionHeading}>Interests</h2>
-            {interests.map((entry, i) => {
-              const kw = getArr<string>(entry, "keywords");
-              const keywordsInline = kw.join(", ");
-              const onInterestKeywordsCommit = (
-                path: string,
-                value: string,
-              ) => {
-                const next = value
-                  .split(",")
-                  .map((s) => s.trim())
-                  .filter(Boolean);
-                onChange(
-                  setResumePath(resume, `interests.${i}.keywords`, next),
-                );
-              };
-              if (compact) {
-                return (
-                  <div
-                    key={i}
-                    className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2"
-                  >
-                    <span className="text-sm">
-                      <span className="font-semibold">
-                        <EditableText
-                          value={getStr(entry, "name")}
-                          path={`interests.${i}.name`}
-                          onCommit={onCommit}
-                          placeholder="Interest"
-                        />
-                      </span>
-                      <span className="text-gray-500 mx-1">: </span>
-                      <EditableText
-                        value={keywordsInline}
-                        path={`interests.${i}.keywords`}
-                        onCommit={onInterestKeywordsCommit}
-                        placeholder="keyword1, keyword2"
-                        className="text-gray-700"
-                      />
-                    </span>
-                    <button
-                      type="button"
-                      className={removeBtn}
-                      onClick={() => removeInterest(i)}
-                      aria-label="Remove interest"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                );
-              }
-              return (
-                <div key={i} className="mb-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-semibold text-sm">
-                      <EditableText
-                        value={getStr(entry, "name")}
-                        path={`interests.${i}.name`}
-                        onCommit={onCommit}
-                        placeholder="Interest name"
-                      />
-                    </span>
-                    <button
-                      type="button"
-                      className={removeBtn}
-                      onClick={() => removeInterest(i)}
-                      aria-label="Remove interest"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 mt-0.5">
-                    {kw.map((k, ki) => (
-                      <span
-                        key={ki}
-                        className="inline-flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded text-sm"
-                      >
-                        <EditableText
-                          value={k}
-                          path={`interests.${i}.keywords.${ki}`}
-                          onCommit={onCommit}
-                          className="text-sm"
-                        />
-                        <button
-                          type="button"
-                          className="text-red-600 hover:text-red-700"
-                          onClick={() =>
-                            onChange(
-                              setResumePath(
-                                resume,
-                                `interests.${i}.keywords`,
-                                kw.filter((_, idx) => idx !== ki),
-                              ),
-                            )
-                          }
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                    <button
-                      type="button"
-                      className={addBtn}
-                      onClick={() =>
-                        addHighlight(`interests.${i}.keywords`, kw)
-                      }
-                    >
-                      + keyword
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-            <button type="button" className={addBtn} onClick={addInterest}>
-              + Add interest
-            </button>
-          </section>
-
-          {/* References — tighter when compact */}
-          <section className="resume-section">
-            <h2 className={sectionHeading}>References</h2>
-            {references.map((entry, i) => (
-              <div key={i} className={compact ? "mb-1.5" : "mb-3"}>
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="font-semibold text-sm">
-                    <EditableText
-                      value={getStr(entry, "name")}
-                      path={`references.${i}.name`}
-                      onCommit={onCommit}
-                      placeholder="Name"
-                    />
-                  </span>
-                  <button
-                    type="button"
-                    className={removeBtn}
-                    onClick={() => removeReference(i)}
-                    aria-label="Remove reference"
-                  >
-                    Remove
-                  </button>
-                </div>
-                <p className="text-sm text-gray-700 mt-0.5">
-                  <EditableText
-                    value={getStr(entry, "reference")}
-                    path={`references.${i}.reference`}
-                    onCommit={onCommit}
-                    multiline
-                    placeholder="Reference"
-                    className="block"
-                  />
-                </p>
-              </div>
-            ))}
-            <button type="button" className={addBtn} onClick={addReference}>
-              + Add reference
-            </button>
-          </section>
-        </div>
-      </div>
-    </div>
-  );
+  return <ResumeEditForm resume={resume} onChange={onChange} />;
 }

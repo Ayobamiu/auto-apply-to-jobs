@@ -1,128 +1,82 @@
 import { Request, Response } from 'express';
 import OpenAI from 'openai';
+import { cover_letter_update_system_prompt, resume_patch_operations_response_format, resume_patch_operations_system_prompt } from '../../shared/prompts/resume.js';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const response_format: OpenAI.Chat.Completions.ChatCompletionCreateParams['response_format'] = {
-    type: "json_schema",
-    json_schema: {
-        name: "resume_patch_operations",
-        schema: {
-            type: "object",
-            additionalProperties: false,
-            required: ["patches"],
-            properties: {
-                patches: {
-                    type: "array",
-                    items: {
-                        type: "object",
-                        additionalProperties: false,
-                        required: ["op", "path", "value"],
-                        properties: {
-                            op: { type: "string", enum: ["replace", "add", "remove"] },
-                            path: { type: "string" },
-                            value: {
-                                anyOf: [
-                                    { type: "string" },
-                                    { type: "number" },
-                                    { type: "boolean" },
-                                    { type: "array", items: { anyOf: [{ type: "string" }, { type: "number" }, { type: "boolean" }] } },
-                                    { type: "object", additionalProperties: false, required: [], properties: {} }
-                                ]
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-};
-
-const SYSTEM_PROMPT = `Role: Senior Resume Architect.
-
-Goal: Propose precise updates to a JSON Resume using JSON Patch operations (RFC 6902).
-Minimize the number of patch operations required.
-
----
-
-### RESUME SCHEMA BLUEPRINT
-
-Basics:
-{ name, label, image, email, phone, url, summary,
-  location: { address, postalCode, city, countryCode, region },
-  profiles: [{ network, username, url }]
+/**
+ * Deterministic JSON serialization with sorted object keys.
+ * Required so identical resume state produces byte-identical prompt
+ * prefixes across requests — which is what OpenAI prompt caching
+ * keys on.
+ */
+function stableStringify(v: unknown): string {
+    if (v === null || typeof v !== "object") return JSON.stringify(v);
+    if (Array.isArray(v)) return `[${v.map(stableStringify).join(",")}]`;
+    const keys = Object.keys(v as object).sort();
+    return `{${keys
+        .map((k) => `${JSON.stringify(k)}:${stableStringify((v as Record<string, unknown>)[k])}`)
+        .join(",")}}`;
 }
 
-Work / Volunteer:
-{ organization, name, position, url, startDate, endDate, summary, highlights: [] }
+/**
+ * Remove noise that pads the prompt: empty strings, nullish values,
+ * empty arrays, and empty objects (including recursively-empty ones).
+ * In JSON Resume semantics, these are equivalent to "field not set".
+ */
+function stripEmpty<T>(input: T): T {
+    if (Array.isArray(input)) {
+        const arr = input
+            .map((v) => stripEmpty(v as unknown))
+            .filter((v) => v !== undefined);
+        return arr as unknown as T;
+    }
+    if (input !== null && typeof input === "object") {
+        const out: Record<string, unknown> = {};
+        for (const [k, raw] of Object.entries(input as Record<string, unknown>)) {
+            if (raw === null || raw === undefined) continue;
+            if (typeof raw === "string" && raw === "") continue;
+            const cleaned = stripEmpty(raw);
+            if (Array.isArray(cleaned) && cleaned.length === 0) continue;
+            if (
+                cleaned !== null &&
+                typeof cleaned === "object" &&
+                !Array.isArray(cleaned) &&
+                Object.keys(cleaned as object).length === 0
+            ) {
+                continue;
+            }
+            out[k] = cleaned;
+        }
+        return out as unknown as T;
+    }
+    return input;
+}
 
-Education:
-{ institution, url, area, studyType, startDate, endDate, score, courses: [] }
-
-Projects:
-{ name, description, highlights: [], keywords: [], startDate, endDate, url }
-
-Skills:
-{ name, level, keywords: [] }
-
----
-
-### PATCH FORMAT
-
-Return JSON Patch operations (RFC 6902).
-
-Each operation must contain:
-{ "op": "add" | "replace" | "remove", "path": "/json/pointer/path", "value": <value when required> }
-
-Return an object with a "patches" array containing JSON Patch operations.
-When replacing array fields (like highlights or keywords), always replace the entire array.
-
-### PATH RULES
-
-Use JSON Pointer paths (e.g. /basics/summary, /work/0/highlights, /skills/2/keywords).
-Array indices must be numeric.
-
-### OPERATION RULES
-
-replace → update an existing value
-add → insert new array items or fields
-remove → delete fields or array items
-
-### RESUME RULES
-
-1. Use ISO-8601 (YYYY-MM-DD) for dates when present.
-2. Only modify the fields requested in the instruction.
-3. Never remove or overwrite unrelated fields.
-4. Do not modify the same path more than once.
-5. Prefer improving clarity, impact, and conciseness in resume text.
-
-### OUTPUT RULES
-
-Return ONLY the JSON object with patches array. No explanations outside JSON.`;
-
+/**
+ * Build the user message with a *stable prefix* (resume + job context)
+ * followed by the volatile *tail* (instruction). This ordering lets
+ * OpenAI's automatic prompt caching reuse the prefix across edits in
+ * the same session.
+ */
 function buildUserMessage(
     resume: Record<string, unknown>,
     instruction: string,
     jobDescription?: string,
-    editHistory?: string[]
 ): string {
     const parts: string[] = [];
-    parts.push(`CURRENT_RESUME: ${JSON.stringify(resume)}`);
+    parts.push(`CURRENT_RESUME: ${stableStringify(stripEmpty(resume))}`);
     if (jobDescription) {
-        const truncated = jobDescription.slice(0, 3000);
-        parts.push(`JOB_CONTEXT (tailor edits to match this role): ${truncated}`);
-    }
-    if (editHistory?.length) {
-        parts.push(`RECENT_EDIT_HISTORY: ${editHistory.slice(-5).join(' | ')}`);
+        parts.push(`JOB_CONTEXT (tailor edits to match this role): ${jobDescription.slice(0, 3000)}`);
     }
     parts.push(`INSTRUCTION: ${instruction}`);
-    return parts.join('\n\n');
+    return parts.join("\n\n");
 }
 
 export async function postResumeUpdate(req: Request, res: Response): Promise<void> {
-    const { resume, instruction, jobDescription, editHistory } = req.body as {
+    const { resume, instruction, jobDescription } = req.body as {
         resume: Record<string, unknown>; instruction: string;
-        jobDescription?: string; editHistory?: string[];
+        jobDescription?: string;
     };
     if (!resume || !instruction || typeof resume !== 'object' || typeof instruction !== 'string') {
         res.status(400).json({ error: 'Missing or invalid resume/instruction' });
@@ -136,10 +90,10 @@ export async function postResumeUpdate(req: Request, res: Response): Promise<voi
         const response = await openai.chat.completions.create({
             model: "gpt-4o-2024-08-06",
             messages: [
-                { role: "system", content: SYSTEM_PROMPT },
-                { role: "user", content: buildUserMessage(resume, instruction, jobDescription, editHistory) },
+                { role: "system", content: resume_patch_operations_system_prompt },
+                { role: "user", content: buildUserMessage(resume, instruction, jobDescription) },
             ],
-            response_format,
+            response_format: resume_patch_operations_response_format,
             temperature: 0.1,
         });
         const parsed = JSON.parse(response.choices[0].message.content ?? "{}");
@@ -150,21 +104,12 @@ export async function postResumeUpdate(req: Request, res: Response): Promise<voi
     }
 }
 
-const COVER_LETTER_SYSTEM_PROMPT = `Role: Professional Cover Letter Editor.
 
-Goal: Improve or rewrite a cover letter based on user instructions.
-Return the full improved text.
-
-Rules:
-- Keep it 250-400 words unless the user asks for a different length.
-- Maintain professional tone.
-- If a job description is provided, tailor the letter to it.
-- Output ONLY the improved cover letter text. No JSON, no markdown, no explanation.`;
 
 export async function postCoverLetterUpdate(req: Request, res: Response): Promise<void> {
-    const { text, instruction, jobDescription, editHistory } = req.body as {
+    const { text, instruction, jobDescription } = req.body as {
         text: string; instruction: string;
-        jobDescription?: string; editHistory?: string[];
+        jobDescription?: string;
     };
     if (!text || !instruction || typeof text !== 'string' || typeof instruction !== 'string') {
         res.status(400).json({ error: 'Missing or invalid text/instruction' });
@@ -173,13 +118,12 @@ export async function postCoverLetterUpdate(req: Request, res: Response): Promis
     try {
         const parts: string[] = [`CURRENT_COVER_LETTER:\n${text}`];
         if (jobDescription) parts.push(`JOB_CONTEXT:\n${jobDescription.slice(0, 3000)}`);
-        if (editHistory?.length) parts.push(`RECENT_EDITS: ${editHistory.slice(-5).join(' | ')}`);
         parts.push(`INSTRUCTION: ${instruction}`);
 
         const response = await openai.chat.completions.create({
             model: "gpt-4o-mini",
             messages: [
-                { role: "system", content: COVER_LETTER_SYSTEM_PROMPT },
+                { role: "system", content: cover_letter_update_system_prompt },
                 { role: "user", content: parts.join('\n\n') },
             ],
             temperature: 0.3,
