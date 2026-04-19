@@ -83,6 +83,68 @@ describe('POST /pipeline (async)', () => {
 
     assert.equal(res.status, 400);
   });
+
+  it('returns the existing jobId for a duplicate in-flight URL (idempotent)', async () => {
+    // Seed a pending row directly so the API does not actually spawn work.
+    const { id } = await createPipelineJob(userA.id, 'https://example.com/job/dup');
+    const res = await supertest(app)
+      .post('/pipeline')
+      .set('Authorization', `Bearer ${userA.token}`)
+      .send({ jobUrl: 'https://example.com/job/dup' });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.jobId, id);
+    assert.equal(res.body.reused, true);
+  });
+
+  it('returns 409 QUEUE_FULL at the queue cap', async () => {
+    for (let i = 0; i < 3; i++) {
+      await createPipelineJob(userA.id, `https://example.com/job/cap-${i}`);
+    }
+    const res = await supertest(app)
+      .post('/pipeline')
+      .set('Authorization', `Bearer ${userA.token}`)
+      .send({ jobUrl: 'https://example.com/job/overflow' });
+
+    assert.equal(res.status, 409);
+    assert.equal(res.body.error, 'QUEUE_FULL');
+    assert.equal(res.body.cap, 3);
+    assert.equal(res.body.inFlightCount, 3);
+  });
+});
+
+describe('GET /pipeline/jobs/active', () => {
+  before(async () => {
+    userA.token = makeToken(userA.id);
+    userB.token = makeToken(userB.id);
+    await cleanup();
+  });
+  after(async () => { await cleanup(); });
+  beforeEach(async () => { await cleanup(); });
+
+  it('returns only the current user\'s jobs and scrubs result/artifacts', async () => {
+    const mine = await createPipelineJob(userA.id, 'https://example.com/job/mine');
+    await createPipelineJob(userB.id, 'https://example.com/job/theirs');
+
+    const res = await supertest(app)
+      .get('/pipeline/jobs/active')
+      .set('Authorization', `Bearer ${userA.token}`);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.cap, 3);
+    assert.equal(res.body.inFlightCount, 1);
+    assert.equal(res.body.jobs.length, 1);
+    assert.equal(res.body.jobs[0].id, mine.id);
+    for (const job of res.body.jobs as Array<Record<string, unknown>>) {
+      assert.ok(!('result' in job));
+      assert.ok(!('artifacts' in job));
+    }
+  });
+
+  it('returns 401 without auth', async () => {
+    const res = await supertest(app).get('/pipeline/jobs/active');
+    assert.equal(res.status, 401);
+  });
 });
 
 describe('GET /pipeline/jobs/:jobId', () => {

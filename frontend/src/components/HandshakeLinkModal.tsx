@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, Link2, Loader2, CheckCircle, AlertCircle } from "lucide-react";
-import { postPipeline, getPipelineJobStatus } from "../api";
+import { postPipeline, getPipelineJobStatus, QueueFullError } from "../api";
+import { useOptionalPipelineQueue } from "../hooks/usePipelineQueue";
 
 interface HandshakeLinkModalProps {
   open: boolean;
@@ -44,6 +45,9 @@ const STEP_ORDER: Step[] = ["fetching", "generating", "preparing", "done"];
 
 export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
   const navigate = useNavigate();
+  const queue = useOptionalPipelineQueue();
+  const queueFull =
+    queue != null && queue.loaded && queue.inFlightCount >= queue.cap;
   const [url, setUrl] = useState("");
   const [step, setStep] = useState<Step>("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -144,23 +148,42 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
         return;
       }
 
+      if (queueFull) {
+        setErrorMsg(
+          `Queue full (${queue?.inFlightCount ?? "3"}/${queue?.cap ?? 3}). Review or cancel a job to add another.`,
+        );
+        return;
+      }
+
       setErrorMsg("");
       setStep("fetching");
       setJobRef(ref);
 
       try {
-        const { jobId } = await postPipeline(trimmed, { submit: false });
+        const { jobId, reused } = await postPipeline(trimmed, { submit: false });
         setPipelineJobId(jobId);
+        if (reused) {
+          navigate(`/discover/job/${encodeURIComponent(ref)}`);
+          handleClose();
+          return;
+        }
+        await queue?.refresh();
       } catch (err) {
         setStep("error");
-        setErrorMsg(
-          err instanceof Error
-            ? err.message
-            : "Failed to start. Please try again.",
-        );
+        if (err instanceof QueueFullError) {
+          setErrorMsg(
+            `Queue full (${err.inFlightCount}/${err.cap}). Review or cancel a job to add another.`,
+          );
+        } else {
+          setErrorMsg(
+            err instanceof Error
+              ? err.message
+              : "Failed to start. Please try again.",
+          );
+        }
       }
     },
-    [url],
+    [url, queueFull, queue, navigate, handleClose],
   );
 
   if (!open) return null;
@@ -241,9 +264,23 @@ export function HandshakeLinkModal({ open, onClose }: HandshakeLinkModalProps) {
                 <p>3. Review and edit before submitting</p>
               </div>
 
+              {queueFull && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 flex items-start gap-2">
+                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                  <span>
+                    Queue full ({queue?.inFlightCount ?? 3}/{queue?.cap ?? 3}).
+                    Review or cancel a job to add another.
+                  </span>
+                </p>
+              )}
               <button
                 type="submit"
-                disabled={!url.trim()}
+                disabled={!url.trim() || queueFull}
+                title={
+                  queueFull
+                    ? "Queue full — review or cancel a job to add another."
+                    : undefined
+                }
                 className="w-full py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors border-0 cursor-pointer"
               >
                 Start Application

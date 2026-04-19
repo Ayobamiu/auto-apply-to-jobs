@@ -16,6 +16,8 @@ import { MyJobsPage } from "./components/MyJobsPage";
 import { SettingsPage } from "./components/settings/SettingsPage";
 import { FloatingProgress } from "./components/onboarding/FloatingProgress";
 import { OnboardingProvider } from "./hooks/useOnboarding";
+import { PipelineQueueProvider } from "./hooks/usePipelineQueue";
+import { PipelineTray } from "./components/PipelineTray";
 import { SubscriptionProvider } from "./subscription/useSubscription";
 import { HomePage } from "./components/HomePage";
 
@@ -121,17 +123,20 @@ export function App() {
   return (
     <BrowserRouter>
       <SubscriptionProvider>
-        <OnboardingProvider enabled={isLoggedIn_}>
-          <AppRoutes
-            onLoginSuccess={() => setIsLoggedIn(true)}
-            onLogout={() => {
-              clearToken();
-              setIsLoggedIn(false);
-              window.location.href = "/";
-            }}
-          />
-          {isLoggedIn_ && <FloatingProgress />}
-        </OnboardingProvider>
+        <PipelineQueueProvider enabled={isLoggedIn_}>
+          <OnboardingProvider enabled={isLoggedIn_}>
+            <AppRoutes
+              onLoginSuccess={() => setIsLoggedIn(true)}
+              onLogout={() => {
+                clearToken();
+                setIsLoggedIn(false);
+                window.location.href = "/";
+              }}
+            />
+            {isLoggedIn_ && <FloatingProgress />}
+            {isLoggedIn_ && <PipelineTray />}
+          </OnboardingProvider>
+        </PipelineQueueProvider>
       </SubscriptionProvider>
     </BrowserRouter>
   );

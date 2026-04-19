@@ -31,6 +31,7 @@ import { postHandshakeSessionUpload, getHandshakeSessionStatusHandler } from './
 import {
   getPipelineJobStatus,
   getPipelineJobList,
+  getActivePipelineJobsHandler,
   getPipelineJobArtifacts,
   getPipelineJobArtifactsResume,
   getPipelineJobArtifactsCover,
@@ -108,6 +109,7 @@ app.get('/profile', authMiddleware, getProfileHandler);
 app.put('/profile', authMiddleware, putProfile);
 app.post('/profile/from-resume', authMiddleware, profileFromResumeUpload, postProfileFromResume);
 app.get('/pipeline/jobs', authMiddleware, getPipelineJobList);
+app.get('/pipeline/jobs/active', authMiddleware, getActivePipelineJobsHandler);
 app.get('/pipeline/jobs/:jobId/artifacts/resume', authMiddleware, getPipelineJobArtifactsResume);
 app.get('/pipeline/jobs/:jobId/artifacts/cover', authMiddleware, getPipelineJobArtifactsCover);
 app.get('/pipeline/jobs/:jobId/artifacts/written-document/:artifactId', authMiddleware, getPipelineJobArtifactsWrittenDoc);

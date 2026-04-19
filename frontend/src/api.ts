@@ -370,15 +370,90 @@ export async function cancelPipelineJob(jobId: string): Promise<{ cancelled: boo
   });
 }
 
-/** Start pipeline for a job URL (e.g. from Discover jobs). */
+/** Thrown when POST /pipeline rejects because the user already has `cap` in-flight rows. */
+export class QueueFullError extends Error {
+  readonly inFlightCount: number;
+  readonly cap: number;
+  constructor(message: string, inFlightCount: number, cap: number) {
+    super(message);
+    this.name = 'QueueFullError';
+    this.inFlightCount = inFlightCount;
+    this.cap = cap;
+  }
+}
+
+export interface PipelineEnqueueResult {
+  jobId: string;
+  reused: boolean;
+  inFlightCount: number;
+}
+
+/**
+ * Start pipeline for a job URL.
+ * Returns `reused: true` if the server detected an in-flight job for the same canonical URL.
+ * Throws `QueueFullError` if the user already has the max number of in-flight jobs.
+ */
 export async function postPipeline(
   jobUrl: string,
-  options?: { submit?: boolean }
-): Promise<{ jobId: string }> {
-  return request<{ jobId: string }>('/pipeline', {
+  options?: { submit?: boolean; forceScrape?: boolean }
+): Promise<PipelineEnqueueResult> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = getToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}/pipeline`, {
     method: 'POST',
-    body: JSON.stringify({ jobUrl: jobUrl.trim(), submit: options?.submit !== false }),
+    headers,
+    body: JSON.stringify({
+      jobUrl: jobUrl.trim(),
+      submit: options?.submit !== false,
+      forceScrape: options?.forceScrape === true,
+    }),
   });
+  if (res.status === 401) {
+    clearToken();
+    onUnauthorized?.();
+    throw new Error('Session expired. Please sign in again.');
+  }
+  const body = await res.json().catch(() => ({} as Record<string, unknown>));
+  if (res.status === 409 && body?.error === 'QUEUE_FULL') {
+    throw new QueueFullError(
+      String(body.message ?? 'Queue full'),
+      Number(body.inFlightCount ?? 0),
+      Number(body.cap ?? 3),
+    );
+  }
+  if (!res.ok) {
+    throw new Error(String(body?.error || body?.message || `Request failed (${res.status})`));
+  }
+  return {
+    jobId: String(body.jobId),
+    reused: Boolean(body.reused),
+    inFlightCount: Number(body.inFlightCount ?? 0),
+  };
+}
+
+export interface ActivePipelineJob {
+  id: string;
+  status: 'pending' | 'running' | 'done' | 'failed' | 'awaiting_approval' | 'cancelled';
+  phase: string | null;
+  jobUrl: string;
+  jobTitle: string | null;
+  site: string | null;
+  automationLevel: string | null;
+  submit: boolean;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ActivePipelineJobsResponse {
+  jobs: ActivePipelineJob[];
+  cap: number;
+  inFlightCount: number;
+}
+
+export async function getActivePipelineJobs(): Promise<ActivePipelineJobsResponse> {
+  return request<ActivePipelineJobsResponse>('/pipeline/jobs/active');
 }
 
 export interface JobListing {

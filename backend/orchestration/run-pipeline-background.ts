@@ -6,6 +6,7 @@
 import { existsSync } from 'fs';
 import { getPipelineJobById, updatePipelineJobStatus, updatePipelineJobPhase, updatePipelineJobSubmit } from '../data/pipeline-jobs.js';
 import { runPipelineForJob, JOB_CANCELLED_ERROR } from './run-pipeline.js';
+import { dispatchNextForUser } from './dispatch-pending.js';
 import { getJobIdFromUrl, getJobSiteFromUrl } from '../shared/job-from-url.js';
 import { setJobLifecycleStatus, toJobRef } from '../data/user-job-state.js';
 import { ensureResumePdfFromDb } from '../agents/resume_generator_agent/export-pdf.js';
@@ -26,6 +27,7 @@ export async function runPipelineInBackground(
   if (!job || job.status !== 'pending') return;
 
   await updatePipelineJobStatus(jobId, 'running');
+  const dispatchNext = () => { void dispatchNextForUser(job.user_id); };
 
   // Mark job as in_progress in lifecycle (best-effort; don't fail pipeline on error)
   try {
@@ -52,10 +54,14 @@ export async function runPipelineInBackground(
       },
     });
     if (result.paused === true) {
+      dispatchNext();
       return;
     }
     const current = await getPipelineJobById(jobId);
-    if (current?.status === 'cancelled') return;
+    if (current?.status === 'cancelled') {
+      dispatchNext();
+      return;
+    }
     await updatePipelineJobStatus(jobId, 'done', result);
     // Mark submitted lifecycle when application was sent
     if (result.outcome === 'submitted') {
@@ -67,14 +73,17 @@ export async function runPipelineInBackground(
         }
       } catch { /* ignore */ }
     }
+    dispatchNext();
   } catch (err) {
     if (err === JOB_CANCELLED_ERROR || (err instanceof Error && err.message === 'JOB_CANCELLED')) {
       await updatePipelineJobStatus(jobId, 'cancelled');
+      dispatchNext();
       return;
     }
     const message = err instanceof Error ? err.message : String(err);
     const code = isAppError(err) ? err.code : null;
     await updatePipelineJobStatus(jobId, 'failed', undefined, message, code);
+    dispatchNext();
   }
 }
 
@@ -89,8 +98,10 @@ export async function resumePipelineAfterApproval(jobId: string): Promise<void> 
   const jobUrl = job.job_url;
   const site = getJobSiteFromUrl(jobUrl);
   const jobIdFromUrl = getJobIdFromUrl(jobUrl);
+  const dispatchNext = () => { void dispatchNextForUser(userId); };
   if (!site || !jobIdFromUrl) {
     await updatePipelineJobStatus(jobId, 'failed', undefined, 'Invalid job URL');
+    dispatchNext();
     return;
   }
 
@@ -117,6 +128,7 @@ export async function resumePipelineAfterApproval(jobId: string): Promise<void> 
           undefined,
           'This job requires a transcript. Upload one in the app (Settings or chat) or set TRANSCRIPT_PATH in .env, then try again.'
         );
+        dispatchNext();
         return;
       }
     }
@@ -174,9 +186,11 @@ export async function resumePipelineAfterApproval(jobId: string): Promise<void> 
         await setJobLifecycleStatus(userId, toJobRef(site, jobIdFromUrl), 'submitted');
       } catch { /* ignore */ }
     }
+    dispatchNext();
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const code = isAppError(err) ? err.code : null;
     await updatePipelineJobStatus(jobId, 'failed', undefined, message, code);
+    dispatchNext();
   }
 }

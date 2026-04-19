@@ -1,9 +1,18 @@
 import { type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Sparkles, Compass, Briefcase, Settings, LogOut } from "lucide-react";
+import {
+  Sparkles,
+  Compass,
+  Briefcase,
+  Settings,
+  LogOut,
+  Loader2,
+  Clock3,
+} from "lucide-react";
 import { Button, Dropdown, MenuProps, Space } from "antd";
 import { UserOutlined } from "@ant-design/icons";
 import { getUserEmail } from "../utils/token";
+import { useOptionalPipelineQueue } from "../hooks/usePipelineQueue";
 
 interface AppShellProps {
   children: ReactNode;
@@ -29,6 +38,7 @@ const NAV_ITEMS = [
 export function AppShell({ children, onLogout }: AppShellProps) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const queue = useOptionalPipelineQueue();
   const userEmail = getUserEmail(localStorage.getItem("token") ?? "");
   const items: MenuProps["items"] = [
     {
@@ -45,6 +55,20 @@ export function AppShell({ children, onLogout }: AppShellProps) {
       onClick: () => onLogout(),
     },
   ];
+  const showQueueSummary = Boolean(queue && queue.jobs.length > 0);
+  const queueSummaryLabel = queue?.hasAwaitingApproval
+    ? "Review ready"
+    : queue?.runningCount
+      ? queue.runningCount === 1
+        ? "1 running"
+        : `${queue.runningCount} running`
+      : queue?.pendingCount
+        ? queue.pendingCount === 1
+          ? "1 queued"
+          : `${queue.pendingCount} queued`
+        : queue
+          ? `${queue.inFlightCount} active`
+          : "";
 
   return (
     <div className="min-h-screen bg-[#f8f9fb] flex flex-col">
@@ -83,6 +107,23 @@ export function AppShell({ children, onLogout }: AppShellProps) {
             );
           })}
         </nav>
+
+        {showQueueSummary && (
+          <button
+            type="button"
+            onClick={() => queue?.expandTray()}
+            className="inline-flex items-center gap-1.5 md:gap-2 rounded-full border border-blue-100 bg-blue-50 px-2.5 md:px-3 py-1.5 text-[11px] md:text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors cursor-pointer"
+            aria-label="Open pipeline queue"
+            title="Open queue"
+          >
+            {queue?.runningCount ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Clock3 className="w-3.5 h-3.5" />
+            )}
+            <span>{queueSummaryLabel}</span>
+          </button>
+        )}
 
         {/* User dropdown */}
         <Space.Compact className="ml-auto">

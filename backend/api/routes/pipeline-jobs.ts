@@ -9,7 +9,14 @@ import { createReadStream, unlinkSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
-import { getPipelineJob, listPipelineJobs, cancelPipelineJob, type PipelineJob } from '../../data/pipeline-jobs.js';
+import {
+  getPipelineJob,
+  listPipelineJobs,
+  listActivePipelineJobs,
+  cancelPipelineJob,
+  type PipelineJob,
+} from '../../data/pipeline-jobs.js';
+import { dispatchNextForUser } from '../../orchestration/dispatch-pending.js';
 import { normalizePipelineOutcome, getPipelineOutcomeMessage } from '../../shared/pipeline-outcome.js';
 import { isNonRetryableFailureCode } from '../../shared/errors.js';
 import { getJobIdFromUrl, getJobSiteFromUrl } from '../../shared/job-from-url.js';
@@ -75,6 +82,7 @@ export async function postPipelineJobCancel(req: Request, res: Response): Promis
   const jobId = req.params.jobId as string;
   const cancelled = await cancelPipelineJob(jobId, userId);
   if (cancelled) {
+    void dispatchNextForUser(userId);
     res.status(200).json({ cancelled: true });
     return;
   }
@@ -102,6 +110,39 @@ export async function getPipelineJobList(req: Request, res: Response): Promise<v
       updatedAt: j.updated_at,
     }))
   );
+}
+
+/**
+ * GET /pipeline/jobs/active — slim feed for the pipeline tray.
+ * Returns in-flight rows plus terminal rows updated in the last 15 minutes.
+ * Never leaks `artifacts` or `result` payloads.
+ */
+export async function getActivePipelineJobsHandler(req: Request, res: Response): Promise<void> {
+  const userId = req.userId;
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+  const rows = await listActivePipelineJobs(userId);
+  res.status(200).json({
+    jobs: rows.map((row) => ({
+      id: row.id,
+      status: row.status,
+      phase: row.phase,
+      jobUrl: row.job_url,
+      jobTitle: row.job_title,
+      site: row.site,
+      automationLevel: row.automation_level,
+      submit: row.submit,
+      errorMessage: row.error_message,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    })),
+    cap: 3,
+    inFlightCount: rows.filter(
+      (r) => r.status === 'pending' || r.status === 'running' || r.status === 'awaiting_approval',
+    ).length,
+  });
 }
 
 async function getPipelineJobAndSiteJobId(
